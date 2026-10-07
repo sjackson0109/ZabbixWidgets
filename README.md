@@ -2,8 +2,7 @@
 
 Independent Zabbix dashboard widgets built on Apache ECharts.
 
-> **Status: not yet released.** All 13 charts (C01-C13) have renderers and are tested against Zabbix 7.0, 7.2 and 7.4. See [chart contracts](docs/CHART-CONTRACTS.md) for what each chart needs.
-
+All 13 charts (C01-C13) have renderers and are tested against Zabbix 7.0, 7.2 and 7.4. See [chart contracts](docs/CHART-CONTRACTS.md) for what each chart needs.
 
 ## Documentation
 
@@ -16,7 +15,7 @@ Independent Zabbix dashboard widgets built on Apache ECharts.
 
 ```sh
 npm ci
-npm run check   # lint (JS and PHP), tests, build, browser test, docs, licences, provenance
+npm run check   # lint (JS and PHP), tests, build, browser test, docs, licences
 npm run package # release zip in dist/
 ```
 

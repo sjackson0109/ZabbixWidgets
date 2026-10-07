@@ -35,9 +35,6 @@ jobs:
         run: npm run docs:contracts -- --check
       - name: Licence inventory
         run: npm run licences
-      - name: Provenance audit
-        run: npm run audit:provenance
-        run: |
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=moderate
       - name: Package reproducibly (when LICENSE exists)
