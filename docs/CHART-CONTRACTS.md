@@ -62,7 +62,9 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
   - `has_target`: Every actual value has a target from an item, a macro or a constant. Targets are never derived from the actual value.
+  - `bullet_ranges`: Qualitative ranges, when set, are ascending numbers.
 
 ## C05 Radar (`radar`)
 
@@ -93,6 +95,8 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `heat_axes`: X and Y are different dimensions; a time axis yields at most 1000 buckets.
   - `colour_bounds`: Configured colour bounds are numbers with minimum below maximum; time buckets are valid.
 
 ## C07 Candlestick / OHLC (`candlestick`)
@@ -112,7 +116,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_history`: Every mapped item has history in the period; at most `max_items` items per role.
-  - `ohlc_consistent`: Explicit OHLC candles satisfy low <= open, close <= high; periods missing a component are skipped and reported.
+  - `ohlc_consistent`: The candle period is valid and yields at most 1000 candles; explicit OHLC candles satisfy low <= open, close <= high; periods missing a component are skipped and reported.
 
 ## C08 Bubble (`bubble`)
 
@@ -147,7 +151,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `complete_tuples`: Every pairing key (host or tag value) has exactly one item for each required role.
-  - `valid_intervals`: Each task has a positive start and an end at or after it (or a non-negative duration).
+  - `valid_intervals`: Each task has a positive start and an end at or after it (or a non-negative duration); progress is a percentage from 0 to 100.
 
 ## C10 Tree Diagram (`tree`)
 
@@ -188,7 +192,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `non_negative`: Values must not be negative.
-  - `relationship_tags`: Every item carries both the source and the target tag.
+  - `relationship_tags`: Every item carries both the source and the target tag; flows from an endpoint to itself are reported and not drawn.
 
 ## C13 Calendar Heat Map (`calendar_heatmap`)
 

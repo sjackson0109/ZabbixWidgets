@@ -304,3 +304,51 @@ describe('server errors', () => {
 		expect(result.errors.map((problem) => problem.message)).toEqual(['Too many items matched; showing the first 500.']);
 	});
 });
+
+describe('rules added with the renderers', () => {
+	const period = { from: 1700000000, to: 1700000000 + 86400 * 30 };
+
+	it('rejects unordered or non-numeric bullet ranges', () => {
+		const base = { target_source: 'constant', target_constant: '80' };
+		const series = [item({ role: 'actual' })];
+		expect(check('bullet', { config: { ...base, ranges: '50, 80' }, series }).ok).toBe(true);
+		expect(codes(check('bullet', { config: { ...base, ranges: '80, 50' }, series }))).toContain('invalid_ranges');
+		expect(codes(check('bullet', { config: { ...base, ranges: 'low, high' }, series }))).toContain('invalid_ranges');
+	});
+
+	it('rejects bullet actuals with different units', () => {
+		const config = { target_source: 'constant', target_constant: '80' };
+		const series = [item({ role: 'actual', units: '%' }), item({ role: 'actual', units: 'B' })];
+		expect(codes(check('bullet', { config, series }))).toContain('mixed_units');
+	});
+
+	it('requires different heat map axes', () => {
+		expect(codes(check('heatmap', { config: { heat_x: 'item', heat_y: 'item' }, series: [item()] }))).toContain('invalid_axes');
+	});
+
+	it('limits the number of heat map buckets and candles', () => {
+		const series = [item({ history: history([1700000100, '1']) })];
+		expect(codes(check('heatmap', { config: { heat_x: 'time', heat_y: 'item', bucket: '1m' }, series, time_period: period })))
+			.toContain('too_many_buckets');
+		const candles = check('candlestick', {
+			config: { ohlc_mode: 'derived', bucket: '1m' },
+			series: [item({ role: 'source', history: history([1700000100, '1']) })],
+			time_period: period
+		});
+		expect(codes(candles)).toContain('too_many_buckets');
+	});
+
+	it('rejects progress outside 0-100%', () => {
+		const series = [
+			item({ role: 'start', value: '1700000000' }), item({ role: 'end', value: '1700003600' }), item({ role: 'progress', value: '140' })
+		];
+		expect(codes(check('gantt', { config: { gantt_timing: 'start_end', pair_by: 'host' }, series }))).toContain('invalid_progress');
+	});
+
+	it('warns about flows from an endpoint to itself', () => {
+		const tags = [{ tag: 'from', value: 'A' }, { tag: 'to', value: 'A' }];
+		const result = check('relationship', { config: { source_tag: 'from', target_tag: 'to' }, series: [item({ role: 'weight', tags })] });
+		expect(result.ok).toBe(true);
+		expect(result.warnings.map((problem) => problem.code)).toContain('self_flows');
+	});
+});
