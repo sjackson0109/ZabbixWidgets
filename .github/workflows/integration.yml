@@ -1,6 +1,7 @@
 name: Zabbix integration
 
-# ECharts module, and checks a dashboard in Chromium (tests/integration).
+# Installs the module into real Zabbix releases and checks a dashboard in
+# Chromium (tests/integration).
 on:
   pull_request:
   push:
@@ -30,7 +31,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Start Zabbix ${{ matrix.zabbix }}
         run: docker compose -f tests/integration/docker-compose.yml up -d --wait postgres && docker compose -f tests/integration/docker-compose.yml up -d
-      - name: Install modules
+      - name: Install module
         run: tests/integration/install-modules.sh
       - name: Smoke test
         run: node tests/integration/smoke.mjs

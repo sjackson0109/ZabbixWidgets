@@ -1,12 +1,14 @@
 /**
  * Integration smoke test against a live Zabbix (see docker-compose.yml).
  *
+ * 1. Registers ZabbixWidgets.
  * 2. Creates hosts with trapper items and pushes real values.
  * 3. Builds a dashboard with a working Column widget, a Bubble widget missing
+ *    its mappings, plus a second
  *    dashboard with one configured widget for every chart type.
  * 4. Opens the dashboards in Chromium and checks the Column chart draws, the
- *    draws, every chart type draws from real Zabbix data, the edit form
- *    opens, and no page errors occur.
+ *    Bubble widget explains what is missing, every chart type draws from
+ *    real Zabbix data, the edit form opens, and no page errors occur.
  *
  * Screenshots and page HTML go to test-results/ for inspection.
  */
@@ -59,7 +61,6 @@ token = await api('user.login', { username: 'Admin', password: 'zabbix' });
 
 step('Register modules');
 const modules = [{ id: 'zabbixwidgets_charts', relative_path: 'modules/zabbixwidgets_charts' }];
-}
 for (const module of modules) {
 	const existing = await api('module.get', { filter: { id: module.id } });
 	if (existing.length === 0) {
@@ -146,10 +147,6 @@ const widgets = [
 		fields: [{ type: 0, name: 'chart_type', value: 8 }, ...hostFields, { type: 1, name: 'x_items.0', value: 'ZW CPU*' }]
 	}
 ];
-	widgets.push({
-		fields: [{ type: 0, name: 'display_type', value: 0 }, ...hostFields, { type: 1, name: 'items.0', value: 'ZW CPU*' }]
-	});
-}
 const { dashboardids: [dashboardid] } = await api('dashboard.create', {
 	name: `ZW smoke ${now}`,
 	pages: [{ widgets }]
@@ -223,8 +220,6 @@ try {
 	const bubble = widget('ZW bubble');
 	const bubbleText = (await bubble.locator('.dashboard-grid-widget-contents, .dashboard-grid-widget-container').first().innerText().catch(() => '')).trim();
 	check(/requires/i.test(bubbleText), `Bubble widget explains missing mappings: "${bubbleText.slice(0, 200)}"`);
-
-	}
 
 	check(await page.evaluate(() => typeof window.WidgetZabbixWidgetsCharts === 'function'), 'Widget class is registered');
 

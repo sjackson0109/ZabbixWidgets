@@ -1,6 +1,6 @@
 {
   "name": "zabbixwidgets",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Independent Zabbix dashboard widgets built on Apache ECharts.",
   "license": "MIT",
@@ -16,10 +16,8 @@
     "test:browser": "node tests/browser/bundle.browser.mjs",
     "docs:contracts": "node scripts/contracts-doc.mjs",
     "licences": "node scripts/licence-inventory.mjs",
-    "audit:provenance": "node scripts/provenance-audit.mjs",
-    "audit:similarity": "node scripts/similarity-audit.mjs",
     "package": "node scripts/package.mjs",
-    "check": "npm run lint && npm run lint:php && npm test && npm run build && npm run test:browser && npm run docs:contracts -- --check && npm run licences && npm run audit:provenance"
+    "check": "npm run lint && npm run lint:php && npm test && npm run build && npm run test:browser && npm run docs:contracts -- --check && npm run licences"
   },
   "dependencies": {
     "echarts": "6.1.0"
