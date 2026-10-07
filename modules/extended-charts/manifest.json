@@ -1,0 +1,30 @@
+{
+	"manifest_version": 2.0,
+	"id": "zabbixwidgets_charts",
+	"type": "widget",
+	"name": "ZabbixWidgets Extended Charts",
+	"namespace": "ZabbixWidgetsCharts",
+	"version": "0.1.0",
+	"author": "ZabbixWidgets contributors",
+	"url": "https://github.com/sjackson0109/ZabbixWidgets",
+	"description": "Thirteen Apache ECharts visualisations with explicit data contracts.",
+	"actions": {
+		"widget.zabbixwidgets_charts.view": {
+			"class": "WidgetView"
+		}
+	},
+	"widget": {
+		"name": "Extended Charts",
+		"js_class": "WidgetZabbixWidgetsCharts",
+		"size": {
+			"width": 24,
+			"height": 5
+		},
+		"refresh_rate": 60,
+		"template_support": true
+	},
+	"assets": {
+		"js": ["zabbixwidgets-charts.js"],
+		"css": ["zabbixwidgets-charts.css"]
+	}
+}
