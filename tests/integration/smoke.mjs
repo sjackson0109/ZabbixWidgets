@@ -161,7 +161,7 @@ const widgets = [
 		fields: [{ type: 0, name: 'chart_type', value: 1 }, ...hostFields, { type: 1, name: 'items.0', value: 'ZW *' }]
 	},
 	{
-		type: 'zabbixwidgets_charts', name: 'ZW bubble', x: 36, y: 0, width: 36, height: 6,
+		type: 'zabbixwidgets_charts', name: 'ZW misconfigured bubble (expected error)', x: 36, y: 0, width: 36, height: 6,
 		fields: [{ type: 0, name: 'chart_type', value: 8 }, ...hostFields, { type: 1, name: 'x_items.0', value: 'ZW CPU*' }]
 	}
 ];
@@ -278,7 +278,7 @@ try {
 
 	// The message may come from the module's own validation (.zw-charts-errors) or from Zabbix
 	// showing WidgetForm::validate() errors in place of the widget; either explains the problem.
-	const bubble = widget('ZW bubble');
+	const bubble = widget('ZW misconfigured bubble');
 	const bubbleText = (await bubble.locator('.dashboard-grid-widget-contents, .dashboard-grid-widget-container').first().innerText().catch(() => '')).trim();
 	check(/requires/i.test(bubbleText), `Bubble widget explains missing mappings: "${bubbleText.slice(0, 200)}"`);
 
