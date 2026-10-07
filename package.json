@@ -17,6 +17,7 @@
     "docs:contracts": "node scripts/contracts-doc.mjs",
     "licences": "node scripts/licence-inventory.mjs",
     "audit:provenance": "node scripts/provenance-audit.mjs",
+    "audit:similarity": "node scripts/similarity-audit.mjs",
     "package": "node scripts/package.mjs",
     "check": "npm run lint && npm run lint:php && npm test && npm run build && npm run test:browser && npm run docs:contracts -- --check && npm run licences && npm run audit:provenance"
   },
