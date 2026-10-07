@@ -9,16 +9,16 @@
 import { baseOption, categoryAxis, commonUnits, tooltipLine, valueAxis } from './common.js';
 import { escapeHtml } from '../utils/escape.js';
 
-function hostDimension(entry) {
+export function hostDimension(entry) {
 	return { id: `host:${entry.hostid}`, label: entry.host, detail: entry.hostid };
 }
 
-function itemDimension(entry) {
+export function itemDimension(entry) {
 	return { id: `item:${entry.key}`, label: entry.name, detail: entry.key };
 }
 
 /** Distinct dimensions in first-seen order, with labels made unique. */
-function distinct(series, dimensionOf) {
+export function distinct(series, dimensionOf) {
 	const byId = new Map();
 	for (const entry of series) {
 		const dimension = dimensionOf(entry);

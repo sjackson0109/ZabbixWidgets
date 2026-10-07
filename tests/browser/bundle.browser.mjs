@@ -1,13 +1,17 @@
 /**
  * Loads the built bundle into real Chromium next to a stand-in for Zabbix's
  * CWidget base class and a foreign window.echarts, then drives the widget
- * lifecycle: render, re-render, error state, resize and destroy.
+ * lifecycle: render, re-render, error state, resize and destroy. Then draws
+ * every chart's sample payload and checks that each one paints pixels.
  *
- * Run after `npm run build`. Set CHROMIUM_PATH to use a local Chromium.
+ * Run after `npm run build`. Set CHROMIUM_PATH to use a local Chromium and
+ * SCREENSHOT_DIR to save one PNG per chart.
  */
 import { chromium } from 'playwright';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SAMPLES, sample } from '../fixtures/samples.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const bundle = path.join(root, 'modules/extended-charts/assets/js/zabbixwidgets-charts.js');
@@ -85,6 +89,38 @@ const result = await page.evaluate(async ({ body, first, second }) => {
 	};
 }, { body, first: series('42'), second: series('43') });
 
+const charts = [];
+for (const chart of Object.keys(SAMPLES)) {
+	const outcome = await page.evaluate(async ({ body, payload }) => {
+		const target = document.createElement('div');
+		target.id = `chart-${payload.chart}`;
+		target.style.cssText = 'width:640px;height:320px;background:#fff';
+		document.body.append(target);
+		const widget = new window.WidgetZabbixWidgetsCharts(target);
+		widget.processUpdateResponse({ body, zw_payload: payload });
+		await new Promise((resolve) => setTimeout(resolve, 300));
+
+		const canvas = target.querySelector('.zw-charts-canvas canvas');
+		const messages = target.querySelector('.zw-charts-messages')?.textContent ?? '';
+		if (canvas === null) {
+			return { painted: 0, messages };
+		}
+		const context = canvas.getContext('2d');
+		const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+		let painted = 0;
+		for (let index = 3; index < data.length; index += 4) {
+			painted += data[index] > 0 ? 1 : 0;
+		}
+		return { painted: painted / (canvas.width * canvas.height), messages };
+	}, { body, payload: sample(chart) });
+
+	if (process.env.SCREENSHOT_DIR) {
+		await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });
+		await page.locator(`#chart-${chart}`).screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `${chart}.png`) });
+	}
+	charts.push([chart, outcome]);
+}
+
 await browser.close();
 
 const checks = [
@@ -94,6 +130,8 @@ const checks = [
 	[result.canvasHidden, 'Canvas is hidden while an error is shown'],
 	[result.disposed, 'Destroying the widget disposes the chart'],
 	[result.foreignEchartsIntact, 'An existing window.echarts is left untouched'],
+	...charts.map(([chart, outcome]) => [outcome.painted > 0.005,
+		`${chart} draws its sample (${(outcome.painted * 100).toFixed(1)}% of pixels)${outcome.messages ? `: ${outcome.messages}` : ''}`]),
 	[errors.length === 0, `No page errors ${errors.join(' | ')}`]
 ];
 

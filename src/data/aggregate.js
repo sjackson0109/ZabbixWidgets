@@ -90,6 +90,29 @@ export function bucketise(samples, bucketSeconds) {
 		.map(([start, bucketSamples]) => ({ start, samples: bucketSamples }));
 }
 
+/** Most buckets a time-based chart will draw; validation rejects more. */
+export const MAX_BUCKETS = 1000;
+
+/** Start of every epoch-aligned bucket that overlaps the time period. */
+export function periodBuckets(timePeriod, bucketSeconds) {
+	if (timePeriod === null || !(bucketSeconds > 0)) {
+		return [];
+	}
+	const starts = [];
+	for (let start = Math.floor(timePeriod.from / bucketSeconds) * bucketSeconds; start <= timePeriod.to; start += bucketSeconds) {
+		starts.push(start);
+	}
+	return starts;
+}
+
+/** Number of buckets periodBuckets() would produce, without building them. */
+export function bucketCount(timePeriod, bucketSeconds) {
+	if (timePeriod === null || !(bucketSeconds > 0)) {
+		return 0;
+	}
+	return Math.floor(timePeriod.to / bucketSeconds) - Math.floor(timePeriod.from / bucketSeconds) + 1;
+}
+
 export function aggregateBuckets(samples, bucketSeconds, fn) {
 	return bucketise(samples, bucketSeconds).map(({ start, samples: bucketSamples }) => ({
 		start,

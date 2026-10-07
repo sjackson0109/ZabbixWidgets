@@ -4,7 +4,8 @@
  * Messages are written for dashboard users, not developers.
  */
 import { displayUnits } from '../data/units.js';
-import { alignOhlc, isConsistentCandle, parseBucket } from '../data/aggregate.js';
+import { alignOhlc, bucketCount, isConsistentCandle, MAX_BUCKETS, parseBucket } from '../data/aggregate.js';
+import { parseRanges } from '../data/targets.js';
 import { pairSeries } from '../data/pairing.js';
 import { parseEdgeList, edgesFromHostTag, resolveEdges } from '../data/edges.js';
 import { tagValue, toNumber } from '../data/normalise.js';
@@ -32,6 +33,12 @@ function numericRoles(chart, config) {
 
 function roleSeries({ payload, chart, config }, roles = activeRoles(chart, config)) {
 	return payload.series.filter((series) => roles.includes(series.role));
+}
+
+function tooManyBuckets(ctx, what) {
+	const count = bucketCount(ctx.payload.timePeriod, parseBucket(ctx.config.bucket));
+	return count > MAX_BUCKETS ? [error('too_many_buckets',
+		`The time period holds ${count} ${what}, more than the ${MAX_BUCKETS} this widget draws. Choose a longer ${what === 'candles' ? 'candle period' : 'bucket'} or a shorter time period.`)] : [];
 }
 
 function pairingRoles(chart, config) {
@@ -209,6 +216,10 @@ export const RULES = {
 		if (bucket === null) {
 			return [error('invalid_bucket', 'Candle period must look like 15m, 1h or 1d.')];
 		}
+		const limit = tooManyBuckets(ctx, 'candles');
+		if (limit.length > 0) {
+			return limit;
+		}
 		if (ctx.config.ohlc_mode !== 'explicit') {
 			return [];
 		}
@@ -271,8 +282,15 @@ export const RULES = {
 			}
 			return typeof members.end?.value !== 'number' || members.end.value < start;
 		});
-		return invalid.length === 0 ? [] : [error('invalid_interval',
+		const problems = invalid.length === 0 ? [] : [error('invalid_interval',
 			`Gantt Chart requires a start timestamp and an end at or after it for each task. Invalid: ${listNames(invalid.map((tuple) => tuple.label))}.`)];
+		const progress = ctx.payload.series.filter((series) => series.role === 'progress'
+			&& typeof series.value === 'number' && (series.value < 0 || series.value > 100));
+		if (progress.length > 0) {
+			problems.push(error('invalid_progress',
+				`Progress must be a percentage from 0 to 100: ${listNames(progress.map(seriesLabel))}.`));
+		}
+		return problems;
 	},
 
 	hierarchy_source(ctx) {
@@ -335,7 +353,29 @@ export const RULES = {
 			const target = tagValue(series.tags, targetTag);
 			return source === null || source === '' || target === null || target === '';
 		});
-		return untagged.length === 0 ? [] : [error('untagged_items',
+		const problems = untagged.length === 0 ? [] : [error('untagged_items',
 			`These items need both "${sourceTag}" and "${targetTag}" tags: ${listNames(untagged.map(seriesLabel))}.`)];
+		const loops = roleSeries(ctx).filter((series) => {
+			const source = tagValue(series.tags, sourceTag);
+			return source !== null && source !== '' && source === tagValue(series.tags, targetTag);
+		});
+		if (loops.length > 0) {
+			problems.push(warning('self_flows',
+				`These items flow from an endpoint to itself and are not drawn: ${listNames(loops.map(seriesLabel))}.`));
+		}
+		return problems;
+	},
+
+	bullet_ranges(ctx) {
+		const { error: problem } = parseRanges(ctx.config.ranges);
+		return problem === null ? [] : [error('invalid_ranges', problem)];
+	},
+
+	heat_axes(ctx) {
+		const { heat_x: x, heat_y: y } = ctx.config;
+		if (x === y) {
+			return [error('invalid_axes', 'Heat Map needs different X and Y axes: choose hosts against items, or time against hosts or items.')];
+		}
+		return x === 'time' && parseBucket(ctx.config.bucket) !== null ? tooManyBuckets(ctx, 'buckets') : [];
 	}
 };

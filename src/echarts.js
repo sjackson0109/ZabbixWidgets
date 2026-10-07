@@ -3,12 +3,20 @@
  * are registered, and nothing is exposed on window.
  */
 import * as echarts from 'echarts/core';
-import { BarChart } from 'echarts/charts';
 import {
-	GridComponent, LegendComponent, TooltipComponent, TitleComponent, GraphicComponent, AriaComponent
+	BarChart, CandlestickChart, ChordChart, CustomChart, GraphChart, HeatmapChart, PieChart, RadarChart, ScatterChart, TreeChart
+} from 'echarts/charts';
+import {
+	AriaComponent, CalendarComponent, GraphicComponent, GridComponent, LegendComponent, MarkAreaComponent, RadarComponent,
+	TitleComponent, TooltipComponent, VisualMapContinuousComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
-echarts.use([BarChart, GridComponent, LegendComponent, TooltipComponent, TitleComponent, GraphicComponent, AriaComponent, CanvasRenderer]);
+echarts.use([
+	BarChart, CandlestickChart, ChordChart, CustomChart, GraphChart, HeatmapChart, PieChart, RadarChart, ScatterChart, TreeChart,
+	AriaComponent, CalendarComponent, GraphicComponent, GridComponent, LegendComponent, MarkAreaComponent, RadarComponent,
+	TitleComponent, TooltipComponent, VisualMapContinuousComponent,
+	CanvasRenderer
+]);
 
 export { echarts };

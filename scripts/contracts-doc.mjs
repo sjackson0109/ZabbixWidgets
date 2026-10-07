@@ -21,13 +21,15 @@ const RULE_TEXT = {
 	radar_scale: 'Shared scale requires common units and a positive maximum; per-axis scale uses each axis\'s largest real value.',
 	colour_bounds: 'Configured colour bounds are numbers with minimum below maximum; time buckets are valid.',
 	has_history: 'Every mapped item has history in the period; at most `max_items` items per role.',
-	ohlc_consistent: 'Explicit OHLC candles satisfy low <= open, close <= high; periods missing a component are skipped and reported.',
+	ohlc_consistent: 'The candle period is valid and yields at most 1000 candles; explicit OHLC candles satisfy low <= open, close <= high; periods missing a component are skipped and reported.',
 	complete_tuples: 'Every pairing key (host or tag value) has exactly one item for each required role.',
-	valid_intervals: 'Each task has a positive start and an end at or after it (or a non-negative duration).',
+	valid_intervals: 'Each task has a positive start and an end at or after it (or a non-negative duration); progress is a percentage from 0 to 100.',
 	hierarchy_source: 'The hierarchy comes from host groups, named tags, or item names split by an explicit delimiter.',
 	has_edges: 'Relationships come from an explicit list or a host tag naming the peer host. None are inferred.',
 	edges_resolve: 'Every relationship endpoint is one of the selected hosts.',
-	relationship_tags: 'Every item carries both the source and the target tag.'
+	relationship_tags: 'Every item carries both the source and the target tag; flows from an endpoint to itself are reported and not drawn.',
+	bullet_ranges: 'Qualitative ranges, when set, are ascending numbers.',
+	heat_axes: 'X and Y are different dimensions; a time axis yields at most 1000 buckets.'
 };
 
 const lines = [
