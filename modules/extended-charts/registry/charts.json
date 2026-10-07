@@ -1,0 +1,352 @@
+{
+	"$comment": "Single source of truth for chart capabilities. Read by the PHP action (data retrieval), the edit form (visible controls) and the JS runtime (validation and renderer selection). See docs/CHART-CONTRACTS.md. form_value is the integer Zabbix stores for the chart type; it must never change once released.",
+	"version": 1,
+	"common_controls": ["chart_type", "groupids", "hostids", "override_hostid", "show_legend", "decimals"],
+	"enums": {
+		"$comment": "Radio/select fields are stored by Zabbix as integers; the integer is the index into these lists. Append only, never reorder.",
+		"group_by": ["host", "item"],
+		"centre_value": ["none", "sum", "avg"],
+		"target_source": ["item", "macro", "constant"],
+		"pair_by": ["host", "tag"],
+		"radar_scale": ["shared", "per_dimension"],
+		"heat_x": ["host", "item", "time"],
+		"heat_y": ["item", "host"],
+		"aggregation": ["avg", "sum", "min", "max", "count"],
+		"ohlc_mode": ["derived", "explicit"],
+		"gantt_timing": ["start_end", "start_duration"],
+		"tree_source": ["host_group", "tags", "item_path"],
+		"edge_source": ["list", "tag"]
+	},
+	"charts": [
+		{
+			"id": "column",
+			"code": "C01",
+			"form_value": 1,
+			"name": "Vertical Column",
+			"renderer": "column",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "group_by"],
+			"rules": ["numeric_only", "has_values"],
+			"aggregations": []
+		},
+		{
+			"id": "stacked_bar",
+			"code": "C02",
+			"form_value": 2,
+			"name": "Stacked Bar",
+			"renderer": "stacked_bar",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 2,
+			"controls": ["items", "group_by"],
+			"rules": ["numeric_only", "has_values", "same_units"],
+			"aggregations": []
+		},
+		{
+			"id": "doughnut",
+			"code": "C03",
+			"form_value": 3,
+			"name": "Doughnut",
+			"renderer": "doughnut",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "show_percent", "hide_zero", "centre_value"],
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units"],
+			"aggregations": ["sum", "avg"]
+		},
+		{
+			"id": "bullet",
+			"code": "C04",
+			"form_value": 4,
+			"name": "Bullet Graph",
+			"renderer": "bullet",
+			"roles": {
+				"actual": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				},
+				"target": {
+					"field": "target_items",
+					"required": false,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "macros"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "target_source", "target_items", "target_macro", "target_constant", "ranges", "pair_by", "pair_tag"],
+			"rules": ["numeric_only", "has_values", "has_target"],
+			"aggregations": []
+		},
+		{
+			"id": "radar",
+			"code": "C05",
+			"form_value": 5,
+			"name": "Radar",
+			"renderer": "radar",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"min_dimensions": 3,
+			"controls": ["items", "radar_scale", "radar_max"],
+			"rules": ["numeric_only", "has_values", "min_dimensions", "radar_scale"],
+			"aggregations": []
+		},
+		{
+			"id": "heatmap",
+			"code": "C06",
+			"form_value": 6,
+			"name": "Heat Map",
+			"renderer": "heatmap",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "history"],
+			"history": "when:heat_x=time",
+			"time_period": "when:heat_x=time",
+			"min_series": 1,
+			"controls": ["items", "heat_x", "heat_y", "bucket", "aggregation", "colour_min", "colour_max", "time_period"],
+			"rules": ["numeric_only", "has_values", "colour_bounds"],
+			"aggregations": ["avg", "sum", "min", "max", "count"]
+		},
+		{
+			"id": "candlestick",
+			"code": "C07",
+			"form_value": 7,
+			"name": "Candlestick / OHLC",
+			"renderer": "candlestick",
+			"roles": {
+				"source": {
+					"field": "items",
+					"required": "when:ohlc_mode=derived",
+					"numeric": true,
+					"max_items": 1
+				},
+				"open": {
+					"field": "open_items",
+					"required": "when:ohlc_mode=explicit",
+					"numeric": true,
+					"max_items": 1
+				},
+				"high": {
+					"field": "high_items",
+					"required": "when:ohlc_mode=explicit",
+					"numeric": true,
+					"max_items": 1
+				},
+				"low": {
+					"field": "low_items",
+					"required": "when:ohlc_mode=explicit",
+					"numeric": true,
+					"max_items": 1
+				},
+				"close": {
+					"field": "close_items",
+					"required": "when:ohlc_mode=explicit",
+					"numeric": true,
+					"max_items": 1
+				}
+			},
+			"data": ["history"],
+			"history": "always",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["ohlc_mode", "items", "open_items", "high_items", "low_items", "close_items", "bucket", "time_period"],
+			"rules": ["numeric_only", "has_history", "ohlc_consistent"],
+			"aggregations": ["ohlc"]
+		},
+		{
+			"id": "bubble",
+			"code": "C08",
+			"form_value": 8,
+			"name": "Bubble",
+			"renderer": "bubble",
+			"roles": {
+				"x": {
+					"field": "x_items",
+					"required": true,
+					"numeric": true
+				},
+				"y": {
+					"field": "y_items",
+					"required": true,
+					"numeric": true
+				},
+				"size": {
+					"field": "size_items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["x_items", "y_items", "size_items", "pair_by", "pair_tag"],
+			"rules": ["numeric_only", "has_values", "complete_tuples", "non_negative_size"],
+			"aggregations": []
+		},
+		{
+			"id": "gantt",
+			"code": "C09",
+			"form_value": 9,
+			"name": "Gantt",
+			"renderer": "gantt",
+			"roles": {
+				"start": {
+					"field": "start_items",
+					"required": true,
+					"numeric": true
+				},
+				"end": {
+					"field": "end_items",
+					"required": "when:gantt_timing=start_end",
+					"numeric": true
+				},
+				"duration": {
+					"field": "duration_items",
+					"required": "when:gantt_timing=start_duration",
+					"numeric": true
+				},
+				"progress": {
+					"field": "progress_items",
+					"required": false,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["gantt_timing", "start_items", "end_items", "duration_items", "progress_items", "pair_by", "pair_tag"],
+			"rules": ["numeric_only", "has_values", "complete_tuples", "valid_intervals"],
+			"aggregations": []
+		},
+		{
+			"id": "tree",
+			"code": "C10",
+			"form_value": 10,
+			"name": "Tree Diagram",
+			"renderer": "tree",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": false
+				}
+			},
+			"data": ["latest", "hosts", "groups", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "tree_source", "tree_tags", "tree_delimiter"],
+			"rules": ["has_values", "hierarchy_source"],
+			"aggregations": []
+		},
+		{
+			"id": "network",
+			"code": "C11",
+			"form_value": 11,
+			"name": "Network / Graph Diagram",
+			"renderer": "network",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": false,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "hosts", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 0,
+			"controls": ["items", "edge_source", "edge_list", "edge_tag"],
+			"rules": ["has_edges", "edges_resolve"],
+			"aggregations": []
+		},
+		{
+			"id": "relationship",
+			"code": "C12",
+			"form_value": 12,
+			"name": "Chord / Relationship Diagram",
+			"renderer": "relationship",
+			"roles": {
+				"weight": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "source_tag", "target_tag"],
+			"rules": ["numeric_only", "has_values", "non_negative", "relationship_tags"],
+			"aggregations": []
+		},
+		{
+			"id": "calendar_heatmap",
+			"code": "C13",
+			"form_value": 13,
+			"name": "Calendar Heat Map",
+			"renderer": "calendar_heatmap",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true,
+					"max_items": 1
+				}
+			},
+			"data": ["history"],
+			"history": "always",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "aggregation", "time_period"],
+			"rules": ["numeric_only", "has_history"],
+			"aggregations": ["avg", "sum", "min", "max", "count"]
+		}
+	]
+}

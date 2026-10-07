@@ -1,0 +1,32 @@
+{
+  "name": "zabbixwidgets",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Independent Zabbix dashboard widgets built on Apache ECharts.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "lint": "eslint .",
+    "lint:php": "node scripts/lint-php.mjs",
+    "test": "vitest run",
+    "licences": "node scripts/licence-inventory.mjs",
+    "audit:provenance": "node scripts/provenance-audit.mjs",
+    "package": "node scripts/package.mjs",
+    "check": "npm run lint && npm run lint:php && npm test && npm run build && npm run licences && npm run audit:provenance"
+  },
+  "dependencies": {
+    "echarts": "6.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "esbuild": "0.28.2",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
+    "jsdom": "30.1.2",
+    "vitest": "5.0.3"
+  }
+}
