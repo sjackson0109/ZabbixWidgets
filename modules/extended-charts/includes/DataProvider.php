@@ -29,6 +29,14 @@ class DataProvider {
 
 	private const NUMERIC_TYPES = [ITEM_VALUE_TYPE_FLOAT, ITEM_VALUE_TYPE_UINT64];
 
+	/** Value types whose history is readable through history.get (binary is not). */
+	private const HISTORY_TYPES = [ITEM_VALUE_TYPE_FLOAT, ITEM_VALUE_TYPE_STR, ITEM_VALUE_TYPE_LOG, ITEM_VALUE_TYPE_UINT64,
+		ITEM_VALUE_TYPE_TEXT
+	];
+
+	/** Matches one user macro reference, with or without a context. */
+	public const MACRO_PATTERN = '/\{\$[A-Z0-9_.]+(?::(?:"(?:[^"\\\\]|\\\\.)*"|[^}]*))?\}/';
+
 	private array $chart;
 	private array $config;
 	private array $errors = [];
@@ -51,6 +59,7 @@ class DataProvider {
 			'hosts' => [],
 			'time_period' => null,
 			'history_source' => null,
+			'severities' => [],
 			'errors' => []
 		];
 
@@ -73,6 +82,11 @@ class DataProvider {
 
 			if ($this->needsHostDetails()) {
 				$payload['hosts'] = $this->hostDetails($hosts);
+			}
+
+			if (ChartRegistry::needs($this->chart, 'problems')) {
+				$this->addProblems($payload['series']);
+				$payload['severities'] = self::severities();
 			}
 		}
 
@@ -135,8 +149,8 @@ class DataProvider {
 				continue;
 			}
 
-			$items = API::Item()->get([
-				'output' => ['itemid', 'hostid', 'name', 'key_', 'value_type', 'units'],
+			$options = [
+				'output' => ['itemid', 'hostid', 'name', 'key_', 'value_type', 'units', 'delay'],
 				'selectTags' => ['tag', 'value'],
 				'hostids' => $hostids,
 				'search' => ['name' => $patterns],
@@ -147,7 +161,13 @@ class DataProvider {
 				'sortfield' => 'name',
 				'limit' => self::MAX_ITEMS + 1,
 				'preservekeys' => true
-			]);
+			];
+
+			if (ChartRegistry::needs($this->chart, 'valuemaps')) {
+				$options['selectValueMap'] = ['mappings'];
+			}
+
+			$items = API::Item()->get($options);
 
 			if (count($items) > self::MAX_ITEMS) {
 				$this->errors[] = _s('More than %1$d items match "%2$s". Narrow the item pattern.', self::MAX_ITEMS,
@@ -172,7 +192,8 @@ class DataProvider {
 		$latest = [];
 
 		if ($all_items && ChartRegistry::needs($this->chart, 'latest')) {
-			$latest = Manager::History()->getLastValues($all_items, 1,
+			// Two values where the chart shows the change since the previous one.
+			$latest = Manager::History()->getLastValues($all_items, ChartRegistry::needs($this->chart, 'previous') ? 2 : 1,
 				timeUnitToSeconds(CSettingsHelper::get(CSettingsHelper::HISTORY_PERIOD))
 			);
 		}
@@ -182,8 +203,9 @@ class DataProvider {
 		foreach ($items_by_role as $role => $items) {
 			foreach ($items as $itemid => $item) {
 				$last = $latest[$itemid][0] ?? null;
+				$previous = $latest[$itemid][1] ?? null;
 
-				$series[] = [
+				$entry = [
 					'itemid' => $itemid,
 					'role' => $role,
 					'hostid' => $item['hostid'],
@@ -195,12 +217,109 @@ class DataProvider {
 					'tags' => $item['tags'],
 					'value' => $last !== null ? $last['value'] : null,
 					'clock' => $last !== null ? (int) $last['clock'] : null,
+					'delay' => self::delaySeconds($item['delay']),
 					'history' => []
 				];
+
+				if (ChartRegistry::needs($this->chart, 'previous')) {
+					$entry['previous'] = $previous !== null
+						? ['value' => $previous['value'], 'clock' => (int) $previous['clock']]
+						: null;
+				}
+
+				if (ChartRegistry::needs($this->chart, 'valuemaps')) {
+					$entry['valuemap'] = !empty($item['valuemap']['mappings'])
+						? array_map(static function (array $mapping): array {
+							return ['type' => (int) $mapping['type'], 'value' => $mapping['value'],
+								'newvalue' => $mapping['newvalue']
+							];
+						}, array_values($item['valuemap']['mappings']))
+						: null;
+				}
+
+				$series[] = $entry;
 			}
 		}
 
 		return $series;
+	}
+
+	/**
+	 * The update interval in seconds when it is a plain interval ("30s", "1m",
+	 * or the default part of a flexible interval); null for macros, scheduling
+	 * and items without an interval (trappers). The browser then judges gaps
+	 * from the samples themselves.
+	 */
+	public static function delaySeconds($delay): ?int {
+		$delay = trim(explode(';', (string) $delay)[0]);
+
+		if (!preg_match('/^\d+[smhdw]?$/', $delay)) {
+			return null;
+		}
+
+		$seconds = timeUnitToSeconds($delay);
+
+		return $seconds !== null && $seconds > 0 ? (int) $seconds : null;
+	}
+
+	/**
+	 * Adds the triggers currently in the problem state to each series, from
+	 * the triggers that use its item. Disabled and dependent triggers are
+	 * left out, as on Zabbix's own problem views.
+	 */
+	private function addProblems(array &$series): void {
+		$itemids = array_column($series, 'itemid');
+
+		if (!$itemids) {
+			return;
+		}
+
+		$triggers = API::Trigger()->get([
+			'output' => ['triggerid', 'description', 'priority'],
+			'selectItems' => ['itemid'],
+			'itemids' => $itemids,
+			'monitored' => true,
+			'skipDependent' => true,
+			'filter' => ['value' => TRIGGER_VALUE_TRUE],
+			'expandDescription' => true,
+			'preservekeys' => true
+		]);
+
+		$problems = [];
+
+		foreach ($triggers as $trigger) {
+			foreach ($trigger['items'] as $item) {
+				$problems[$item['itemid']][] = [
+					'name' => $trigger['description'],
+					'severity' => (int) $trigger['priority'],
+					'triggerid' => (string) $trigger['triggerid']
+				];
+			}
+		}
+
+		foreach ($series as &$entry) {
+			$entry['problems'] = $problems[$entry['itemid']] ?? [];
+			usort($entry['problems'], static function (array $a, array $b): int {
+				return [$b['severity'], $a['name']] <=> [$a['severity'], $b['name']];
+			});
+		}
+		unset($entry);
+	}
+
+	/**
+	 * Severity names and colours as configured in this Zabbix installation.
+	 */
+	private static function severities(): array {
+		$severities = [];
+
+		for ($severity = 0; $severity <= 5; $severity++) {
+			$severities[] = [
+				'name' => (string) CSettingsHelper::get('severity_name_'.$severity),
+				'color' => '#'.CSettingsHelper::get('severity_color_'.$severity)
+			];
+		}
+
+		return $severities;
 	}
 
 	/**
@@ -211,8 +330,10 @@ class DataProvider {
 	 * @return string  'history' or 'mixed' (trends for whole hours, history at the edges)
 	 */
 	private function addHistory(array &$series, array $period): string {
-		$numeric = array_filter($series, static function (array $entry): bool {
-			return in_array($entry['value_type'], self::NUMERIC_TYPES, true);
+		// Charts that show states read text history too; every other chart reads numbers only.
+		$types = $this->readsTextHistory() ? self::HISTORY_TYPES : self::NUMERIC_TYPES;
+		$numeric = array_filter($series, static function (array $entry) use ($types): bool {
+			return in_array($entry['value_type'], $types, true);
 		});
 
 		if (!$numeric) {
@@ -298,7 +419,7 @@ class DataProvider {
 		$plan = [];
 
 		foreach ($by_type as $value_type => $itemids) {
-			if ($use_trends && $value_type == ITEM_VALUE_TYPE_FLOAT) {
+			if ($use_trends && in_array($value_type, $this->trendTypes(), true)) {
 				$plan[] = ['table' => 'trends', 'itemids' => $itemids, 'from' => $trend_start, 'to' => $trend_end - 1];
 
 				if ($period['from'] < $trend_start) {
@@ -323,7 +444,30 @@ class DataProvider {
 		return $plan;
 	}
 
+	/**
+	 * Value types read from trends. Aggregating charts use floating-point
+	 * trends only (unsigned trends store a rounded average); charts that draw
+	 * the hourly values as they are ("trends": "display") use both numeric types.
+	 */
+	private function trendTypes(): array {
+		return ($this->chart['trends'] ?? '') === 'display' ? self::NUMERIC_TYPES : [ITEM_VALUE_TYPE_FLOAT];
+	}
+
+	private function readsTextHistory(): bool {
+		foreach ($this->chart['roles'] as $role) {
+			if ($role['numeric']) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	private function canUseTrends(array $period): bool {
+		if (($this->chart['trends'] ?? '') === 'display') {
+			return true;
+		}
+
 		if ($this->chart['id'] === 'calendar_heatmap') {
 			return self::wholeHourOffsets($this->config['time_zone'] ?? 'UTC', $period['from'], $period['to']);
 		}
@@ -424,7 +568,7 @@ class DataProvider {
 			'preservekeys' => true
 		]);
 
-		$macros = $this->resolveTargetMacro($details);
+		$macros = $this->resolveMacros($details, $this->macroNames());
 		$result = [];
 
 		foreach ($details as $hostid => $host) {
@@ -433,7 +577,7 @@ class DataProvider {
 				'name' => $host['name'],
 				'groups' => array_column($host['hostgroups'], 'name'),
 				'tags' => $host['tags'],
-				'macros' => array_key_exists($hostid, $macros) ? [$this->config['target_macro'] => $macros[$hostid]] : []
+				'macros' => $macros[$hostid] ?? []
 			];
 		}
 
@@ -441,18 +585,36 @@ class DataProvider {
 	}
 
 	/**
-	 * Resolves the bullet target macro per host in Zabbix's order: the host,
-	 * then its templates level by level (each level in template ID order), then
-	 * the global value. Secret and vault macros are not readable and are
-	 * treated as undefined.
-	 *
-	 * @return array  hostid => value
+	 * User macros named in the settings the chart reads macros from
+	 * ("macro_fields" in the registry), while those settings are shown.
 	 */
-	private function resolveTargetMacro(array $hosts): array {
-		$macro = $this->config['target_macro'] ?? '';
+	private function macroNames(): array {
+		if (!ChartRegistry::needs($this->chart, 'macros')) {
+			return [];
+		}
 
-		if (!ChartRegistry::needs($this->chart, 'macros') || ($this->config['target_source'] ?? '') !== 'macro'
-				|| $macro === '') {
+		$visible = ChartRegistry::visibleControls($this->chart, $this->config);
+		$names = [];
+
+		foreach ($this->chart['macro_fields'] ?? [] as $field) {
+			if (in_array($field, $visible, true) && preg_match_all(self::MACRO_PATTERN, $this->config[$field] ?? '', $found)) {
+				array_push($names, ...$found[0]);
+			}
+		}
+
+		return array_values(array_unique($names));
+	}
+
+	/**
+	 * Resolves user macros per host in Zabbix's order: the host, then its
+	 * templates level by level (each level in template ID order), then the
+	 * global value. Secret and vault macros are not readable and are treated
+	 * as undefined.
+	 *
+	 * @return array  hostid => [macro => value]
+	 */
+	private function resolveMacros(array $hosts, array $macros): array {
+		if (!$macros) {
 			return [];
 		}
 
@@ -462,60 +624,74 @@ class DataProvider {
 			$parents[$hostid] = array_column($host['parentTemplates'], 'templateid');
 		}
 
-		$parents += self::templateParents(array_merge(...array_values($parents)));
+		$parents += self::templateParents(array_merge([], ...array_values($parents)));
 
 		$values = [];
 
 		foreach (API::UserMacro()->get([
-			'output' => ['hostid', 'value'],
+			'output' => ['hostid', 'macro', 'value'],
 			'hostids' => array_keys($parents),
-			'filter' => ['macro' => $macro, 'type' => ZBX_MACRO_TYPE_TEXT]
+			'filter' => ['macro' => $macros, 'type' => ZBX_MACRO_TYPE_TEXT]
 		]) as $row) {
-			$values[$row['hostid']] = $row['value'];
+			$values[$row['macro']][$row['hostid']] = $row['value'];
 		}
 
-		$global = API::UserMacro()->get([
-			'output' => ['value'],
+		$global = [];
+
+		foreach (API::UserMacro()->get([
+			'output' => ['macro', 'value'],
 			'globalmacro' => true,
-			'filter' => ['macro' => $macro, 'type' => ZBX_MACRO_TYPE_TEXT]
-		]);
-		$global_value = $global ? $global[0]['value'] : null;
+			'filter' => ['macro' => $macros, 'type' => ZBX_MACRO_TYPE_TEXT]
+		]) as $row) {
+			$global[$row['macro']] = $row['value'];
+		}
 
 		$resolved = [];
 
 		foreach (array_keys($hosts) as $hostid) {
-			$level = [$hostid];
-			$seen = [$hostid => true];
+			foreach ($macros as $macro) {
+				$value = self::resolveMacro($hostid, $parents, $values[$macro] ?? []) ?? $global[$macro] ?? null;
 
-			while ($level) {
-				foreach ($level as $ownerid) {
-					if (array_key_exists($ownerid, $values)) {
-						$resolved[$hostid] = $values[$ownerid];
-						continue 3;
-					}
+				if ($value !== null) {
+					$resolved[$hostid][$macro] = $value;
 				}
-
-				$next = [];
-
-				foreach ($level as $ownerid) {
-					foreach ($parents[$ownerid] ?? [] as $templateid) {
-						if (!array_key_exists($templateid, $seen)) {
-							$seen[$templateid] = true;
-							$next[] = $templateid;
-						}
-					}
-				}
-
-				sort($next, SORT_NUMERIC);
-				$level = $next;
-			}
-
-			if ($global_value !== null) {
-				$resolved[$hostid] = $global_value;
 			}
 		}
 
 		return $resolved;
+	}
+
+	/**
+	 * The value nearest to the host: the host itself, then each template
+	 * level in turn, the lowest template ID first within a level.
+	 */
+	private static function resolveMacro($hostid, array $parents, array $values): ?string {
+		$level = [$hostid];
+		$seen = [$hostid => true];
+
+		while ($level) {
+			foreach ($level as $ownerid) {
+				if (array_key_exists($ownerid, $values)) {
+					return $values[$ownerid];
+				}
+			}
+
+			$next = [];
+
+			foreach ($level as $ownerid) {
+				foreach ($parents[$ownerid] ?? [] as $templateid) {
+					if (!array_key_exists($templateid, $seen)) {
+						$seen[$templateid] = true;
+						$next[] = $templateid;
+					}
+				}
+			}
+
+			sort($next, SORT_NUMERIC);
+			$level = $next;
+		}
+
+		return null;
 	}
 
 	/**

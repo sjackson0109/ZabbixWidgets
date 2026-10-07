@@ -6,9 +6,17 @@
  */
 
 const ITEM_VALUE_TYPE_FLOAT = 0;
+const ITEM_VALUE_TYPE_STR = 1;
+const ITEM_VALUE_TYPE_LOG = 2;
 const ITEM_VALUE_TYPE_UINT64 = 3;
+const ITEM_VALUE_TYPE_TEXT = 4;
+const TRIGGER_VALUE_TRUE = 1;
 const ZBX_MACRO_TYPE_TEXT = 0;
 const ZBX_SORT_UP = 'ASC';
+
+function _s(string $format, ...$arguments): string {
+	return vsprintf($format, $arguments);
+}
 
 function timeUnitToSeconds(string $text): ?int {
 	return preg_match('/^(\d+)([smhdw]?)$/', $text, $match)
@@ -27,6 +35,17 @@ class StubService {
 
 	public function get(array $options): array {
 		$data = $GLOBALS['stub'];
+		$GLOBALS['calls'][$this->name] = ($GLOBALS['calls'][$this->name] ?? 0) + 1;
+
+		if ($this->name === 'Item') {
+			$items = [];
+
+			for ($index = 1; $index <= min($data['items'], $options['limit']); $index++) {
+				$items[$index] = ['itemid' => (string) $index];
+			}
+
+			return $items;
+		}
 
 		if ($this->name === 'Template') {
 			$result = [];
@@ -46,13 +65,15 @@ class StubService {
 
 		$rows = [];
 
+		$macro = $options['filter']['macro'][0];
+
 		if (!empty($options['globalmacro'])) {
-			return $data['global'] === null ? [] : [['value' => $data['global']]];
+			return $data['global'] === null ? [] : [['macro' => $macro, 'value' => $data['global']]];
 		}
 
 		foreach ($data['macros'] as $ownerid => $value) {
 			if (in_array((string) $ownerid, array_map('strval', $options['hostids']), true)) {
-				$rows[] = ['hostid' => (string) $ownerid, 'value' => $value];
+				$rows[] = ['hostid' => (string) $ownerid, 'macro' => $macro, 'value' => $value];
 			}
 		}
 
@@ -96,7 +117,27 @@ $results = [];
 foreach ($input as $case) {
 	$provider = new DataProvider(chart($case['chart']), $case['config']);
 
-	if ($case['call'] === 'macros') {
+	if ($case['call'] === 'items') {
+		$GLOBALS['stub'] = $case['stub'];
+		$items = call($provider, 'resolveItems', ['items' => ['ZW *']], ['1']);
+		$errors = (new ReflectionProperty($provider, 'errors'));
+		$errors->setAccessible(true);
+		$results[] = ['count' => count($items['value']), 'errors' => $errors->getValue($provider)];
+	}
+	elseif ($case['call'] === 'item_calls') {
+		// How many item lookups one refresh makes: one per configured role, however many items match.
+		$GLOBALS['stub'] = $case['stub'];
+		$GLOBALS['calls'] = [];
+		$items = call($provider, 'resolveItems', $case['fields'], ['1']);
+		$results[] = ['calls' => $GLOBALS['calls'], 'roles' => count(array_filter($items))];
+	}
+	elseif ($case['call'] === 'macro_names') {
+		$results[] = call($provider, 'macroNames');
+	}
+	elseif ($case['call'] === 'delay') {
+		$results[] = array_map([DataProvider::class, 'delaySeconds'], $case['delays']);
+	}
+	elseif ($case['call'] === 'macros') {
 		$GLOBALS['stub'] = $case['stub'];
 		$hosts = [];
 
@@ -106,7 +147,8 @@ foreach ($input as $case) {
 			}, $templateids)];
 		}
 
-		$results[] = call($provider, 'resolveTargetMacro', $hosts);
+		$resolved = call($provider, 'resolveMacros', $hosts, [$case['config']['target_macro']]);
+		$results[] = array_map('current', $resolved);
 	}
 	else {
 		$results[] = call($provider, 'planReads', $case['series'], $case['period']);

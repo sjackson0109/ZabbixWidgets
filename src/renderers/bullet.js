@@ -3,9 +3,10 @@
  * Targets come only from the configured source (see data/targets.js), and the
  * optional qualitative ranges are drawn as shaded bands behind the bars.
  */
-import { baseOption, categoryAxis, niceCeil, seriesLabels, tooltipLine, valueAxis } from './common.js';
+import { baseOption, categoryAxis, seriesLabels, tooltipLine, valueAxis } from './common.js';
 import { bulletBars, parseRanges } from '../data/targets.js';
 import { escapeHtml } from '../utils/escape.js';
+import { axisRange } from '../data/scale.js';
 
 const BAND_OPACITY = [0.22, 0.14, 0.08, 0.04];
 
@@ -17,11 +18,7 @@ export function buildBulletOption(payload, context) {
 	const units = bars[0]?.actual.units ?? '';
 
 	const values = bars.flatMap((bar) => [bar.actual.value, bar.target]);
-	const min = Math.min(0, ...values, ...ranges);
-	let max = niceCeil(Math.max(...values, ...ranges));
-	if (max <= min) {
-		max = min + 1;
-	}
+	const { min, max } = axisRange({ values, include: ranges, zero: true, nice: true });
 
 	const edges = [min, ...ranges.filter((value) => value > min && value < max), max];
 	const bands = edges.slice(1).map((end, index) => [

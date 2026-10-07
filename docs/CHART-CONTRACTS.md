@@ -205,3 +205,232 @@ Every chart also needs items for each required role, no more than `Max items` pe
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_history`: Every mapped item has history in the period.
+
+## C14 LLD Data Table (`lld_table`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | no |  |
+
+- **Data fetched:** latest, previous, valuemaps, problems
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `row_identity`, `row_tag`, `row_regex`, `row_heading`, `table_columns`, `show_host`, `show_item_name`, `show_last_update`, `show_change`, `show_problems`, `use_valuemap`, `table_page_size`, `table_dense`, `table_striped`
+- **Rules:**
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `table_rows`: Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern's "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.
+
+## C15 Pie (`pie`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `entity_by`, `pie_sort`, `label_position`, `show_percent`, `show_value`, `hide_zero`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `non_negative`: Values must not be negative.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `additive_groups`: Host totals add up a host's items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.
+
+## C16 Vertical Level Gauge (`level_gauge`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `scale_min`, `scale_max`, `target_value`, `thresholds`, `threshold_order`, `gauge_display`, `gauge_segmented`, `show_value`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `gauge_scale`: Minimum and maximum are set (numbers or user macros resolved per host) with minimum below maximum; target and thresholds, when set, are numbers or macros, thresholds ascending. Nothing is derived from the data.
+
+## C17 Horizontal Ranking Bar (`ranking_bar`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `entity_by`, `rank_order`, `rank_limit`, `rank_count`, `show_value`, `show_track`, `thresholds`, `threshold_order`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `additive_groups`: Host totals add up a host's items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.
+  - `shared_thresholds`: Thresholds are numbers or macros that resolve to the same values on every selected host.
+
+## C18 Treemap (`treemap`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| size | `items` | yes | yes |  |
+| colour | `colour_items` | no | yes |  |
+
+- **Data fetched:** latest, hosts, groups, tags
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `colour_items`, `levels`, `path_delimiter`, `max_depth`, `pair_by`, `pair_tag`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `size_units`: All sized items share units.
+  - `hierarchy_levels`: Levels are group, host, tag:<name>, hosttag:<name> or path (last, with a delimiter). Items that appear more than once, such as hosts in several groups, are reported.
+  - `positive_sizes`: Sizes are positive: negative values are rejected, zero values take no space and are reported.
+  - `colour_pairs`: Each sized item has at most one colour item with the same host (or host and tag value); sized items without one are drawn neutral and reported.
+
+## C19 Sunburst (`sunburst`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, hosts, groups, tags
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `levels`, `path_delimiter`, `max_depth`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `hierarchy_levels`: Levels are group, host, tag:<name>, hosttag:<name> or path (last, with a delimiter). Items that appear more than once, such as hosts in several groups, are reported.
+  - `positive_sizes`: Sizes are positive: negative values are rejected, zero values take no space and are reported.
+
+## C20 Funnel (`funnel`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `stages`, `funnel_order`, `pct_first`, `pct_previous`, `show_value`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `non_negative`: Values must not be negative.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `funnel_stages`: At least two stages, one per line ("Stage = item name pattern"), each matching exactly one item with a value. Order is as listed unless ordered by value.
+
+## C21 Temporal Line (`line`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** history, macros
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `y_min`, `y_max`, `zero_baseline`, `smooth`, `show_points`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `temporal_units`: At most two distinct units, each on its own Y-axis.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+
+## C22 Temporal Area (`area`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** history, macros
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `y_min`, `y_max`, `zero_baseline`, `smooth`, `show_points`, `area_mode`, `area_opacity`, `area_gradient`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `temporal_units`: At most two distinct units, each on its own Y-axis.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+  - `stack_units`: Stacked areas need one additive unit. Series are averaged into shared buckets and a bucket missing any series is left empty, so a stack never adds up a partial set.
+
+## C23 Status Matrix (`status_matrix`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | no |  |
+
+- **Data fetched:** latest, valuemaps, problems, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `matrix_rows`, `colour_by`, `colour_map`, `thresholds`, `threshold_order`, `show_value`, `use_valuemap`
+- **Rules:**
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `matrix_settings`: Cells are coloured only by the chosen source: value colours ("value = #rrggbb"), thresholds (numbers or macros per host, numeric items only) or the severity of the item's triggers in the problem state. Otherwise cells stay neutral.
+
+## C24 State Timeline (`state_timeline`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | no |  |
+
+- **Data fetched:** history, valuemaps
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `use_valuemap`, `colour_map`, `max_gap`
+- **Rules:**
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `state_settings`: Value colour lines read "value = #rrggbb"; maximum gap is valid. States last until the next sample, up to the gap threshold; unknown time is shown as no data.
+
+## C25 Sparkline Grid (`sparkline_grid`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, history
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `grid_columns`, `tile_sort`, `rank_limit`, `rank_count`, `show_change`, `show_minmax`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+
+## C26 Threshold Band (`threshold_band`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** history, macros
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `thresholds`, `threshold_order`, `target_value`, `y_min`, `y_max`, `smooth`, `show_points`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `temporal_units`: At most two distinct units, each on its own Y-axis.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+  - `has_thresholds`: At least one threshold is set. Bands come only from configured thresholds, never from the data.
+
+## C27 Switch Port Panel (`switch_ports`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| oper | `port_oper_items` | no | no |  |
+| admin | `port_admin_items` | no | no |  |
+| speed | `port_speed_items` | no | no |  |
+| cfg_speed | `port_cfg_speed_items` | no | no |  |
+| util | `port_util_items` | no | yes |  |
+| util_in | `port_util_in_items` | no | yes |  |
+| util_out | `port_util_out_items` | no | yes |  |
+| traffic_in | `port_traffic_in_items` | no | yes |  |
+| traffic_out | `port_traffic_out_items` | no | yes |  |
+| errors_in | `port_errors_in_items` | no | yes |  |
+| errors_out | `port_errors_out_items` | no | yes |  |
+| discards | `port_discard_items` | no | yes |  |
+| duplex | `port_duplex_items` | no | no |  |
+| poe_state | `port_poe_state_items` | no | no |  |
+| poe_power | `port_poe_power_items` | no | yes |  |
+| vlan | `port_vlan_items` | no | no |  |
+| pvid | `port_pvid_items` | no | no |  |
+| alias | `port_alias_items` | no | no |  |
+| description | `port_description_items` | no | no |  |
+| mtu | `port_mtu_items` | no | yes |  |
+| last_change | `port_last_change_items` | no | no |  |
+
+- **Data fetched:** latest, valuemaps, problems, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 0
+- **Controls:** `port_identity`, `port_tag`, `port_regex_target`, `port_regex`, `port_id_group`, `port_member_group`, `port_number_group`, `port_roles_shown`, `port_oper_items`, `port_admin_items`, `port_speed_items`, `port_cfg_speed_items`, `port_util_items`, `port_util_in_items`, `port_util_out_items`, `port_traffic_in_items`, `port_traffic_out_items`, `port_errors_in_items`, `port_errors_out_items`, `port_discard_items`, `port_duplex_items`, `port_poe_state_items`, `port_poe_power_items`, `port_vlan_items`, `port_pvid_items`, `port_alias_items`, `port_description_items`, `port_mtu_items`, `port_last_change_items`, `port_layout`, `port_columns`, `port_grouping`, `port_groups`, `port_group_tag`, `port_type`, `port_type_rules`, `port_type_tag`, `port_fill`, `port_border`, `port_marker`, `speed_colours`, `state_colours`, `admin_down`, `port_metric`, `thresholds`, `threshold_order`, `port_fixed_colour`, `port_label`, `port_label_regex`, `port_abbreviate`, `port_sublabel`, `port_util_bar`, `stale_after`, `port_click`
+- **Rules:**
+  - `port_mapping`: Each role item belongs to the port named by its item tag, its first key parameter or a capture group of the port expression; the role items of one identity on one host make one port. Two items for one port and role, or one item in two roles, are errors naming the port, role and items. Items without an identity are reported. A physical port number comes only from an identity that is a whole number or from the port number capture group.
+  - `port_settings`: Interface type and port group lines read "Name = ports", where ports are numbers, ranges, wildcards or /regular expressions/. Speed colours read "1G = #rrggbb" (plus "other" and "unknown"); status colours read "value = #rrggbb". Fixed colour, label expression and stale limit must be valid; colouring by thresholds needs thresholds that resolve for every host.

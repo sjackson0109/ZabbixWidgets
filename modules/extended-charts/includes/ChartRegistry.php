@@ -108,6 +108,10 @@ class ChartRegistry {
 	 */
 	public static function activeRoles(array $chart, array $config): array {
 		return array_filter($chart['roles'], static function (array $role) use ($config): bool {
+			if (array_key_exists('applies', $role) && !self::evaluate($role['applies'], $config)) {
+				return false;
+			}
+
 			return !is_string($role['required']) || self::evaluate($role['required'], $config);
 		});
 	}
@@ -137,7 +141,12 @@ class ChartRegistry {
 			return !array_key_exists($field, $conditions) || self::evaluate($conditions[$field], $config);
 		});
 
-		return array_merge(self::definitions()['common_controls'], array_values($fields));
+		$common = array_filter(self::definitions()['common_controls'], static function (string $field) use ($conditions,
+				$config): bool {
+			return !array_key_exists($field, $conditions) || self::evaluate($conditions[$field], $config);
+		});
+
+		return array_merge(array_values($common), array_values($fields));
 	}
 
 	/**

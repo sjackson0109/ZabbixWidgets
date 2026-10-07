@@ -85,4 +85,67 @@ describe('history and trend planning', () => {
 			expect(plan.every((read) => read.table === 'history')).toBe(true);
 		}
 	});
+
+	it('draws hourly trends of both numeric types for time series, but never for state timelines', () => {
+		const period = { from: base, to: base + 3 * 86400 };
+		const [line, states] = run([
+			{ chart: 'line', config: {}, call: 'plan', series, period },
+			{ chart: 'state_timeline', config: {}, call: 'plan', series, period }
+		]);
+		expect(line.filter((read) => read.table === 'trends').map((read) => read.itemids)).toEqual([['1'], ['2']]);
+		expect(states.every((read) => read.table === 'history')).toBe(true);
+	});
+});
+
+describe('limits and settings', () => {
+	it('reports more items than the limit instead of showing part of them', () => {
+		const [within, over] = run([
+			{ chart: 'lld_table', config: {}, call: 'items', stub: { items: 500 } },
+			{ chart: 'lld_table', config: {}, call: 'items', stub: { items: 900 } }
+		]);
+		expect(within).toEqual({ count: 500, errors: [] });
+		expect(over.count).toBe(0);
+		expect(over.errors).toEqual(['More than 500 items match "ZW *". Narrow the item pattern.']);
+	});
+
+	it('reads plain update intervals and leaves the rest to the browser', () => {
+		const [delays] = run([{ chart: 'column', config: {}, call: 'delay', delays: ['30s', '1m', '60', '1m;50s/1-7,00:00-24:00', '{$DELAY}', '0', 'wd1-5h9'] }]);
+		expect(delays).toEqual([30, 60, 60, 60, null, null, null]);
+	});
+
+	it('resolves macros only from settings that are shown', () => {
+		const bullet = (target_source) => ({ chart: 'bullet', call: 'macro_names', config: {
+			target_source, target_macro: '{$CPU.TARGET}', pair_by: 'host', group_by: 'host'
+		} });
+		expect(run([bullet('macro'), bullet('constant')])).toEqual([['{$CPU.TARGET}'], []]);
+	});
+
+	it('resolves macros from every shown band and axis setting', () => {
+		const [bands, matrix, plain] = run([
+			{ chart: 'threshold_band', call: 'macro_names', config: { thresholds: '{$WARN}, {$HIGH}', target_value: '{$GOAL}', y_min: '0', y_max: '{$MAX}' } },
+			{ chart: 'status_matrix', call: 'macro_names', config: { colour_by: 'thresholds', thresholds: '{$WARN}' } },
+			{ chart: 'status_matrix', call: 'macro_names', config: { colour_by: 'severity', thresholds: '{$WARN}' } }
+		]);
+		expect(bands.sort()).toEqual(['{$GOAL}', '{$HIGH}', '{$MAX}', '{$WARN}']);
+		expect(matrix).toEqual(['{$WARN}']);
+		expect(plain).toEqual([]);
+	});
+});
+
+describe('switch port panel lookups (no per-port calls)', () => {
+	const roles = ['oper', 'admin', 'speed', 'cfg_speed', 'util', 'util_in', 'util_out', 'traffic_in', 'traffic_out', 'errors_in', 'errors_out',
+		'discard', 'duplex', 'poe_state', 'poe_power', 'vlan', 'pvid', 'alias', 'description', 'mtu', 'last_change'];
+	const fields = Object.fromEntries(roles.map((role) => [`port_${role}_items`, [`Interface *: ${role}`]]));
+
+	it('reads items once per configured role, for 4 or 500 ports alike', () => {
+		for (const items of [4, 500]) {
+			const [result] = run([{ chart: 'switch_ports', config: { port_roles_shown: 'all' }, call: 'item_calls', fields, stub: { items } }]);
+			expect(result).toEqual({ calls: { Item: 21 }, roles: 21 });
+		}
+	});
+
+	it('looks up only the common roles unless all port data is shown', () => {
+		const [result] = run([{ chart: 'switch_ports', config: { port_roles_shown: 'core' }, call: 'item_calls', fields, stub: { items: 4 } }]);
+		expect(result).toEqual({ calls: { Item: 6 }, roles: 6 });
+	});
 });

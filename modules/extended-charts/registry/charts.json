@@ -1,5 +1,5 @@
 {
-	"$comment": "Single source of truth for chart capabilities. Read by the PHP action (data retrieval) and form validation, the edit form (visible controls) and the JS runtime (validation and renderer selection). See docs/CHART-CONTRACTS.md. form_value is the integer Zabbix stores for the chart type, and each enum value is stored as its index in its list: both must never change once released (append only). control_conditions show a control only under a setting; a chart may override an entry with its own control_conditions. required_controls must be filled in whenever they are shown.",
+	"$comment": "Single source of truth for chart capabilities. Read by the PHP action (data retrieval) and form validation, the edit form (visible controls) and the JS runtime (validation and renderer selection). See docs/CHART-CONTRACTS.md. form_value is the integer Zabbix stores for the chart type, and each enum value is stored as its index in its list: both must never change once released (append only). control_conditions show a control only under a setting; a chart may override an entry with its own control_conditions. required_controls must be filled in whenever they are shown. macro_fields name the settings whose user macros are resolved per host, while those settings are shown. A role with an \"applies\" condition (and its item field) only applies while that condition holds.",
 	"version": 1,
 	"common_controls": ["chart_type", "groupids", "hostids", "override_hostid", "show_legend", "decimals"],
 	"enums": {
@@ -14,7 +14,35 @@
 		"ohlc_mode": ["derived", "explicit"],
 		"gantt_timing": ["start_end", "start_duration"],
 		"tree_source": ["host_group", "tags", "item_path"],
-		"edge_source": ["list", "tag"]
+		"edge_source": ["list", "tag"],
+		"row_identity": ["item", "key", "name", "tag", "regex"],
+		"table_page_size": ["10", "25", "50", "100"],
+		"pie_sort": ["source", "desc", "asc"],
+		"entity_by": ["item", "host"],
+		"label_position": ["outside", "inside", "none"],
+		"threshold_order": ["higher_worse", "lower_worse"],
+		"gauge_display": ["native", "percent"],
+		"rank_order": ["desc", "asc"],
+		"rank_limit": ["all", "top", "bottom"],
+		"funnel_order": ["listed", "desc", "asc"],
+		"area_mode": ["overlap", "stacked"],
+		"matrix_rows": ["host", "item"],
+		"colour_by": ["none", "value_map", "thresholds", "severity"],
+		"tile_sort": ["name", "desc", "asc"],
+		"port_identity": ["tag", "key", "regex"],
+		"port_regex_target": ["name", "key"],
+		"port_roles_shown": ["core", "all"],
+		"port_layout": ["two_row", "single_row", "auto"],
+		"port_grouping": ["none", "definitions", "type", "prefix", "tag"],
+		"port_type": ["rj45", "sfp", "sfp_plus", "sfp28", "qsfp", "qsfp_plus", "qsfp28", "qsfp56", "qsfp_dd", "fibre", "copper", "generic", "management", "console", "stack", "other"],
+		"port_fill": ["neg_speed", "cfg_speed", "oper", "admin", "thresholds", "severity", "fixed"],
+		"port_border": ["oper", "admin", "severity", "none"],
+		"port_marker": ["admin_problem", "admin", "problem", "none"],
+		"port_label": ["identity", "alias", "description", "number", "regex", "item_name", "none"],
+		"port_sublabel": ["speed", "alias", "description", "status", "utilisation", "none"],
+		"port_util_bar": ["none", "max", "in", "out", "avg", "utilisation"],
+		"port_metric": ["utilisation", "util_max", "util_in", "util_out", "poe_power", "errors_in", "errors_out", "discards", "traffic_in", "traffic_out"],
+		"port_click": ["none", "latest", "history", "problems"]
 	},
 	"item_fields": {
 		"items": "Items",
@@ -29,7 +57,29 @@
 		"start_items": "Start items",
 		"end_items": "End items",
 		"duration_items": "Duration items",
-		"progress_items": "Progress items"
+		"progress_items": "Progress items",
+		"colour_items": "Colour items",
+		"port_oper_items": "Operational status items",
+		"port_admin_items": "Administrative status items",
+		"port_speed_items": "Negotiated speed items",
+		"port_cfg_speed_items": "Configured speed items",
+		"port_util_items": "Utilisation items",
+		"port_util_in_items": "Inbound utilisation items",
+		"port_util_out_items": "Outbound utilisation items",
+		"port_traffic_in_items": "Inbound traffic items",
+		"port_traffic_out_items": "Outbound traffic items",
+		"port_errors_in_items": "Inbound error items",
+		"port_errors_out_items": "Outbound error items",
+		"port_discard_items": "Discard items",
+		"port_duplex_items": "Duplex items",
+		"port_poe_state_items": "PoE state items",
+		"port_poe_power_items": "PoE power items",
+		"port_vlan_items": "VLAN items",
+		"port_pvid_items": "PVID items",
+		"port_alias_items": "Alias items",
+		"port_description_items": "Description items",
+		"port_mtu_items": "MTU items",
+		"port_last_change_items": "Last change items"
 	},
 	"control_conditions": {
 		"target_macro": "when:target_source=macro",
@@ -39,10 +89,29 @@
 		"tree_tags": "when:tree_source=tags",
 		"tree_delimiter": "when:tree_source=item_path",
 		"edge_list": "when:edge_source=list",
-		"edge_tag": "when:edge_source=tag"
+		"edge_tag": "when:edge_source=tag",
+		"row_tag": "when:row_identity=tag",
+		"row_regex": "when:row_identity=regex",
+		"show_item_name": "when:row_identity=item",
+		"rank_count": "when:rank_limit=top|bottom",
+		"colour_map": "when:colour_by=value_map",
+		"port_tag": "when:port_identity=tag",
+		"port_regex": "when:port_identity=regex",
+		"port_regex_target": "when:port_identity=regex",
+		"port_id_group": "when:port_identity=regex",
+		"port_member_group": "when:port_identity=regex",
+		"port_number_group": "when:port_identity=regex",
+		"port_groups": "when:port_grouping=definitions",
+		"port_group_tag": "when:port_grouping=tag",
+		"speed_colours": "when:port_fill=neg_speed|cfg_speed",
+		"port_metric": "when:port_fill=thresholds",
+		"port_fixed_colour": "when:port_fill=fixed",
+		"port_label_regex": "when:port_label=regex"
 	},
 	"required_controls": [
-		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag"
+		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
+		"row_tag", "row_regex", "scale_min", "scale_max", "levels", "stages",
+		"port_tag", "port_regex", "port_groups", "port_group_tag", "port_label_regex", "port_fixed_colour"
 	],
 	"charts": [
 		{
@@ -124,6 +193,7 @@
 				}
 			},
 			"data": ["latest", "macros"],
+			"macro_fields": ["target_macro"],
 			"history": "none",
 			"time_period": false,
 			"min_series": 1,
@@ -365,6 +435,320 @@
 			"min_series": 1,
 			"controls": ["items", "aggregation", "time_period"],
 			"rules": ["numeric_only", "has_history"]
+		},
+		{
+			"id": "lld_table",
+			"code": "C14",
+			"form_value": 14,
+			"name": "LLD Data Table",
+			"renderer": "lld_table",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": false
+				}
+			},
+			"data": ["latest", "previous", "valuemaps", "problems"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": [
+				"items", "row_identity", "row_tag", "row_regex", "row_heading", "table_columns", "show_host", "show_item_name",
+				"show_last_update", "show_change", "show_problems", "use_valuemap", "table_page_size", "table_dense", "table_striped"
+			],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["has_values", "table_rows"]
+		},
+		{
+			"id": "pie",
+			"code": "C15",
+			"form_value": 15,
+			"name": "Pie",
+			"renderer": "pie",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "entity_by", "pie_sort", "label_position", "show_percent", "show_value", "hide_zero"],
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "additive_groups"]
+		},
+		{
+			"id": "level_gauge",
+			"code": "C16",
+			"form_value": 16,
+			"name": "Vertical Level Gauge",
+			"renderer": "level_gauge",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "macros"],
+			"macro_fields": ["scale_min", "scale_max", "target_value", "thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": [
+				"items", "scale_min", "scale_max", "target_value", "thresholds", "threshold_order", "gauge_display", "gauge_segmented", "show_value"
+			],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "gauge_scale"]
+		},
+		{
+			"id": "ranking_bar",
+			"code": "C17",
+			"form_value": 17,
+			"name": "Horizontal Ranking Bar",
+			"renderer": "ranking_bar",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "macros"],
+			"macro_fields": ["thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": [
+				"items", "entity_by", "rank_order", "rank_limit", "rank_count", "show_value", "show_track", "thresholds", "threshold_order"
+			],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "same_units", "additive_groups", "shared_thresholds"]
+		},
+		{
+			"id": "treemap",
+			"code": "C18",
+			"form_value": 18,
+			"name": "Treemap",
+			"renderer": "treemap",
+			"roles": {
+				"size": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				},
+				"colour": {
+					"field": "colour_items",
+					"required": false,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "hosts", "groups", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "colour_items", "levels", "path_delimiter", "max_depth", "pair_by", "pair_tag"],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "size_units", "hierarchy_levels", "positive_sizes", "colour_pairs"]
+		},
+		{
+			"id": "sunburst",
+			"code": "C19",
+			"form_value": 19,
+			"name": "Sunburst",
+			"renderer": "sunburst",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "hosts", "groups", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "levels", "path_delimiter", "max_depth"],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "same_units", "hierarchy_levels", "positive_sizes"]
+		},
+		{
+			"id": "funnel",
+			"code": "C20",
+			"form_value": 20,
+			"name": "Funnel",
+			"renderer": "funnel",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "stages", "funnel_order", "pct_first", "pct_previous", "show_value"],
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "funnel_stages"]
+		},
+		{
+			"id": "line",
+			"code": "C21",
+			"form_value": 21,
+			"name": "Temporal Line",
+			"renderer": "line",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["history", "macros"],
+			"macro_fields": ["y_min", "y_max"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "y_min", "y_max", "zero_baseline", "smooth", "show_points", "max_gap"],
+			"rules": ["numeric_only", "some_history", "temporal_units", "temporal_settings"]
+		},
+		{
+			"id": "area",
+			"code": "C22",
+			"form_value": 22,
+			"name": "Temporal Area",
+			"renderer": "area",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["history", "macros"],
+			"macro_fields": ["y_min", "y_max"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "y_min", "y_max", "zero_baseline", "smooth", "show_points", "area_mode", "area_opacity", "area_gradient", "max_gap"],
+			"rules": ["numeric_only", "some_history", "temporal_units", "temporal_settings", "stack_units"]
+		},
+		{
+			"id": "status_matrix",
+			"code": "C23",
+			"form_value": 23,
+			"name": "Status Matrix",
+			"renderer": "status_matrix",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": false}
+			},
+			"data": ["latest", "valuemaps", "problems", "macros"],
+			"macro_fields": ["thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "matrix_rows", "colour_by", "colour_map", "thresholds", "threshold_order", "show_value", "use_valuemap"],
+			"control_conditions": {"show_legend": "none", "thresholds": "when:colour_by=thresholds", "threshold_order": "when:colour_by=thresholds"},
+			"rules": ["has_values", "matrix_settings"]
+		},
+		{
+			"id": "state_timeline",
+			"code": "C24",
+			"form_value": 24,
+			"name": "State Timeline",
+			"renderer": "state_timeline",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": false}
+			},
+			"data": ["history", "valuemaps"],
+			"history": "always",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "use_valuemap", "colour_map", "max_gap"],
+			"control_conditions": {"colour_map": "always"},
+			"rules": ["some_history", "state_settings"]
+		},
+		{
+			"id": "sparkline_grid",
+			"code": "C25",
+			"form_value": 25,
+			"name": "Sparkline Grid",
+			"renderer": "sparkline_grid",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["latest", "history"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "grid_columns", "tile_sort", "rank_limit", "rank_count", "show_change", "show_minmax", "max_gap"],
+			"control_conditions": {"show_legend": "none"},
+			"rules": ["numeric_only", "has_values", "temporal_settings"]
+		},
+		{
+			"id": "threshold_band",
+			"code": "C26",
+			"form_value": 26,
+			"name": "Threshold Band",
+			"renderer": "threshold_band",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["history", "macros"],
+			"macro_fields": ["thresholds", "target_value", "y_min", "y_max"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "thresholds", "threshold_order", "target_value", "y_min", "y_max", "smooth", "show_points", "max_gap"],
+			"rules": ["numeric_only", "some_history", "temporal_units", "temporal_settings", "has_thresholds"]
+		},
+		{
+			"id": "switch_ports",
+			"code": "C27",
+			"form_value": 27,
+			"name": "Switch Port Panel",
+			"renderer": "switch_ports",
+			"roles": {
+				"oper": {"field": "port_oper_items", "required": false, "numeric": false},
+				"admin": {"field": "port_admin_items", "required": false, "numeric": false},
+				"speed": {"field": "port_speed_items", "required": false, "numeric": false},
+				"cfg_speed": {"field": "port_cfg_speed_items", "required": false, "numeric": false, "applies": "when:port_roles_shown=all"},
+				"util": {"field": "port_util_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"util_in": {"field": "port_util_in_items", "required": false, "numeric": true},
+				"util_out": {"field": "port_util_out_items", "required": false, "numeric": true},
+				"traffic_in": {"field": "port_traffic_in_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"traffic_out": {"field": "port_traffic_out_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"errors_in": {"field": "port_errors_in_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"errors_out": {"field": "port_errors_out_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"discards": {"field": "port_discard_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"duplex": {"field": "port_duplex_items", "required": false, "numeric": false, "applies": "when:port_roles_shown=all"},
+				"poe_state": {"field": "port_poe_state_items", "required": false, "numeric": false, "applies": "when:port_roles_shown=all"},
+				"poe_power": {"field": "port_poe_power_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"vlan": {"field": "port_vlan_items", "required": false, "numeric": false, "applies": "when:port_roles_shown=all"},
+				"pvid": {"field": "port_pvid_items", "required": false, "numeric": false, "applies": "when:port_roles_shown=all"},
+				"alias": {"field": "port_alias_items", "required": false, "numeric": false},
+				"description": {"field": "port_description_items", "required": false, "numeric": false, "applies": "when:port_roles_shown=all"},
+				"mtu": {"field": "port_mtu_items", "required": false, "numeric": true, "applies": "when:port_roles_shown=all"},
+				"last_change": {"field": "port_last_change_items", "required": false, "numeric": false, "applies": "when:port_roles_shown=all"}
+			},
+			"data": ["latest", "valuemaps", "problems", "macros"],
+			"macro_fields": ["thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 0,
+			"controls": ["port_identity", "port_tag", "port_regex_target", "port_regex", "port_id_group", "port_member_group", "port_number_group", "port_roles_shown", "port_oper_items", "port_admin_items", "port_speed_items", "port_cfg_speed_items", "port_util_items", "port_util_in_items", "port_util_out_items", "port_traffic_in_items", "port_traffic_out_items", "port_errors_in_items", "port_errors_out_items", "port_discard_items", "port_duplex_items", "port_poe_state_items", "port_poe_power_items", "port_vlan_items", "port_pvid_items", "port_alias_items", "port_description_items", "port_mtu_items", "port_last_change_items", "port_layout", "port_columns", "port_grouping", "port_groups", "port_group_tag", "port_type", "port_type_rules", "port_type_tag", "port_fill", "port_border", "port_marker", "speed_colours", "state_colours", "admin_down", "port_metric", "thresholds", "threshold_order", "port_fixed_colour", "port_label", "port_label_regex", "port_abbreviate", "port_sublabel", "port_util_bar", "stale_after", "port_click"],
+			"control_conditions": {"thresholds": "when:port_fill=thresholds", "threshold_order": "when:port_fill=thresholds"},
+			"rules": ["port_mapping", "port_settings"]
 		}
 	]
 }

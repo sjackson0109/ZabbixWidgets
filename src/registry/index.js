@@ -69,9 +69,14 @@ export function isRoleRequired(role, config) {
 	return evaluateCondition(role.required, config);
 }
 
-/** Names of the roles that apply under the configuration (required or optional). */
+/**
+ * Names of the roles that apply under the configuration (required or optional).
+ * A role applies while its "applies" condition holds (always, without one) and,
+ * when its requirement is conditional, while that condition holds.
+ */
 export function activeRoles(chart, config) {
 	return Object.entries(chart.roles)
+		.filter(([, role]) => role.applies === undefined || evaluateCondition(role.applies, config))
 		.filter(([, role]) => typeof role.required !== 'string' || isRoleRequired(role, config))
 		.map(([name]) => name);
 }
@@ -103,7 +108,8 @@ export function visibleControls(chartId, config = {}) {
 		return field in conditions ? evaluateCondition(conditions[field], config) : true;
 	});
 
-	return [...COMMON_CONTROLS, ...fields];
+	const common = COMMON_CONTROLS.filter((field) => !(field in conditions) || evaluateCondition(conditions[field], config));
+	return [...common, ...fields];
 }
 
 /** Shown controls that must not be left empty. */

@@ -29,7 +29,25 @@ const RULE_TEXT = {
 	edges_resolve: 'Every relationship endpoint is one of the selected hosts.',
 	relationship_tags: 'Every item carries both the source and the target tag; flows from an endpoint to itself are reported and not drawn.',
 	bullet_ranges: 'Qualitative ranges, when set, are ascending numbers.',
-	heat_axes: 'X and Y are different dimensions; a time axis has a valid bucket size and yields at most 1000 buckets.'
+	heat_axes: 'X and Y are different dimensions; a time axis has a valid bucket size and yields at most 1000 buckets.',
+	additive_groups: 'Host totals add up a host\'s items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.',
+	gauge_scale: 'Minimum and maximum are set (numbers or user macros resolved per host) with minimum below maximum; target and thresholds, when set, are numbers or macros, thresholds ascending. Nothing is derived from the data.',
+	shared_thresholds: 'Thresholds are numbers or macros that resolve to the same values on every selected host.',
+	size_units: 'All sized items share units.',
+	hierarchy_levels: 'Levels are group, host, tag:<name>, hosttag:<name> or path (last, with a delimiter). Items that appear more than once, such as hosts in several groups, are reported.',
+	positive_sizes: 'Sizes are positive: negative values are rejected, zero values take no space and are reported.',
+	colour_pairs: 'Each sized item has at most one colour item with the same host (or host and tag value); sized items without one are drawn neutral and reported.',
+	funnel_stages: 'At least two stages, one per line ("Stage = item name pattern"), each matching exactly one item with a value. Order is as listed unless ordered by value.',
+	some_history: 'At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.',
+	temporal_units: 'At most two distinct units, each on its own Y-axis.',
+	temporal_settings: 'Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.',
+	stack_units: 'Stacked areas need one additive unit. Series are averaged into shared buckets and a bucket missing any series is left empty, so a stack never adds up a partial set.',
+	has_thresholds: 'At least one threshold is set. Bands come only from configured thresholds, never from the data.',
+	state_settings: 'Value colour lines read "value = #rrggbb"; maximum gap is valid. States last until the next sample, up to the gap threshold; unknown time is shown as no data.',
+	matrix_settings: 'Cells are coloured only by the chosen source: value colours ("value = #rrggbb"), thresholds (numbers or macros per host, numeric items only) or the severity of the item\'s triggers in the problem state. Otherwise cells stay neutral.',
+	table_rows: 'Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern\'s "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.',
+	port_mapping: 'Each role item belongs to the port named by its item tag, its first key parameter or a capture group of the port expression; the role items of one identity on one host make one port. Two items for one port and role, or one item in two roles, are errors naming the port, role and items. Items without an identity are reported. A physical port number comes only from an identity that is a whole number or from the port number capture group.',
+	port_settings: 'Interface type and port group lines read "Name = ports", where ports are numbers, ranges, wildcards or /regular expressions/. Speed colours read "1G = #rrggbb" (plus "other" and "unknown"); status colours read "value = #rrggbb". Fixed colour, label expression and stale limit must be valid; colouring by thresholds needs thresholds that resolve for every host.'
 };
 
 const lines = [

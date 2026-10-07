@@ -10,6 +10,17 @@ import { pairSeries } from '../data/pairing.js';
 import { parseEdgeList, edgesFromHostTag, resolveEdges } from '../data/edges.js';
 import { tagValue, toNumber } from '../data/normalise.js';
 import { activeRoles, isRoleRequired } from '../registry/index.js';
+import { buildTable } from '../data/table.js';
+import { parseDefinitions } from '../data/patterns.js';
+import { isAdditive } from '../data/groups.js';
+import { resolveScale, sharedScale } from '../data/thresholds.js';
+import { buildLevelTree, parseLevels } from '../data/levels.js';
+import { funnelStages } from '../data/funnel.js';
+import { pairColours } from '../renderers/treemap.js';
+import { parseGap, unitGroups } from '../data/temporal.js';
+import { parseColourMap } from '../data/states.js';
+import { buildPanel, compileCapture, parseStale, speedPalette, ROLE_LABELS as PORT_ROLE_LABELS } from '../data/ports.js';
+import { isHexColour } from '../utils/colour.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -32,6 +43,26 @@ function tooManyBuckets(ctx, what) {
 	const count = bucketCount(ctx.payload.timePeriod, parseBucket(ctx.config.bucket));
 	return count > MAX_BUCKETS ? [error('too_many_buckets',
 		`The time period holds ${count} ${what}, more than the ${MAX_BUCKETS} this widget draws. Choose a longer ${what === 'candles' ? 'candle period' : 'bucket'} or a shorter time period.`)] : [];
+}
+
+/**
+ * Axis limits, thresholds and target of a time-series chart, resolved once
+ * for all its hosts. Only the settings the chart shows are read.
+ */
+function temporalScale(ctx) {
+	const shown = (field) => (ctx.chart.controls.includes(field) ? ctx.config[field] : '');
+	const hostids = new Set(roleSeries(ctx).map((entry) => entry.hostid));
+	return sharedScale({ scale_min: shown('y_min'), scale_max: shown('y_max'), target_value: shown('target_value'), thresholds: shown('thresholds') },
+		ctx.payload.hosts.filter((host) => hostids.has(host.hostid)));
+}
+
+function capitalise(message) {
+	return `${message.charAt(0).toUpperCase()}${message.slice(1)}`;
+}
+
+function colourMapErrors(text) {
+	return parseColourMap(text).errors.map((line) => error('invalid_colours',
+		`Line ${line.line} of the value colours is not in the form "value = #rrggbb".`));
 }
 
 function pairingRoles(chart, config) {
@@ -346,6 +377,247 @@ export const RULES = {
 		return problem === null ? [] : [error('invalid_ranges', problem)];
 	},
 
+	table_rows(ctx) {
+		const { errors: lines } = parseDefinitions(ctx.config.table_columns);
+		if (lines.length > 0) {
+			return [error('invalid_columns',
+				`Line ${lines[0].line} of the column list is not in the form "Heading = item name pattern".`)];
+		}
+		const table = buildTable(ctx.payload);
+		if (table.error !== null) {
+			return [error('invalid_row_expression', table.error)];
+		}
+		const problems = [];
+		if (table.collisions.length > 0) {
+			const detail = table.collisions.map(({ row, column }) => `${row.host} / ${row.label} / ${column}`);
+			problems.push(error('ambiguous_cells',
+				`More than one item falls in the same cell: ${listNames(detail)}. Choose a more specific row identity or narrower column patterns.`));
+		}
+		if (table.unresolved.length > 0) {
+			const why = {
+				key: 'have no key parameter',
+				name: 'have no text where the column pattern has "*"',
+				tag: `have no "${String(ctx.config.row_tag ?? '').trim()}" tag`,
+				regex: 'do not match the row expression'
+			}[ctx.config.row_identity] ?? 'have no row identity';
+			problems.push((table.rows.length === 0 ? error : warning)('unresolved_rows',
+				`These items ${why} and are not shown: ${listNames(table.unresolved.map(seriesLabel))}.`));
+		}
+		if (table.unmatched.length > 0) {
+			problems.push((table.rows.length === 0 && table.unresolved.length === 0 ? error : warning)('unmatched_columns',
+				`These items match no column pattern and are not shown: ${listNames(table.unmatched.map(seriesLabel))}.`));
+		}
+		return problems;
+	},
+
+	additive_groups(ctx) {
+		if (ctx.config.entity_by !== 'host') {
+			return [];
+		}
+		const series = roleSeries(ctx).filter((entry) => typeof entry.value === 'number');
+		const perHost = new Map();
+		for (const entry of series) {
+			perHost.set(entry.hostid, [...(perHost.get(entry.hostid) ?? []), entry]);
+		}
+		const summed = [...perHost.values()].filter((items) => items.length > 1);
+		const units = [...new Set(summed.flat().map((entry) => displayUnits(entry.units)).filter((unit) => !isAdditive(unit)))];
+		return summed.length > 0 && units.length > 0 ? [error('non_additive',
+			`Values in ${listNames(units.map((unit) => `"${unit}"`))} cannot be added up into host totals. Show each item instead, or select one item per host.`)] : [];
+	},
+
+	gauge_scale(ctx) {
+		const hosts = new Map(ctx.payload.hosts.map((host) => [host.hostid, host]));
+		const problems = [];
+		const seen = new Set();
+		for (const entry of roleSeries(ctx)) {
+			const host = hosts.get(entry.hostid) ?? null;
+			const scale = resolveScale(ctx.config, host);
+			const messages = [...scale.errors];
+			// Settings that did not resolve are already reported; the scale itself can only be checked once they do.
+			if (messages.length === 0 && (scale.min === null || scale.max === null)) {
+				messages.push('set both a minimum and a maximum (numbers or user macros)');
+			}
+			else if (messages.length === 0 && scale.min >= scale.max) {
+				messages.push('the minimum must be lower than the maximum');
+			}
+			for (const message of messages) {
+				const text = `${ctx.chart.name}: ${message}.`;
+				if (!seen.has(text)) {
+					seen.add(text);
+					problems.push(error('invalid_scale', text));
+				}
+			}
+		}
+		return problems;
+	},
+
+	shared_thresholds(ctx) {
+		const hostids = new Set(roleSeries(ctx).map((entry) => entry.hostid));
+		const { errors } = sharedScale({ thresholds: ctx.config.thresholds }, ctx.payload.hosts.filter((host) => hostids.has(host.hostid)));
+		return errors.map((message) => error('invalid_thresholds', `${capitalise(message)}.`));
+	},
+
+	size_units(ctx) {
+		return RULES.same_units({ ...ctx, payload: { ...ctx.payload, series: ctx.payload.series.filter((entry) => entry.role === 'size') } });
+	},
+
+	hierarchy_levels(ctx) {
+		const { levels, error: problem } = parseLevels(ctx.config.levels);
+		if (problem !== null) {
+			return [error('invalid_levels', problem)];
+		}
+		if (levels.some((level) => level.type === 'path') && String(ctx.config.path_delimiter ?? '') === '') {
+			return [error('invalid_levels', 'The "path" level needs a path delimiter to split item names.')];
+		}
+		const sized = roleSeries(ctx, [ctx.chart.roles.size ? 'size' : 'value']);
+		const { duplicated } = buildLevelTree(sized, ctx.payload.hosts, levels, { delimiter: String(ctx.config.path_delimiter ?? '') });
+		return duplicated.length === 0 ? [] : [warning('duplicated_leaves',
+			`These items appear in more than one place (for example, hosts in several host groups), so totals above them count them more than once: ${listNames(duplicated.map(seriesLabel))}.`)];
+	},
+
+	positive_sizes(ctx) {
+		const sized = roleSeries(ctx, [ctx.chart.roles.size ? 'size' : 'value']).filter((entry) => typeof entry.value === 'number');
+		const negative = sized.filter((entry) => entry.value < 0);
+		const zero = sized.filter((entry) => entry.value === 0);
+		const problems = [];
+		if (negative.length > 0) {
+			problems.push(error('negative_values', `${ctx.chart.name} areas cannot be negative: ${listNames(negative.map(seriesLabel))}.`));
+		}
+		if (zero.length > 0) {
+			problems.push((zero.length === sized.length ? error : warning)('zero_values',
+				`These items are zero and take no space: ${listNames(zero.map(seriesLabel))}.`));
+		}
+		return problems;
+	},
+
+	colour_pairs(ctx) {
+		const { missing, ambiguous, used } = pairColours(ctx.payload);
+		if (!used) {
+			return [];
+		}
+		const by = ctx.config.pair_by === 'tag' ? `host and "${ctx.config.pair_tag}" tag` : 'host';
+		const problems = [];
+		if (ambiguous.length > 0) {
+			problems.push(error('ambiguous_colour',
+				`More than one colour item matches the same ${by} for ${listNames(ambiguous.map(seriesLabel))}. Narrow the colour item pattern.`));
+		}
+		if (missing.length > 0) {
+			problems.push(warning('missing_colour', `No colour item for ${listNames(missing.map(seriesLabel))}; shown in a neutral colour.`));
+		}
+		return problems;
+	},
+
+	funnel_stages(ctx) {
+		const { missing, ambiguous, unused, errors: lines, defined, stages } = funnelStages(roleSeries(ctx), ctx.config.stages);
+		const problems = lines.map((line) => error('invalid_stages', `Line ${line.line} of the stage list is not in the form "Stage = item name pattern".`));
+		if (defined < 2 && lines.length === 0) {
+			problems.push(error('invalid_stages', 'Funnel requires at least two stages, one per line: "Stage = item name pattern".'));
+		}
+		if (missing.length > 0) {
+			problems.push(error('missing_stage', `No item matches the stage ${listNames(missing.map((label) => `"${label}"`))}.`));
+		}
+		if (ambiguous.length > 0) {
+			problems.push(error('ambiguous_stage',
+				`Each stage needs exactly one item, but ${listNames(ambiguous.map((stage) => `"${stage.label}" matches ${stage.items.length}`))}. Narrow the stage pattern or select one host.`));
+		}
+		const withoutValue = stages.filter((stage) => typeof stage.entry.value !== 'number');
+		if (withoutValue.length > 0) {
+			problems.push(error('missing_stage', `No recent value for the stage ${listNames(withoutValue.map((stage) => `"${stage.label}"`))}.`));
+		}
+		if (unused.length > 0) {
+			problems.push(warning('unused_items', `These items match no stage and are not shown: ${listNames(unused.map(seriesLabel))}.`));
+		}
+		return problems;
+	},
+
+	some_history(ctx) {
+		const series = roleSeries(ctx);
+		const empty = series.filter((entry) => entry.history.length === 0);
+		if (series.length > 0 && empty.length === series.length) {
+			return [error('no_history', 'No history in the selected time period for any of the selected items.')];
+		}
+		return empty.length === 0 ? [] : [warning('no_history',
+			`No history in the selected time period for ${listNames(empty.map(seriesLabel))}; shown in the legend only.`)];
+	},
+
+	temporal_units(ctx) {
+		const units = unitGroups(roleSeries(ctx));
+		return units.length <= 2 ? [] : [error('too_many_units',
+			`${ctx.chart.name} draws at most two units, one per Y-axis, but the items use ${listNames(units.map((unit) => `"${unit}"`))}. Select items with at most two units.`)];
+	},
+
+	temporal_settings(ctx) {
+		const problems = [];
+		const gap = parseGap(ctx.config.max_gap);
+		if (gap.error !== null) {
+			problems.push(error('invalid_gap', gap.error));
+		}
+		const { scale, errors } = temporalScale(ctx);
+		problems.push(...errors.map((message) => error('invalid_scale', `${capitalise(message.replace(/^Minimum/, 'Y-axis minimum').replace(/^Maximum/, 'Y-axis maximum'))}.`)));
+		if (errors.length === 0 && scale.min !== null && scale.max !== null && scale.min >= scale.max) {
+			problems.push(error('invalid_scale', 'Y-axis minimum must be lower than the maximum.'));
+		}
+		return problems;
+	},
+
+	stack_units(ctx) {
+		if (ctx.config.area_mode !== 'stacked') {
+			return [];
+		}
+		const units = unitGroups(roleSeries(ctx));
+		if (units.length > 1) {
+			return [error('mixed_units', `Stacked areas add values up, so all items need the same units, but they use ${listNames(units.map((unit) => `"${unit}"`))}. Use overlapping areas instead.`)];
+		}
+		return units.length === 1 && !isAdditive(units[0]) && roleSeries(ctx).length > 1 ? [error('non_additive',
+			`Values in "${units[0]}" cannot be added up, so they cannot be stacked. Use overlapping areas instead.`)] : [];
+	},
+
+	has_thresholds(ctx) {
+		const { scale, errors } = temporalScale(ctx);
+		return errors.length === 0 && scale.thresholds.length === 0 ? [error('no_thresholds',
+			`${ctx.chart.name} requires at least one threshold (numbers or user macros, separated by commas).`)] : [];
+	},
+
+	state_settings(ctx) {
+		const problems = colourMapErrors(ctx.config.colour_map);
+		const gap = parseGap(ctx.config.max_gap);
+		if (gap.error !== null) {
+			problems.push(error('invalid_gap', gap.error));
+		}
+		return problems;
+	},
+
+	matrix_settings(ctx) {
+		const { colour_by: by } = ctx.config;
+		if (by === 'value_map') {
+			const problems = colourMapErrors(ctx.config.colour_map);
+			if (problems.length === 0 && parseColourMap(ctx.config.colour_map).entries.size === 0) {
+				problems.push(warning('no_colours', 'No value colours are set, so every cell stays neutral. Add lines such as "up = #2e7d32".'));
+			}
+			return problems;
+		}
+		if (by !== 'thresholds') {
+			return [];
+		}
+		const hosts = new Map(ctx.payload.hosts.map((host) => [host.hostid, host]));
+		const problems = new Map();
+		for (const entry of roleSeries(ctx)) {
+			const scale = resolveScale({ thresholds: ctx.config.thresholds }, hosts.get(entry.hostid) ?? null);
+			for (const message of scale.errors) {
+				problems.set(message, error('invalid_thresholds', `${message}.`));
+			}
+			if (scale.errors.length === 0 && scale.thresholds.length === 0) {
+				problems.set('none', error('no_thresholds', 'Colouring by thresholds requires at least one threshold (numbers or user macros, separated by commas).'));
+			}
+		}
+		const text = roleSeries(ctx).filter((entry) => !entry.numeric);
+		const list = [...problems.values()];
+		if (text.length > 0) {
+			list.push(warning('text_values', `Thresholds apply to numbers only; these items stay neutral: ${listNames(text.map(seriesLabel))}.`));
+		}
+		return list;
+	},
+
 	heat_axes(ctx) {
 		const { heat_x: x, heat_y: y } = ctx.config;
 		if (x === y) {
@@ -357,5 +629,108 @@ export const RULES = {
 		return parseBucket(ctx.config.bucket) === null
 			? [error('invalid_bucket', 'Time buckets must look like 15m, 1h or 1d.')]
 			: tooManyBuckets(ctx, 'buckets');
+	},
+
+	/**
+	 * C27: every item must belong to exactly one port and role. Ambiguity is
+	 * an error naming the port, role and items; it is never resolved by
+	 * picking one of them.
+	 */
+	port_mapping(ctx) {
+		const series = roleSeries(ctx);
+		if (series.length === 0) {
+			return [error('no_port_items',
+				'No interface items were found. Enter an item pattern for at least one port role, for example operational status.')];
+		}
+		const panel = buildPanel(ctx.payload);
+		if (panel.error !== null) {
+			return [error('invalid_port_identity', panel.error)];
+		}
+		const problems = [];
+		const itemText = (entry) => `${seriesLabel(entry)} (item ${entry.itemid})`;
+		if (panel.shared.length > 0) {
+			const detail = panel.shared.map(({ item, roles }) => `${itemText(item)} as ${listNames(roles.map((role) => PORT_ROLE_LABELS[role] ?? role))}`);
+			problems.push(error('shared_port_item',
+				`One item cannot fill several port roles: ${listNames(detail)}. Make the role patterns more specific.`));
+		}
+		if (panel.ambiguous.length > 0) {
+			const detail = panel.ambiguous.map(({ host, identity, role, items }) =>
+				`${host} / ${identity} / ${PORT_ROLE_LABELS[role] ?? role}: ${items.map((entry) => `${entry.name} (item ${entry.itemid})`).join(', ')}`);
+			problems.push(error('ambiguous_port',
+				`More than one item matches the same port and role: ${listNames(detail, 2)}. Make the role pattern or the port identity more specific.`));
+		}
+		if (panel.badNumbers.length > 0) {
+			problems.push(error('invalid_port_number',
+				`The port number capture group must hold a whole number, but not for: ${listNames(panel.badNumbers.map(seriesLabel))}.`));
+		}
+		if (panel.unresolved.length > 0) {
+			const why = {
+				tag: `have no "${String(ctx.config.port_tag ?? '').trim()}" tag`,
+				key: 'have no key parameter',
+				regex: 'do not match the port expression'
+			}[ctx.config.port_identity ?? 'tag'] ?? 'have no port identity';
+			problems.push((panel.ports.length === 0 ? error : warning)('unresolved_ports',
+				`These items ${why} and are not shown: ${listNames(panel.unresolved.map(seriesLabel))}.`));
+		}
+		for (const section of panel.sections) {
+			for (const group of section.groups) {
+				if (group.layout.duplicates.length > 0) {
+					const where = [section.host, section.member === null ? null : `member ${section.member}`, group.name || null].filter(Boolean).join(' / ');
+					problems.push(warning('duplicate_port_numbers',
+						`Port number${group.layout.duplicates.length === 1 ? '' : 's'} ${listNames(group.layout.duplicates.map(String))} appear${group.layout.duplicates.length === 1 ? 's' : ''} more than once on ${where}, so its ports are placed in name order. Capture the stack member as well as the port number.`));
+				}
+			}
+		}
+		return problems;
+	},
+
+	/** C27: the panel's own settings (type and group rules, colours, labels, thresholds). */
+	port_settings(ctx) {
+		const { config } = ctx;
+		const problems = [];
+		const panel = buildPanel(ctx.payload);
+		for (const rule of panel.typeErrors) {
+			problems.push(error('invalid_port_types', rule.line === null
+				? `${capitalise(rule.reason)}.`
+				: `Line ${rule.line} of the interface types is not valid: ${rule.reason}.`));
+		}
+		for (const rule of panel.groupErrors) {
+			problems.push(error('invalid_port_groups', `Line ${rule.line} of the port groups is not valid: ${rule.reason}.`));
+		}
+		if (config.port_fill === 'neg_speed' || config.port_fill === 'cfg_speed') {
+			for (const line of speedPalette(config.speed_colours).errors) {
+				problems.push(error('invalid_speed_colours', `Line ${line.line} of the speed colours is not in the form "1G = #rrggbb".`));
+			}
+		}
+		problems.push(...parseColourMap(config.state_colours).errors.map((line) => error('invalid_colours',
+			`Line ${line.line} of the status colours is not in the form "value = #rrggbb".`)));
+		if (config.port_fill === 'fixed' && !isHexColour(config.port_fixed_colour)) {
+			problems.push(error('invalid_fixed_colour', 'The port colour must be a colour such as #2e7d32.'));
+		}
+		if (config.port_label === 'regex') {
+			const { error: message } = compileCapture(config.port_label_regex, 'label expression', []);
+			if (message !== null) {
+				problems.push(error('invalid_label_regex', message));
+			}
+		}
+		const stale = parseStale(config.stale_after);
+		if (stale.error !== null) {
+			problems.push(error('invalid_stale', stale.error));
+		}
+		if (config.port_fill === 'thresholds') {
+			const hosts = new Map(ctx.payload.hosts.map((host) => [host.hostid, host]));
+			const found = new Map();
+			for (const hostid of new Set(panel.ports.map((port) => port.hostid))) {
+				const scale = resolveScale({ thresholds: config.thresholds }, hosts.get(hostid) ?? null);
+				for (const message of scale.errors) {
+					found.set(message, error('invalid_thresholds', `${message}.`));
+				}
+				if (scale.errors.length === 0 && scale.thresholds.length === 0) {
+					found.set('none', error('no_thresholds', 'Colouring ports by thresholds requires at least one threshold (numbers or user macros, separated by commas).'));
+				}
+			}
+			problems.push(...found.values());
+		}
+		return problems;
 	}
 };

@@ -4,13 +4,16 @@ import { RULES } from '../../src/validation/index.js';
 
 const EXPECTED_IDS = [
 	'column', 'stacked_bar', 'doughnut', 'bullet', 'radar', 'heatmap', 'candlestick',
-	'bubble', 'gantt', 'tree', 'network', 'relationship', 'calendar_heatmap'
+	'bubble', 'gantt', 'tree', 'network', 'relationship', 'calendar_heatmap',
+	'lld_table', 'pie', 'level_gauge', 'ranking_bar', 'treemap', 'sunburst', 'funnel',
+	'line', 'area', 'status_matrix', 'state_timeline', 'sparkline_grid', 'threshold_band',
+	'switch_ports'
 ];
 
 const REQUIRED_KEYS = ['id', 'code', 'name', 'renderer', 'roles', 'data', 'history', 'time_period', 'min_series', 'controls', 'rules'];
 
 describe('chart registry', () => {
-	it('defines exactly the 13 charts with semantic ids', () => {
+	it('defines every chart in order, with semantic ids and sequential codes', () => {
 		expect(listCharts().map((chart) => chart.id)).toEqual(EXPECTED_IDS);
 		expect(listCharts().map((chart) => chart.code)).toEqual(EXPECTED_IDS.map((_, index) => `C${String(index + 1).padStart(2, '0')}`));
 	});

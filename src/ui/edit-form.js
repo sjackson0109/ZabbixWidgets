@@ -16,7 +16,22 @@ const PLACEHOLDERS = {
 	edge_list: 'core-router -> access-switch-1\naccess-switch-1 -> server-01',
 	edge_tag: 'uplink',
 	source_tag: 'source',
-	target_tag: 'target'
+	target_tag: 'target',
+	row_tag: 'interface',
+	row_regex: '^Interface (.+?):',
+	row_heading: 'Interface',
+	table_columns: 'In = Interface *: Bits received\nOut = Interface *: Bits sent\nStatus = Interface *: Operational status',
+	scale_min: '0',
+	scale_max: '{$TANK.CAPACITY}',
+	target_value: '80',
+	thresholds: '70, 90',
+	levels: 'group, host',
+	path_delimiter: '/',
+	stages: 'Visits = Web visits\nSign-ins = Web sign-ins\nOrders = Web orders',
+	y_min: '0',
+	y_max: '100',
+	max_gap: 'automatic; or 10m, or 0 to never break',
+	colour_map: 'up = #2e7d32\ndown = #c62828\n0 = #9e9e9e'
 };
 
 const ENUM_FIELDS = Object.keys(ENUMS);

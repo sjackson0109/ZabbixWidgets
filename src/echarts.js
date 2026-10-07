@@ -4,17 +4,19 @@
  */
 import * as echarts from 'echarts/core';
 import {
-	BarChart, CandlestickChart, ChordChart, CustomChart, GraphChart, HeatmapChart, PieChart, RadarChart, ScatterChart, TreeChart
+	BarChart, CandlestickChart, ChordChart, CustomChart, FunnelChart, GraphChart, HeatmapChart, LineChart, PieChart, RadarChart, ScatterChart, SunburstChart,
+	TreeChart, TreemapChart
 } from 'echarts/charts';
 import {
-	AriaComponent, CalendarComponent, GraphicComponent, GridComponent, LegendComponent, MarkAreaComponent, RadarComponent,
+	AriaComponent, CalendarComponent, DataZoomInsideComponent, DataZoomSliderComponent, GraphicComponent, GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, RadarComponent,
 	TitleComponent, TooltipComponent, VisualMapContinuousComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
 echarts.use([
-	BarChart, CandlestickChart, ChordChart, CustomChart, GraphChart, HeatmapChart, PieChart, RadarChart, ScatterChart, TreeChart,
-	AriaComponent, CalendarComponent, GraphicComponent, GridComponent, LegendComponent, MarkAreaComponent, RadarComponent,
+	BarChart, CandlestickChart, ChordChart, CustomChart, FunnelChart, GraphChart, HeatmapChart, LineChart, PieChart, RadarChart, ScatterChart, SunburstChart,
+	TreeChart, TreemapChart,
+	AriaComponent, CalendarComponent, DataZoomInsideComponent, DataZoomSliderComponent, GraphicComponent, GridComponent, LegendComponent, MarkAreaComponent, MarkLineComponent, RadarComponent,
 	TitleComponent, TooltipComponent, VisualMapContinuousComponent,
 	CanvasRenderer
 ]);

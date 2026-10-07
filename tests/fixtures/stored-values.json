@@ -1,0 +1,264 @@
+{
+	"note": "Stored dashboard values. Add new entries at the end; never change or remove one.",
+	"form_values": {
+		"column": 1,
+		"stacked_bar": 2,
+		"doughnut": 3,
+		"bullet": 4,
+		"radar": 5,
+		"heatmap": 6,
+		"candlestick": 7,
+		"bubble": 8,
+		"gantt": 9,
+		"tree": 10,
+		"network": 11,
+		"relationship": 12,
+		"calendar_heatmap": 13,
+		"lld_table": 14,
+		"pie": 15,
+		"level_gauge": 16,
+		"ranking_bar": 17,
+		"treemap": 18,
+		"sunburst": 19,
+		"funnel": 20,
+		"line": 21,
+		"area": 22,
+		"status_matrix": 23,
+		"state_timeline": 24,
+		"sparkline_grid": 25,
+		"threshold_band": 26,
+		"switch_ports": 27
+	},
+	"enums": {
+		"group_by": [
+			"host",
+			"item"
+		],
+		"centre_value": [
+			"none",
+			"sum",
+			"avg"
+		],
+		"target_source": [
+			"item",
+			"macro",
+			"constant"
+		],
+		"pair_by": [
+			"host",
+			"tag"
+		],
+		"radar_scale": [
+			"shared",
+			"per_dimension"
+		],
+		"heat_x": [
+			"host",
+			"item",
+			"time"
+		],
+		"heat_y": [
+			"item",
+			"host"
+		],
+		"aggregation": [
+			"avg",
+			"sum",
+			"min",
+			"max",
+			"count"
+		],
+		"ohlc_mode": [
+			"derived",
+			"explicit"
+		],
+		"gantt_timing": [
+			"start_end",
+			"start_duration"
+		],
+		"tree_source": [
+			"host_group",
+			"tags",
+			"item_path"
+		],
+		"edge_source": [
+			"list",
+			"tag"
+		],
+		"row_identity": [
+			"item",
+			"key",
+			"name",
+			"tag",
+			"regex"
+		],
+		"table_page_size": [
+			"10",
+			"25",
+			"50",
+			"100"
+		],
+		"pie_sort": [
+			"source",
+			"desc",
+			"asc"
+		],
+		"entity_by": [
+			"item",
+			"host"
+		],
+		"label_position": [
+			"outside",
+			"inside",
+			"none"
+		],
+		"threshold_order": [
+			"higher_worse",
+			"lower_worse"
+		],
+		"gauge_display": [
+			"native",
+			"percent"
+		],
+		"rank_order": [
+			"desc",
+			"asc"
+		],
+		"rank_limit": [
+			"all",
+			"top",
+			"bottom"
+		],
+		"funnel_order": [
+			"listed",
+			"desc",
+			"asc"
+		],
+		"area_mode": [
+			"overlap",
+			"stacked"
+		],
+		"matrix_rows": [
+			"host",
+			"item"
+		],
+		"colour_by": [
+			"none",
+			"value_map",
+			"thresholds",
+			"severity"
+		],
+		"tile_sort": [
+			"name",
+			"desc",
+			"asc"
+		],
+		"port_identity": [
+			"tag",
+			"key",
+			"regex"
+		],
+		"port_regex_target": [
+			"name",
+			"key"
+		],
+		"port_roles_shown": [
+			"core",
+			"all"
+		],
+		"port_layout": [
+			"two_row",
+			"single_row",
+			"auto"
+		],
+		"port_grouping": [
+			"none",
+			"definitions",
+			"type",
+			"prefix",
+			"tag"
+		],
+		"port_type": [
+			"rj45",
+			"sfp",
+			"sfp_plus",
+			"sfp28",
+			"qsfp",
+			"qsfp_plus",
+			"qsfp28",
+			"qsfp56",
+			"qsfp_dd",
+			"fibre",
+			"copper",
+			"generic",
+			"management",
+			"console",
+			"stack",
+			"other"
+		],
+		"port_fill": [
+			"neg_speed",
+			"cfg_speed",
+			"oper",
+			"admin",
+			"thresholds",
+			"severity",
+			"fixed"
+		],
+		"port_border": [
+			"oper",
+			"admin",
+			"severity",
+			"none"
+		],
+		"port_marker": [
+			"admin_problem",
+			"admin",
+			"problem",
+			"none"
+		],
+		"port_label": [
+			"identity",
+			"alias",
+			"description",
+			"number",
+			"regex",
+			"item_name",
+			"none"
+		],
+		"port_sublabel": [
+			"speed",
+			"alias",
+			"description",
+			"status",
+			"utilisation",
+			"none"
+		],
+		"port_util_bar": [
+			"none",
+			"max",
+			"in",
+			"out",
+			"avg",
+			"utilisation"
+		],
+		"port_metric": [
+			"utilisation",
+			"util_max",
+			"util_in",
+			"util_out",
+			"poe_power",
+			"errors_in",
+			"errors_out",
+			"discards",
+			"traffic_in",
+			"traffic_out"
+		],
+		"port_click": [
+			"none",
+			"latest",
+			"history",
+			"problems"
+		]
+	}
+}

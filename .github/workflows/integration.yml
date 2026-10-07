@@ -29,6 +29,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Make up passwords for this run
+        run: |
+          for name in POSTGRES_PASSWORD ZW_ADMIN_PASSWORD; do
+            value=$(openssl rand -hex 24)
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
       - name: Start Zabbix ${{ matrix.zabbix }}
         run: docker compose -f tests/integration/docker-compose.yml up -d --wait postgres && docker compose -f tests/integration/docker-compose.yml up -d
       - name: Install module

@@ -26,6 +26,20 @@ $views = [
 	Fields\CWidgetFieldTimePeriod::class => CWidgetFieldTimePeriodView::class
 ];
 
+// Examples shown in empty text fields; a view without setPlaceholder() simply shows none.
+$placeholders = [
+	'port_regex' => '^Interface (\\S+)\\(',
+	'port_groups' => "Access = 1-48\nUplinks = 49-52",
+	'port_group_tag' => 'module',
+	'port_type_rules' => "SFP+ = 49-52\nManagement = /^mgmt/",
+	'port_type_tag' => 'interface_type',
+	'speed_colours' => "1G = #009E73\n10G = #0072B2",
+	'state_colours' => "up = #009E73\ndown = #D55E00",
+	'port_fixed_colour' => '#0072B2',
+	'port_label_regex' => '(\\d+)$',
+	'stale_after' => '10m or 3x'
+];
+
 $form = new CWidgetFormView($data);
 
 foreach ($data['fields'] as $field) {
@@ -36,6 +50,10 @@ foreach ($data['fields'] as $field) {
 			->setDateFormat(ZBX_FULL_DATE_TIME)
 			->setFromPlaceholder(_('YYYY-MM-DD hh:mm:ss'))
 			->setToPlaceholder(_('YYYY-MM-DD hh:mm:ss'));
+	}
+
+	if (array_key_exists($field->getName(), $placeholders) && method_exists($view, 'setPlaceholder')) {
+		$view->setPlaceholder($placeholders[$field->getName()]);
 	}
 
 	$form->addField($view);
