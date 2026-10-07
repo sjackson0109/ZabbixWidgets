@@ -1,0 +1,20 @@
+{
+	"$comment": "Shared token runs found by scripts/similarity-audit.mjs and reviewed by hand. Each entry matches a run by file and a fragment of its first tokens. See docs/PROVENANCE.md.",
+	"reviewed": [
+		{
+			"file": "modules/extended-charts/views/widget.view.php",
+			"contains": "( new CWidgetView ( $data ) ) -> addItem ( ( new CDiv (",
+			"reason": "Zabbix widget view API: every widget view builds a CWidgetView, adds its container and calls show(). Our container, classes and variables differ."
+		},
+		{
+			"file": "modules/extended-charts/includes/WidgetForm.php",
+			"contains": "CWidgetFieldTimePeriod ( 'time_period' , _ ( 'Time period' ) )",
+			"reason": "Zabbix time period field API: the documented way to default a widget's time period to the dashboard's (CWidgetField::createTypedReference with REFERENCE_DASHBOARD and DATA_TYPE_TIME_PERIOD)."
+		},
+		{
+			"file": "tests/ui/controller.test.js",
+			"contains": "series : [ { itemid : '1' , role : 'value'",
+			"reason": "Test fixture object literal (item id, host, units, value). The shape follows the Zabbix item fields both projects read, not code."
+		}
+	]
+}

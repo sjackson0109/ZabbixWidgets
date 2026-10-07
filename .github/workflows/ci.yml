@@ -37,8 +37,19 @@ jobs:
         run: npm run licences
       - name: Provenance audit
         run: npm run audit:provenance
+      - name: Source-similarity review against the reference fork and Monzphere
+        run: |
+          git clone --depth 1 https://github.com/sjackson0109/Echarts-Zabbix "$RUNNER_TEMP/reference-fork"
+          git clone --depth 1 https://github.com/Monzphere/Echarts-Zabbix "$RUNNER_TEMP/reference-monzphere"
+          npm run audit:similarity -- "$RUNNER_TEMP/reference-fork" "$RUNNER_TEMP/reference-monzphere"
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=moderate
-      - name: Package (when LICENSE exists)
+      - name: Package reproducibly (when LICENSE exists)
         if: hashFiles('LICENSE') != ''
-        run: npm run package
+        run: |
+          npm run package
+          first=$(cat dist/*.sha256)
+          rm -rf dist modules/extended-charts/assets/js/zabbixwidgets-charts.js
+          npm run build
+          npm run package
+          test "$first" = "$(cat dist/*.sha256)" && echo "Rebuilt package is byte-identical: $first"

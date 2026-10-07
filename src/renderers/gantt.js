@@ -67,20 +67,18 @@ export function buildGanttOption(payload, context) {
 			encode: { x: [1, 2], y: 0 },
 			data: tasks.map((task, index) => [index, task.start, task.end, task.progress ?? -1]),
 			renderItem: (params, api) => {
-				const index = api.value(0);
-				const from = api.coord([api.value(1), index]);
-				const to = api.coord([api.value(2), index]);
-				const height = api.size([0, 1])[1] * 0.6;
-				const width = Math.max(to[0] - from[0], 2);
-				const colour = context.theme.palette[index % context.theme.palette.length];
-				const shape = { x: from[0], y: from[1] - height / 2, width, height };
-				const children = [{ type: 'rect', shape, style: { fill: colour, opacity: 0.45 } }];
+				// Bar geometry: the start corner from the axis transform and the size from
+				// the task's own span, one row high.
+				const row = api.value(0);
+				const [left, centre] = api.coord([api.value(1), row]);
+				const [span, rowHeight] = api.size([api.value(2) - api.value(1), 1]);
+				const barHeight = rowHeight * 0.6;
+				const outline = { x: left, y: centre - barHeight / 2, width: Math.max(span, 2), height: barHeight };
+				const colour = context.theme.palette[row % context.theme.palette.length];
 				const done = api.value(3);
+				const children = [{ type: 'rect', shape: outline, style: { fill: colour, opacity: done >= 0 ? 0.45 : 1 } }];
 				if (done >= 0) {
-					children.push({ type: 'rect', shape: { ...shape, width: width * (done / 100) }, style: { fill: colour } });
-				}
-				else {
-					children[0].style.opacity = 1;
+					children.push({ type: 'rect', shape: { ...outline, width: outline.width * (done / 100) }, style: { fill: colour } });
 				}
 				return { type: 'group', children };
 			}

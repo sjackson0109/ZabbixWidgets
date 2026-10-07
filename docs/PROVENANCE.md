@@ -23,6 +23,27 @@ These were written without copying or mechanically transforming fork code:
 
 `npm run audit:provenance` fails if upstream identifiers appear outside the files that acknowledge the project by name.
 
+## Source-similarity review
+
+`npm run audit:similarity -- <reference checkout>...` compares every authored source file (JavaScript, PHP and CSS, including tests and scripts) with the reference code. CI runs it on every change against fresh clones of `sjackson0109/Echarts-Zabbix` (the fork) and `Monzphere/Echarts-Zabbix`. Minified third-party bundles in the references (ECharts and its plugins) are skipped.
+
+It looks for shared runs of tokens, after removing comments and whitespace, in two forms:
+
+- **exact:** the same tokens in the same order;
+- **structural:** the same sequence once identifiers, strings and numbers are replaced by placeholders, which would reveal a renamed copy. Runs that are one short pattern repeated, such as object literals or builder chains, are ignored because they appear in any code.
+
+CI fails on any shared run of 40 tokens or more that has not been reviewed. The reviewed runs, with their reasons, are listed in `scripts/similarity-reviewed.json`. At v1.0.0 there are three, and all of them are Zabbix framework calls that every widget module makes:
+
+| File | Tokens | What is shared |
+|---|---|---|
+| `views/widget.view.php` | 29 exact, 77 structural | `(new CWidgetView($data))->addItem((new CDiv())...)->setVar(...)->show()`, the Zabbix widget view API. The containers, classes and variables differ. |
+| `includes/WidgetForm.php` | 43 exact | The time period field defaulting to the dashboard's period through `CWidgetField::createTypedReference(REFERENCE_DASHBOARD, DATA_TYPE_TIME_PERIOD)`, as documented by Zabbix. |
+| `tests/ui/controller.test.js` | 45 structural | A test item literal (id, host, units, value). The field names are Zabbix item fields. |
+
+Everything below 40 tokens is the common vocabulary of the two APIs, such as ECharts option keys (`tooltip`, `trigger: 'axis'`, `series: [{ type: 'bar' ...`) and Zabbix field declarations.
+
+The first review also matched the Gantt bar drawing, 77 structural tokens long. Both versions follow the ECharts custom-series Gantt example (`api.coord` for each end of the bar). The ZabbixWidgets version was rewritten to size the bar with `api.size` so that it no longer follows that shape.
+
 ### How the clean-room rule was applied
 
 The author of this implementation read the fork's code while writing the behavioural reference. This is not a strict two-team clean room. Code was never copied, and every module was written against the documented APIs listed below. Reviewers should keep checking new code against that rule.

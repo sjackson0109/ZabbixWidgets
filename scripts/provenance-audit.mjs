@@ -21,7 +21,9 @@ const ALLOWED = new Set([
 	'tests/compat/coexistence.test.js',
 	'tests/integration/smoke.mjs',
 	'tests/integration/install-modules.sh',
-	'.github/workflows/integration.yml'
+	'.github/workflows/integration.yml',
+	'.github/workflows/ci.yml',
+	'scripts/similarity-audit.mjs'
 ]);
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', 'coverage']);
