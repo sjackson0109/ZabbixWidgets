@@ -23,10 +23,8 @@ class WidgetConfig {
 	public static function fromFieldValues(array $values): array {
 		$config = [];
 
-		foreach (ChartRegistry::definitions()['enums'] as $field => $options) {
-			if ($field[0] !== '$') {
-				$config[$field] = ChartRegistry::enumValue($field, $values[$field] ?? 0);
-			}
+		foreach (array_keys(ChartRegistry::enums()) as $field) {
+			$config[$field] = ChartRegistry::enumValue($field, $values[$field] ?? 0);
 		}
 
 		foreach (self::TEXT_FIELDS as $field) {

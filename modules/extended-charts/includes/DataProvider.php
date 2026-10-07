@@ -441,9 +441,10 @@ class DataProvider {
 	}
 
 	/**
-	 * Resolves the bullet target macro per host: host value first, then a
-	 * directly linked template, then the global value. Secret and vault macros
-	 * are not readable and are treated as undefined.
+	 * Resolves the bullet target macro per host in Zabbix's order: the host,
+	 * then its templates level by level (each level in template ID order), then
+	 * the global value. Secret and vault macros are not readable and are
+	 * treated as undefined.
 	 *
 	 * @return array  hostid => value
 	 */
@@ -455,24 +456,26 @@ class DataProvider {
 			return [];
 		}
 
-		$owner_ids = array_keys($hosts);
+		$parents = [];
 
-		foreach ($hosts as $host) {
-			$owner_ids = array_merge($owner_ids, array_column($host['parentTemplates'], 'templateid'));
+		foreach ($hosts as $hostid => $host) {
+			$parents[$hostid] = array_column($host['parentTemplates'], 'templateid');
 		}
+
+		$parents += self::templateParents(array_merge(...array_values($parents)));
 
 		$values = [];
 
 		foreach (API::UserMacro()->get([
-			'output' => ['hostid', 'macro', 'value', 'type'],
-			'hostids' => array_unique($owner_ids),
+			'output' => ['hostid', 'value'],
+			'hostids' => array_keys($parents),
 			'filter' => ['macro' => $macro, 'type' => ZBX_MACRO_TYPE_TEXT]
 		]) as $row) {
 			$values[$row['hostid']] = $row['value'];
 		}
 
 		$global = API::UserMacro()->get([
-			'output' => ['macro', 'value', 'type'],
+			'output' => ['value'],
 			'globalmacro' => true,
 			'filter' => ['macro' => $macro, 'type' => ZBX_MACRO_TYPE_TEXT]
 		]);
@@ -480,17 +483,31 @@ class DataProvider {
 
 		$resolved = [];
 
-		foreach ($hosts as $hostid => $host) {
-			if (array_key_exists($hostid, $values)) {
-				$resolved[$hostid] = $values[$hostid];
-				continue;
-			}
+		foreach (array_keys($hosts) as $hostid) {
+			$level = [$hostid];
+			$seen = [$hostid => true];
 
-			foreach (array_column($host['parentTemplates'], 'templateid') as $templateid) {
-				if (array_key_exists($templateid, $values)) {
-					$resolved[$hostid] = $values[$templateid];
-					continue 2;
+			while ($level) {
+				foreach ($level as $ownerid) {
+					if (array_key_exists($ownerid, $values)) {
+						$resolved[$hostid] = $values[$ownerid];
+						continue 3;
+					}
 				}
+
+				$next = [];
+
+				foreach ($level as $ownerid) {
+					foreach ($parents[$ownerid] ?? [] as $templateid) {
+						if (!array_key_exists($templateid, $seen)) {
+							$seen[$templateid] = true;
+							$next[] = $templateid;
+						}
+					}
+				}
+
+				sort($next, SORT_NUMERIC);
+				$level = $next;
 			}
 
 			if ($global_value !== null) {
@@ -499,5 +516,45 @@ class DataProvider {
 		}
 
 		return $resolved;
+	}
+
+	/**
+	 * Parent templates of the given templates and of all their ancestors.
+	 * Templates the user cannot read have no known parents.
+	 *
+	 * @return array  templateid => [parent templateid, ...]
+	 */
+	private static function templateParents(array $templateids): array {
+		$parents = [];
+		$pending = array_unique($templateids);
+
+		while ($pending) {
+			foreach ($pending as $templateid) {
+				$parents[$templateid] = [];
+			}
+
+			$templates = API::Template()->get([
+				'output' => ['templateid'],
+				'templateids' => $pending,
+				'selectParentTemplates' => ['templateid'],
+				'preservekeys' => true
+			]);
+
+			$next = [];
+
+			foreach ($templates as $templateid => $template) {
+				$parents[$templateid] = array_column($template['parentTemplates'], 'templateid');
+
+				foreach ($parents[$templateid] as $parentid) {
+					if (!array_key_exists($parentid, $parents)) {
+						$next[$parentid] = $parentid;
+					}
+				}
+			}
+
+			$pending = array_values($next);
+		}
+
+		return $parents;
 	}
 }

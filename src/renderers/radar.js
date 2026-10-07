@@ -17,10 +17,12 @@ export function buildRadarOption(payload, context) {
 		max: configuredMax !== null && configuredMax > 0 ? configuredMax : null
 	});
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				const entity = radar.entities[param.dataIndex];

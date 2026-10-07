@@ -1,20 +1,4 @@
-/** Human-readable labels for form fields and roles, used in validation messages. */
-export const FIELD_LABELS = Object.freeze({
-	items: 'Items',
-	target_items: 'Target items',
-	open_items: 'Open item',
-	high_items: 'High item',
-	low_items: 'Low item',
-	close_items: 'Close item',
-	x_items: 'X items',
-	y_items: 'Y items',
-	size_items: 'Size items',
-	start_items: 'Start items',
-	end_items: 'End items',
-	duration_items: 'Duration items',
-	progress_items: 'Progress items'
-});
-
+/** Human-readable labels for roles, used in validation messages. */
 export const ROLE_LABELS = Object.freeze({
 	value: 'value',
 	actual: 'actual',

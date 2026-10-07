@@ -36,8 +36,10 @@ export function buildGanttOption(payload, context) {
 	const span = tasks.length ? Math.max(...tasks.map((task) => task.end)) - Math.min(...tasks.map((task) => task.start)) : 0;
 	const withTime = span < 7 * 86400;
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: { show: false },
 		grid: { left: 8, right: 24, top: 8, bottom: 8, containLabel: true },
 		xAxis: {
@@ -49,7 +51,7 @@ export function buildGanttOption(payload, context) {
 		},
 		yAxis: { ...categoryAxis(context, tasks.map((task) => task.label)), inverse: true },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				const task = tasks[param.dataIndex];

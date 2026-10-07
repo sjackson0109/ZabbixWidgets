@@ -5,7 +5,7 @@
  * values stack on their own sides of zero, as ECharts does by default.
  */
 import { baseOption, categoryAxis, commonUnits, tooltipLine, valueAxis } from './common.js';
-import { groupSeries } from './column.js';
+import { groupSeries } from './dimensions.js';
 import { escapeHtml } from '../utils/escape.js';
 import { formatValue } from '../data/units.js';
 
@@ -14,13 +14,15 @@ export function buildStackedBarOption(payload, context) {
 	const { categories, groups } = groupSeries(series, payload.config.group_by);
 	const units = commonUnits(series) ?? '';
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		grid: { left: 8, right: 16, top: 8, bottom: context.showLegend ? 32 : 8, containLabel: true },
 		xAxis: valueAxis(context, units),
 		yAxis: { ...categoryAxis(context, categories), inverse: true },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'axis',
 			axisPointer: { type: 'shadow' },
 			formatter: (params) => {

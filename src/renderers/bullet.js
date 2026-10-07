@@ -29,16 +29,18 @@ export function buildBulletOption(payload, context) {
 		{ xAxis: end }
 	]);
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: context.showLegend
-			? { ...baseOption(context).legend, data: ['Actual', 'Target'] }
+			? { ...base.legend, data: ['Actual', 'Target'] }
 			: { show: false },
 		grid: { left: 8, right: 16, top: 8, bottom: context.showLegend ? 32 : 8, containLabel: true },
 		xAxis: { ...valueAxis(context, units), min, max },
 		yAxis: { ...categoryAxis(context, names), inverse: true },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'axis',
 			axisPointer: { type: 'none' },
 			formatter: (params) => {

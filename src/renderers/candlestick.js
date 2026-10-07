@@ -43,14 +43,16 @@ export function buildCandlestickOption(payload, context) {
 	const up = context.theme.palette[2];
 	const down = context.theme.palette[5];
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: { show: false },
 		grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
 		xAxis: categoryAxis(context, labels),
 		yAxis: { ...valueAxis(context, units), scale: true },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'axis',
 			axisPointer: { type: 'cross' },
 			formatter: (params) => {

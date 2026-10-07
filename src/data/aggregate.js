@@ -3,8 +3,6 @@
  * empty input produces null (or no bucket), never a placeholder.
  */
 
-export const AGGREGATIONS = Object.freeze(['avg', 'sum', 'min', 'max', 'count']);
-
 export function aggregate(values, fn) {
 	if (fn === 'count') {
 		return values.length;

@@ -11,7 +11,7 @@
  * smallest and largest values shown.
  */
 import { baseOption, colourScale, commonUnits, formatClock, categoryAxis } from './common.js';
-import { distinct, hostDimension, itemDimension } from './column.js';
+import { distinct, hostDimension, itemDimension } from './dimensions.js';
 import { aggregateBuckets, parseBucket, periodBuckets } from '../data/aggregate.js';
 import { toNumber } from '../data/normalise.js';
 import { formatValue } from '../data/units.js';
@@ -73,8 +73,10 @@ export function buildHeatmapOption(payload, context) {
 	const units = countOnly ? '' : (commonUnits(series) ?? '');
 	const bound = (text) => (text === undefined || text === '' ? null : toNumber(String(text)));
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: { show: false },
 		grid: { left: 8, right: 16, top: 8, bottom: 56, containLabel: true },
 		xAxis: { ...categoryAxis(context, grid.xLabels), splitArea: { show: true } },
@@ -85,7 +87,7 @@ export function buildHeatmapOption(payload, context) {
 			units
 		}),
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				const [x, y, value] = param.value;

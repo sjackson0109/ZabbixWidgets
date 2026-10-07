@@ -4,7 +4,8 @@
  * The registry file (modules/extended-charts/registry/charts.json) is the single
  * source of truth: the PHP action reads it to decide what to fetch, the edit
  * form reads it to decide which controls to show, and the runtime reads it to
- * validate data and pick a renderer.
+ * validate data and pick a renderer. ChartRegistry.php implements the same
+ * functions for the server; tests/compat/registry-parity.test.js keeps them equal.
  */
 import definitions from '../../modules/extended-charts/registry/charts.json';
 
@@ -12,12 +13,25 @@ const charts = new Map(definitions.charts.map((chart) => [chart.id, Object.freez
 
 export const COMMON_CONTROLS = Object.freeze([...definitions.common_controls]);
 
+/** Item pattern fields, keyed by field name, with their labels. */
+export const ITEM_FIELDS = Object.freeze({ ...definitions.item_fields });
+
+/** Radio and select fields, keyed by field name, with their values in stored order. */
+export const ENUMS = Object.freeze({ ...definitions.enums });
+
+/** Every control any chart can show. */
+export const ALL_CONTROLS = Object.freeze([...new Set([...COMMON_CONTROLS, ...definitions.charts.flatMap((chart) => chart.controls)])]);
+
 export function listCharts() {
 	return [...charts.values()];
 }
 
 export function getChart(id) {
 	return charts.get(id) ?? null;
+}
+
+export function chartByFormValue(formValue) {
+	return listCharts().find((chart) => chart.form_value === formValue) ?? null;
 }
 
 /**
@@ -35,7 +49,9 @@ export function evaluateCondition(condition, config = {}) {
 		return false;
 	}
 	if (typeof condition === 'string' && condition.startsWith('when:')) {
-		const [field, values] = condition.slice(5).split('=');
+		const separator = condition.indexOf('=');
+		const field = condition.slice(5, separator);
+		const values = condition.slice(separator + 1);
 		return values.split('|').includes(String(config[field] ?? ''));
 	}
 	throw new Error(`Unknown registry condition: ${condition}`);
@@ -53,10 +69,17 @@ export function isRoleRequired(role, config) {
 	return evaluateCondition(role.required, config);
 }
 
+/** Names of the roles that apply under the configuration (required or optional). */
+export function activeRoles(chart, config) {
+	return Object.entries(chart.roles)
+		.filter(([, role]) => typeof role.required !== 'string' || isRoleRequired(role, config))
+		.map(([name]) => name);
+}
+
 /**
- * Controls the edit form should show for a chart. Role fields that are not
- * required and not optional under the current configuration are hidden, so a
- * user only sees mappings that apply to the selected input mode.
+ * Controls the edit form should show for a chart. A role's item field is
+ * hidden while the role does not apply, and other controls follow their
+ * control_conditions, so a user only sees settings for the selected mode.
  */
 export function visibleControls(chartId, config = {}) {
 	const chart = getChart(chartId);
@@ -64,36 +87,27 @@ export function visibleControls(chartId, config = {}) {
 		return [...COMMON_CONTROLS];
 	}
 
-	const hiddenRoleFields = new Set();
-	for (const role of Object.values(chart.roles)) {
-		if (typeof role.required === 'string' && !evaluateCondition(role.required, config)) {
-			hiddenRoleFields.add(role.field);
-		}
-	}
-
-	const conditional = {
-		target_items: config.target_source === 'item',
-		target_macro: config.target_source === 'macro',
-		target_constant: config.target_source === 'constant',
-		pair_tag: config.pair_by === 'tag',
-		radar_max: config.radar_scale === 'shared',
-		tree_tags: config.tree_source === 'tags',
-		tree_delimiter: config.tree_source === 'item_path',
-		edge_list: config.edge_source === 'list',
-		edge_tag: config.edge_source === 'tag',
-		bucket: chart.id !== 'heatmap' || config.heat_x === 'time',
-		aggregation: chart.id !== 'heatmap' || config.heat_x === 'time',
-		time_period: requiresTimePeriod(chart, config)
+	const active = new Set(activeRoles(chart, config));
+	const conditions = {
+		...definitions.control_conditions,
+		...chart.control_conditions,
+		time_period: chart.time_period
 	};
 
 	const fields = chart.controls.filter((field) => {
 		// A field shared by several roles (e.g. "items") stays visible while any role using it applies.
-		const rolesUsingField = Object.values(chart.roles).filter((role) => role.field === field);
-		if (rolesUsingField.length > 0 && rolesUsingField.every((role) => hiddenRoleFields.has(role.field))) {
-			return false;
+		const roles = Object.entries(chart.roles).filter(([, role]) => role.field === field);
+		if (roles.length > 0) {
+			return roles.some(([name]) => active.has(name));
 		}
-		return conditional[field] ?? true;
+		return field in conditions ? evaluateCondition(conditions[field], config) : true;
 	});
 
 	return [...COMMON_CONTROLS, ...fields];
+}
+
+/** Shown controls that must not be left empty. */
+export function requiredControls(chartId, config = {}) {
+	const visible = new Set(visibleControls(chartId, config));
+	return definitions.required_controls.filter((field) => visible.has(field));
 }

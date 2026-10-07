@@ -19,8 +19,8 @@ const RULE_TEXT = {
 	has_target: 'Every actual value has a target from an item, a macro or a constant. Targets are never derived from the actual value.',
 	min_dimensions: 'At least `min_dimensions` distinct items act as axes.',
 	radar_scale: 'Shared scale requires common units and a positive maximum; per-axis scale uses each axis\'s largest real value.',
-	colour_bounds: 'Configured colour bounds are numbers with minimum below maximum; time buckets are valid.',
-	has_history: 'Every mapped item has history in the period; at most `max_items` items per role.',
+	colour_bounds: 'Configured colour bounds are numbers with minimum below maximum.',
+	has_history: 'Every mapped item has history in the period.',
 	ohlc_consistent: 'The candle period is valid and yields at most 1000 candles; explicit OHLC candles satisfy low <= open, close <= high; periods missing a component are skipped and reported.',
 	complete_tuples: 'Every pairing key (host or tag value) has exactly one item for each required role.',
 	valid_intervals: 'Each task has a positive start and an end at or after it (or a non-negative duration); progress is a percentage from 0 to 100.',
@@ -29,7 +29,7 @@ const RULE_TEXT = {
 	edges_resolve: 'Every relationship endpoint is one of the selected hosts.',
 	relationship_tags: 'Every item carries both the source and the target tag; flows from an endpoint to itself are reported and not drawn.',
 	bullet_ranges: 'Qualitative ranges, when set, are ascending numbers.',
-	heat_axes: 'X and Y are different dimensions; a time axis yields at most 1000 buckets.'
+	heat_axes: 'X and Y are different dimensions; a time axis has a valid bucket size and yields at most 1000 buckets.'
 };
 
 const lines = [
@@ -40,6 +40,8 @@ const lines = [
 	'A chart renders only when its contract is met. Otherwise the widget shows the reasons. No chart invents targets, OHLC values, timestamps, durations, topology, hierarchy or flow weights.',
 	'',
 	'Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only for that setting.',
+	'',
+	'Every chart also needs items for each required role, no more than `Max items` per role, and at least `min_series` series in total.',
 	''
 ];
 
@@ -51,12 +53,9 @@ for (const chart of registry.charts) {
 	}
 	lines.push('');
 	lines.push(`- **Data fetched:** ${chart.data.join(', ')}`);
-	lines.push(`- **History:** \`${chart.history}\`; **time period:** \`${chart.time_period}\``);
+	lines.push(`- **History:** \`${chart.history}\`; **time period:** \`${chart.time_period}\`; **min_series:** ${chart.min_series}`);
 	if (chart.min_dimensions) {
 		lines.push(`- **Minimum dimensions:** ${chart.min_dimensions}`);
-	}
-	if (chart.aggregations.length > 0) {
-		lines.push(`- **Aggregations:** ${chart.aggregations.join(', ')}`);
 	}
 	lines.push(`- **Controls:** ${chart.controls.map((control) => `\`${control}\``).join(', ')}`);
 	lines.push('- **Rules:**');

@@ -2,7 +2,8 @@
  * Integration smoke test against a live Zabbix (see docker-compose.yml).
  *
  * 1. Registers ZabbixWidgets.
- * 2. Creates hosts with trapper items and pushes real values.
+ * 2. Creates hosts with trapper items, linked to a two-level template stack
+ *    that defines a user macro, and pushes real values.
  * 3. Builds a dashboard with a working Column widget, a Bubble widget missing
  *    its mappings, plus a second
  *    dashboard with one configured widget for every chart type.
@@ -10,7 +11,8 @@
  *    Bubble widget explains what is missing, every chart type draws from
  *    real Zabbix data, the edit form opens, and no page errors occur.
  *
- * Screenshots and page HTML go to test-results/ for inspection.
+ * Screenshots and page HTML go to test-results/ for inspection, with one
+ * screenshot of every chart and of its edit form in test-results/showcase/.
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
@@ -83,6 +85,22 @@ for (const name of ['zw-host-1', 'zw-host-2']) {
 	hostIds.push(hostid);
 }
 
+// The bullet target macro is defined two template levels above the hosts, as in a typical template stack.
+step('Create templates');
+const [{ groupid: templateGroupid }] = await api('templategroup.get', { filter: { name: ['ZW templates'] } })
+	.then(async (found) => (found.length ? found : [{ groupid: (await api('templategroup.create', { name: 'ZW templates' })).groupids[0] }]));
+async function template(host, params) {
+	const found = await api('template.get', { filter: { host: [host] } });
+	return found.length
+		? (await api('template.update', { templateid: found[0].templateid, ...params })).templateids[0]
+		: (await api('template.create', { host, groups: [{ groupid: templateGroupid }], ...params })).templateids[0];
+}
+const baseTemplate = await template('ZW target base', { macros: [{ macro: '{$ZW.TARGET}', value: '30' }] });
+const hostTemplate = await template('ZW target', { templates: [{ templateid: baseTemplate }] });
+for (const hostid of hostIds) {
+	await api('host.update', { hostid, templates: [{ templateid: hostTemplate }] });
+}
+
 const now = Math.floor(Date.now() / 1000);
 const flows = [[{ tag: 'from', value: 'London' }, { tag: 'to', value: 'Paris' }], [{ tag: 'from', value: 'Paris' }, { tag: 'to', value: 'Berlin' }]];
 
@@ -143,7 +161,7 @@ const widgets = [
 		fields: [{ type: 0, name: 'chart_type', value: 1 }, ...hostFields, { type: 1, name: 'items.0', value: 'ZW *' }]
 	},
 	{
-		type: 'zabbixwidgets_charts', name: 'ZW bubble', x: 36, y: 0, width: 36, height: 6,
+		type: 'zabbixwidgets_charts', name: 'ZW misconfigured bubble (expected error)', x: 36, y: 0, width: 36, height: 6,
 		fields: [{ type: 0, name: 'chart_type', value: 8 }, ...hostFields, { type: 1, name: 'x_items.0', value: 'ZW CPU*' }]
 	}
 ];
@@ -159,9 +177,11 @@ const patterns = (field, ...values) => values.map((value, index) => str(`${field
 const firstHost = [{ type: 3, name: 'hostids.0', value: hostIds[0] }];
 const lastDay = [str('time_period.from', 'now-1d'), str('time_period.to', 'now')];
 const chartWidgets = [
+	['Column', 1, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*')]],
 	['Stacked Bar', 2, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*')]],
 	['Doughnut', 3, [...hostFields, ...patterns('items', 'ZW Memory*'), int('centre_value', 1)]],
 	['Bullet Graph', 4, [...hostFields, ...patterns('items', 'ZW CPU*'), int('target_source', 2), str('target_constant', '25'), str('ranges', '20, 40')]],
+	['Macro Bullet', 4, [...hostFields, ...patterns('items', 'ZW CPU*'), int('target_source', 1), str('target_macro', '{$ZW.TARGET}')]],
 	['Radar', 5, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*')]],
 	['Heat Map', 6, [...hostFields, ...patterns('items', 'ZW CPU*'), int('heat_x', 2), int('heat_y', 1), str('bucket', '2h'), ...lastDay]],
 	['Candlestick', 7, [...firstHost, ...patterns('items', 'ZW CPU*'), str('bucket', '2h'), ...lastDay]],
@@ -181,6 +201,47 @@ const { dashboardids: [chartsDashboardid] } = await api('dashboard.create', {
 		}))
 	}]
 });
+
+/**
+ * Saves one screenshot of each chart on the dashboard and one of its edit
+ * form, to test-results/showcase/<version>/. Only for people to look at:
+ * problems here are logged, not counted as failures.
+ */
+async function showcase(page, widget) {
+	const dir = `${OUT}/showcase/${version}`;
+	const file = (index, name, kind) => `${dir}/${String(index + 1).padStart(2, '0')}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${kind}.png`;
+	await mkdir(dir, { recursive: true });
+	await page.setViewportSize({ width: 1600, height: 1400 });
+
+	for (const [index, [name]] of chartWidgets.entries()) {
+		await widget(`ZW ${name}`).screenshot({ path: file(index, name, 'dashboard') })
+			.catch((error) => console.log(`showcase: no dashboard screenshot of ${name}: ${error.message}`));
+	}
+
+	await page.getByRole('button', { name: /edit dashboard/i }).click();
+	await page.waitForTimeout(1000);
+	// The widget's edit dialogue holds a form; hover hints are also .overlay-dialogue but do not.
+	const dialogue = page.locator('.overlay-dialogue', { has: page.locator('form') }).last();
+	for (const [index, [name]] of chartWidgets.entries()) {
+		try {
+			const target = widget(`ZW ${name}`);
+			await target.hover();
+			await target.locator('.js-widget-edit, button[title="Edit"]').first().click();
+			await dialogue.waitFor({ timeout: 15000 });
+			await page.waitForTimeout(1500);
+			await page.mouse.move(0, 0);
+			await dialogue.screenshot({ path: file(index, name, 'form') });
+			await dialogue.locator('.btn-overlay-close').click();
+			await dialogue.waitFor({ state: 'detached', timeout: 10000 });
+		}
+		catch (error) {
+			console.log(`showcase: no form screenshot of ${name}: ${error.message}`);
+			await page.keyboard.press('Escape').catch(() => {});
+			await page.waitForTimeout(1000);
+		}
+	}
+	await page.setViewportSize({ width: 1600, height: 1000 });
+}
 
 step('Open dashboard in Chromium');
 await mkdir(OUT, { recursive: true });
@@ -217,7 +278,7 @@ try {
 
 	// The message may come from the module's own validation (.zw-charts-errors) or from Zabbix
 	// showing WidgetForm::validate() errors in place of the widget; either explains the problem.
-	const bubble = widget('ZW bubble');
+	const bubble = widget('ZW misconfigured bubble');
 	const bubbleText = (await bubble.locator('.dashboard-grid-widget-contents, .dashboard-grid-widget-container').first().innerText().catch(() => '')).trim();
 	check(/requires/i.test(bubbleText), `Bubble widget explains missing mappings: "${bubbleText.slice(0, 200)}"`);
 
@@ -234,6 +295,9 @@ try {
 		const text = drew ? '' : (await chart.innerText().catch(() => '')).trim().replace(/\s+/g, ' ');
 		check(drew, `${name} draws from Zabbix data${text ? `: "${text.slice(0, 300)}"` : ''}`);
 	}
+
+	step('Showcase: each chart and its edit form');
+	await showcase(page, widget);
 
 	await page.goto(`${BASE}/zabbix.php?action=dashboard.view&dashboardid=${dashboardid}`);
 	await page.waitForTimeout(5000);

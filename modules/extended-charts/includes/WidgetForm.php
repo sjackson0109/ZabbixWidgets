@@ -28,23 +28,6 @@ use Zabbix\Widgets\Fields\CWidgetFieldTimePeriod;
  */
 class WidgetForm extends CWidgetForm {
 
-	/** Item pattern fields, one per data role, with their labels. */
-	public const ITEM_FIELDS = [
-		'items' => 'Items',
-		'target_items' => 'Target items',
-		'open_items' => 'Open item',
-		'high_items' => 'High item',
-		'low_items' => 'Low item',
-		'close_items' => 'Close item',
-		'x_items' => 'X items',
-		'y_items' => 'Y items',
-		'size_items' => 'Size items',
-		'start_items' => 'Start items',
-		'end_items' => 'End items',
-		'duration_items' => 'Duration items',
-		'progress_items' => 'Progress items'
-	];
-
 	public function addFields(): self {
 		$this->addField(
 			(new CWidgetFieldSelect('chart_type', _('Chart type'), ChartRegistry::formOptions()))
@@ -60,7 +43,7 @@ class WidgetForm extends CWidgetForm {
 
 		$this->addField(new CWidgetFieldMultiSelectOverrideHost());
 
-		foreach (self::ITEM_FIELDS as $name => $label) {
+		foreach (ChartRegistry::itemFields() as $name => $label) {
 			$this->addField(new CWidgetFieldPatternSelectItem($name, _($label)));
 		}
 
@@ -112,7 +95,8 @@ class WidgetForm extends CWidgetForm {
 
 	/**
 	 * Adds the checks that depend on the selected chart: required item mappings
-	 * and required text settings. Field-level checks run in the parent.
+	 * and required settings, as declared in the registry. Field-level checks
+	 * run in the parent.
 	 *
 	 * They run only in strict mode (saving the form). A widget stored without
 	 * them, e.g. through the API, still renders and the browser explains the
@@ -136,25 +120,13 @@ class WidgetForm extends CWidgetForm {
 
 		foreach (ChartRegistry::activeRoles($chart, $config) as $role) {
 			if (ChartRegistry::evaluate($role['required'], $config) && !$values[$role['field']]) {
-				$errors[] = _s('%1$s requires %2$s.', $chart['name'], _(self::ITEM_FIELDS[$role['field']]));
+				$errors[] = _s('%1$s requires %2$s.', $chart['name'], $this->getField($role['field'])->getLabel());
 			}
 		}
 
-		$required_text = [
-			'target_macro' => [_('Target macro'), $chart['id'] === 'bullet' && $config['target_source'] === 'macro'],
-			'target_constant' => [_('Target value'), $chart['id'] === 'bullet' && $config['target_source'] === 'constant'],
-			'pair_tag' => [_('Pairing tag'), in_array('pair_tag', $chart['controls'], true) && $config['pair_by'] === 'tag'],
-			'tree_tags' => [_('Tag levels'), $chart['id'] === 'tree' && $config['tree_source'] === 'tags'],
-			'tree_delimiter' => [_('Path delimiter'), $chart['id'] === 'tree' && $config['tree_source'] === 'item_path'],
-			'edge_list' => [_('Relationships'), $chart['id'] === 'network' && $config['edge_source'] === 'list'],
-			'edge_tag' => [_('Link tag'), $chart['id'] === 'network' && $config['edge_source'] === 'tag'],
-			'source_tag' => [_('Source tag'), $chart['id'] === 'relationship'],
-			'target_tag' => [_('Target tag'), $chart['id'] === 'relationship']
-		];
-
-		foreach ($required_text as $field => [$label, $required]) {
-			if ($required && trim((string) $values[$field]) === '') {
-				$errors[] = _s('%1$s requires "%2$s".', $chart['name'], $label);
+		foreach (ChartRegistry::requiredControls($chart, $config) as $field) {
+			if (trim((string) $values[$field]) === '') {
+				$errors[] = _s('%1$s requires "%2$s".', $chart['name'], $this->getField($field)->getLabel());
 			}
 		}
 

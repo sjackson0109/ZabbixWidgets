@@ -10,7 +10,10 @@ use RuntimeException;
 
 /**
  * PHP view of registry/charts.json, the same file the browser bundle uses.
- * The action asks it which data a chart needs so nothing is fetched "just in case".
+ * The action asks it which data a chart needs so nothing is fetched "just in case",
+ * and the form asks it which settings are shown and required.
+ *
+ * Mirrors src/registry/index.js; tests/compat/registry-parity.test.js keeps them equal.
  */
 class ChartRegistry {
 
@@ -58,25 +61,29 @@ class ChartRegistry {
 	}
 
 	/**
-	 * Labels for a stored enum field, keyed by stored integer.
+	 * Item pattern fields, one per data role, keyed by field name, with their labels.
 	 */
-	public static function enumValues(string $field): array {
-		$values = self::definitions()['enums'][$field] ?? [];
-
-		return array_values(array_filter($values, 'is_string'));
+	public static function itemFields(): array {
+		return self::definitions()['item_fields'];
 	}
 
 	/**
-	 * Converts stored integers of enum fields into their string values.
+	 * Radio and select fields, keyed by field name, with their values in stored order.
+	 */
+	public static function enums(): array {
+		return self::definitions()['enums'];
+	}
+
+	/**
+	 * Converts the stored integer of an enum field into its string value.
 	 */
 	public static function enumValue(string $field, $stored): ?string {
-		$values = self::enumValues($field);
-
-		return $values[(int) $stored] ?? null;
+		return self::enums()[$field][(int) $stored] ?? null;
 	}
 
 	/**
-	 * Mirrors evaluateCondition() in src/registry/index.js.
+	 * Conditions are booleans, "always"/"none", or "when:<field>=<value>[|<value>...]",
+	 * which is true when the configured field matches one of the listed values.
 	 */
 	public static function evaluate($condition, array $config): bool {
 		if ($condition === true || $condition === 'always') {
@@ -103,6 +110,43 @@ class ChartRegistry {
 		return array_filter($chart['roles'], static function (array $role) use ($config): bool {
 			return !is_string($role['required']) || self::evaluate($role['required'], $config);
 		});
+	}
+
+	/**
+	 * Controls the edit form shows: a role's item field only while the role
+	 * applies, other controls only while their control condition holds.
+	 */
+	public static function visibleControls(array $chart, array $config): array {
+		$active = self::activeRoles($chart, $config);
+		$conditions = array_merge(
+			self::definitions()['control_conditions'],
+			$chart['control_conditions'] ?? [],
+			['time_period' => $chart['time_period']]
+		);
+
+		$fields = array_filter($chart['controls'], static function (string $field) use ($chart, $active, $conditions,
+				$config): bool {
+			$roles = array_filter($chart['roles'], static function (array $role) use ($field): bool {
+				return $role['field'] === $field;
+			});
+
+			if ($roles) {
+				return (bool) array_intersect_key($roles, $active);
+			}
+
+			return !array_key_exists($field, $conditions) || self::evaluate($conditions[$field], $config);
+		});
+
+		return array_merge(self::definitions()['common_controls'], array_values($fields));
+	}
+
+	/**
+	 * Shown controls that must not be left empty.
+	 */
+	public static function requiredControls(array $chart, array $config): array {
+		return array_values(
+			array_intersect(self::definitions()['required_controls'], self::visibleControls($chart, $config))
+		);
 	}
 
 	public static function needs(array $chart, string $data): bool {

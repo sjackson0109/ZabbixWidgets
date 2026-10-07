@@ -1,9 +1,8 @@
 {
-	"$comment": "Single source of truth for chart capabilities. Read by the PHP action (data retrieval), the edit form (visible controls) and the JS runtime (validation and renderer selection). See docs/CHART-CONTRACTS.md. form_value is the integer Zabbix stores for the chart type; it must never change once released.",
+	"$comment": "Single source of truth for chart capabilities. Read by the PHP action (data retrieval) and form validation, the edit form (visible controls) and the JS runtime (validation and renderer selection). See docs/CHART-CONTRACTS.md. form_value is the integer Zabbix stores for the chart type, and each enum value is stored as its index in its list: both must never change once released (append only). control_conditions show a control only under a setting; a chart may override an entry with its own control_conditions. required_controls must be filled in whenever they are shown.",
 	"version": 1,
 	"common_controls": ["chart_type", "groupids", "hostids", "override_hostid", "show_legend", "decimals"],
 	"enums": {
-		"$comment": "Radio/select fields are stored by Zabbix as integers; the integer is the index into these lists. Append only, never reorder.",
 		"group_by": ["host", "item"],
 		"centre_value": ["none", "sum", "avg"],
 		"target_source": ["item", "macro", "constant"],
@@ -17,6 +16,34 @@
 		"tree_source": ["host_group", "tags", "item_path"],
 		"edge_source": ["list", "tag"]
 	},
+	"item_fields": {
+		"items": "Items",
+		"target_items": "Target items",
+		"open_items": "Open item",
+		"high_items": "High item",
+		"low_items": "Low item",
+		"close_items": "Close item",
+		"x_items": "X items",
+		"y_items": "Y items",
+		"size_items": "Size items",
+		"start_items": "Start items",
+		"end_items": "End items",
+		"duration_items": "Duration items",
+		"progress_items": "Progress items"
+	},
+	"control_conditions": {
+		"target_macro": "when:target_source=macro",
+		"target_constant": "when:target_source=constant",
+		"pair_tag": "when:pair_by=tag",
+		"radar_max": "when:radar_scale=shared",
+		"tree_tags": "when:tree_source=tags",
+		"tree_delimiter": "when:tree_source=item_path",
+		"edge_list": "when:edge_source=list",
+		"edge_tag": "when:edge_source=tag"
+	},
+	"required_controls": [
+		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag"
+	],
 	"charts": [
 		{
 			"id": "column",
@@ -36,8 +63,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["items", "group_by"],
-			"rules": ["numeric_only", "has_values"],
-			"aggregations": []
+			"rules": ["numeric_only", "has_values"]
 		},
 		{
 			"id": "stacked_bar",
@@ -57,8 +83,7 @@
 			"time_period": false,
 			"min_series": 2,
 			"controls": ["items", "group_by"],
-			"rules": ["numeric_only", "has_values", "same_units"],
-			"aggregations": []
+			"rules": ["numeric_only", "has_values", "same_units"]
 		},
 		{
 			"id": "doughnut",
@@ -78,8 +103,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["items", "show_percent", "hide_zero", "centre_value"],
-			"rules": ["numeric_only", "has_values", "non_negative", "same_units"],
-			"aggregations": ["sum", "avg"]
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units"]
 		},
 		{
 			"id": "bullet",
@@ -95,7 +119,7 @@
 				},
 				"target": {
 					"field": "target_items",
-					"required": false,
+					"required": "when:target_source=item",
 					"numeric": true
 				}
 			},
@@ -104,8 +128,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["items", "target_source", "target_items", "target_macro", "target_constant", "ranges", "pair_by", "pair_tag"],
-			"rules": ["numeric_only", "has_values", "same_units", "has_target", "bullet_ranges"],
-			"aggregations": []
+			"rules": ["numeric_only", "has_values", "same_units", "has_target", "bullet_ranges"]
 		},
 		{
 			"id": "radar",
@@ -126,8 +149,7 @@
 			"min_series": 1,
 			"min_dimensions": 3,
 			"controls": ["items", "radar_scale", "radar_max"],
-			"rules": ["numeric_only", "has_values", "min_dimensions", "radar_scale"],
-			"aggregations": []
+			"rules": ["numeric_only", "has_values", "min_dimensions", "radar_scale"]
 		},
 		{
 			"id": "heatmap",
@@ -147,8 +169,11 @@
 			"time_period": "when:heat_x=time",
 			"min_series": 1,
 			"controls": ["items", "heat_x", "heat_y", "bucket", "aggregation", "colour_min", "colour_max", "time_period"],
-			"rules": ["numeric_only", "has_values", "same_units", "heat_axes", "colour_bounds"],
-			"aggregations": ["avg", "sum", "min", "max", "count"]
+			"control_conditions": {
+				"bucket": "when:heat_x=time",
+				"aggregation": "when:heat_x=time"
+			},
+			"rules": ["numeric_only", "has_values", "same_units", "heat_axes", "colour_bounds"]
 		},
 		{
 			"id": "candlestick",
@@ -193,8 +218,7 @@
 			"time_period": true,
 			"min_series": 1,
 			"controls": ["ohlc_mode", "items", "open_items", "high_items", "low_items", "close_items", "bucket", "time_period"],
-			"rules": ["numeric_only", "has_history", "ohlc_consistent"],
-			"aggregations": ["ohlc"]
+			"rules": ["numeric_only", "has_history", "ohlc_consistent"]
 		},
 		{
 			"id": "bubble",
@@ -224,8 +248,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["x_items", "y_items", "size_items", "pair_by", "pair_tag"],
-			"rules": ["numeric_only", "has_values", "complete_tuples", "non_negative_size"],
-			"aggregations": []
+			"rules": ["numeric_only", "has_values", "complete_tuples", "non_negative_size"]
 		},
 		{
 			"id": "gantt",
@@ -260,8 +283,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["gantt_timing", "start_items", "end_items", "duration_items", "progress_items", "pair_by", "pair_tag"],
-			"rules": ["numeric_only", "has_values", "complete_tuples", "valid_intervals"],
-			"aggregations": []
+			"rules": ["numeric_only", "has_values", "complete_tuples", "valid_intervals"]
 		},
 		{
 			"id": "tree",
@@ -281,8 +303,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["items", "tree_source", "tree_tags", "tree_delimiter"],
-			"rules": ["has_values", "hierarchy_source"],
-			"aggregations": []
+			"rules": ["has_values", "hierarchy_source"]
 		},
 		{
 			"id": "network",
@@ -302,8 +323,7 @@
 			"time_period": false,
 			"min_series": 0,
 			"controls": ["items", "edge_source", "edge_list", "edge_tag"],
-			"rules": ["has_edges", "edges_resolve"],
-			"aggregations": []
+			"rules": ["has_edges", "edges_resolve"]
 		},
 		{
 			"id": "relationship",
@@ -323,8 +343,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["items", "source_tag", "target_tag"],
-			"rules": ["numeric_only", "has_values", "non_negative", "relationship_tags"],
-			"aggregations": []
+			"rules": ["numeric_only", "has_values", "non_negative", "relationship_tags"]
 		},
 		{
 			"id": "calendar_heatmap",
@@ -345,8 +364,7 @@
 			"time_period": true,
 			"min_series": 1,
 			"controls": ["items", "aggregation", "time_period"],
-			"rules": ["numeric_only", "has_history"],
-			"aggregations": ["avg", "sum", "min", "max", "count"]
+			"rules": ["numeric_only", "has_history"]
 		}
 	]
 }

@@ -38,11 +38,13 @@ export function buildTreeOption(payload, context) {
 	const data = buildTreeData(payload, context);
 	const large = countNodes(data) > EXPAND_ALL_LIMIT;
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: { show: false },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => (param.data.children
 				? `<b>${escapeHtml(param.name)}</b>`
