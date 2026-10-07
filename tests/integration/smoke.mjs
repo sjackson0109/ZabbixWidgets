@@ -14,6 +14,7 @@
  * Screenshots and page HTML go to test-results/ for inspection, with one
  * screenshot of every chart and of its edit form in test-results/showcase/.
  */
+import { randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
@@ -231,10 +232,11 @@ const usrgrpFound = await api('usergroup.get', { filter: { name: ['ZW viewers'] 
 const usrgrpid = usrgrpFound.length
 	? usrgrpFound[0].usrgrpid
 	: (await api('usergroup.create', { name: 'ZW viewers', hostgroup_rights: [{ id: groupid, permission: 2 }] })).usrgrpids[0];
-const viewer = { username: 'zw-viewer', password: 'Dashboard-Reader-2026!' };
+// A throwaway password made up for each run, for a container that lives only as long as the run.
+const viewer = { username: 'zw-viewer', password: `Zw#${randomBytes(18).toString('base64url')}` };
 const viewerFound = await api('user.get', { filter: { username: viewer.username } });
 const viewerId = viewerFound.length
-	? viewerFound[0].userid
+	? (await api('user.update', { userid: viewerFound[0].userid, passwd: viewer.password })).userids[0]
 	: (await api('user.create', { username: viewer.username, passwd: viewer.password, roleid: '1', usrgrps: [{ usrgrpid }] })).userids[0];
 
 step('Push values');
