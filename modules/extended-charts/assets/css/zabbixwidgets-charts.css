@@ -1,0 +1,53 @@
+/* ZabbixWidgets Extended Charts. Every rule is scoped under .zw-charts. */
+
+.zw-charts {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+}
+
+.zw-charts .zw-charts-canvas {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.zw-charts .zw-charts-canvas[hidden],
+.zw-charts .zw-charts-messages[hidden] {
+	display: none;
+}
+
+.zw-charts .zw-charts-messages {
+	flex: 0 0 auto;
+	overflow: auto;
+	padding: 4px 8px;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.zw-charts .zw-charts-canvas[hidden] + .zw-charts-messages {
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.zw-charts .zw-charts-messages ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.zw-charts .zw-charts-errors li {
+	margin: 2px 0;
+	padding-left: 8px;
+	border-left: 3px solid #d64e4e;
+}
+
+.zw-charts .zw-charts-warnings li {
+	margin: 2px 0;
+	padding-left: 8px;
+	border-left: 3px solid #e69f00;
+	opacity: 0.85;
+}

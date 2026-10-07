@@ -1,0 +1,5 @@
+node_modules/
+dist/
+coverage/
+modules/extended-charts/assets/js/zabbixwidgets-charts.js
+modules/extended-charts/assets/js/zabbixwidgets-charts.js.map

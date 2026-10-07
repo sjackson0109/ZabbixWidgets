@@ -1,0 +1,39 @@
+# Disposable Zabbix stack for integration tests. ZABBIX_TAG selects the
+# release line, e.g. alpine-7.0-latest, alpine-7.2-latest, alpine-7.4-latest.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbix
+      POSTGRES_DB: zabbix
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zabbix"]
+      interval: 5s
+      retries: 30
+
+  server:
+    image: zabbix/zabbix-server-pgsql:${ZABBIX_TAG}
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbix
+      POSTGRES_DB: zabbix
+      ZBX_CACHEUPDATEFREQUENCY: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: zabbix/zabbix-web-nginx-pgsql:${ZABBIX_TAG}
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbix
+      POSTGRES_DB: zabbix
+      ZBX_SERVER_HOST: server
+      PHP_TZ: UTC
+    ports:
+      - "8080:8080"
+    depends_on:
+      - server
