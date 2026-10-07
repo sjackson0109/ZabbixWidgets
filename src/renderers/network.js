@@ -47,11 +47,13 @@ export function buildNetworkOption(payload, context) {
 	}
 	const count = graph.nodes.length;
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: { show: false },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				if (param.dataType === 'edge') {

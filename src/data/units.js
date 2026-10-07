@@ -17,10 +17,6 @@ export function displayUnits(units) {
 	return isRawUnit(units) ? units.slice(1) : (units ?? '');
 }
 
-export function unitsCompatible(a, b) {
-	return displayUnits(a) === displayUnits(b);
-}
-
 function round(value, decimals) {
 	const factor = 10 ** decimals;
 	return Math.round(value * factor) / factor;

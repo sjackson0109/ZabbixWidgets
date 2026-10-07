@@ -26,11 +26,13 @@ export function buildRelationshipOption(payload, context) {
 	const { flows, nodes } = relationshipFlows(payload);
 	const format = (value) => formatValue(value, units, context.decimals);
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
-		legend: context.showLegend ? { ...baseOption(context).legend, data: nodes } : { show: false },
+		...base,
+		legend: context.showLegend ? { ...base.legend, data: nodes } : { show: false },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				if (param.dataType === 'edge') {

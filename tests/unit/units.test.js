@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayUnits, formatDuration, formatValue, scaleValue, unitsCompatible } from '../../src/data/units.js';
+import { displayUnits, formatDuration, formatValue, scaleValue } from '../../src/data/units.js';
 
 describe('formatValue', () => {
 	it('uses SI prefixes for ordinary units', () => {
@@ -43,9 +43,8 @@ describe('formatValue', () => {
 });
 
 describe('unit helpers', () => {
-	it('compares units ignoring the suppression marker', () => {
-		expect(unitsCompatible('!B', 'B')).toBe(true);
-		expect(unitsCompatible('%', 'B/s')).toBe(false);
+	it('drops the suppression marker for display', () => {
+		expect(displayUnits('!B')).toBe('B');
 		expect(displayUnits(undefined)).toBe('');
 	});
 

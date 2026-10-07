@@ -29,11 +29,13 @@ export function buildCalendarHeatmapOption(payload, context) {
 		? [days[0]?.date, days[days.length - 1]?.date]
 		: [calendarDate(period.from, context.timeZone), calendarDate(period.to, context.timeZone)];
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: { show: false },
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				const day = byDate.get(param.value[0]);

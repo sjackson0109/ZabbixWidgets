@@ -2,9 +2,12 @@
 
 ## 1.0.0 - 2026-10-07
 
-- First release, under the MIT licence (copyright Simon Jackson).
+First release, under the MIT licence.
 
-- Foundation: a chart capability registry with contracts for C01-C13, a data layer, validation with user-facing messages, a PHP data provider with a shared read budget, a private ECharts 6.1.0 bundle, an edit form that adapts to the chart, and the C01 Column renderer.
-- Renderers for C02-C13: Stacked Bar, Doughnut, Bullet Graph, Radar, Heat Map, Candlestick / OHLC, Bubble, Gantt, Tree Diagram, Network, Chord / Relationship (native ECharts chord series) and Calendar Heat Map. New checks: bullet ranges, bullet and heat map units, distinct heat map axes, at most 1000 buckets or candles, and Gantt progress from 0 to 100%.
-- CI checks that a rebuilt release package is byte-identical.
-- Tooling: lint (JavaScript and PHP), unit, contract, UI, browser and Zabbix integration tests, licence inventory and a reproducible package build.
+- Thirteen dashboard charts built on Apache ECharts 6.1.0: Vertical Column, Stacked Bar, Doughnut, Bullet Graph, Radar, Heat Map, Candlestick / OHLC, Bubble, Gantt, Tree Diagram, Network, Chord / Relationship and Calendar Heat Map.
+- Supports Zabbix 7.0, 7.2 and 7.4, light and dark themes, dashboard time periods, host and item selection, and template dashboards.
+- Each chart has an explicit data contract. When the data does not meet it, the widget explains what is missing instead of drawing a misleading chart.
+- The edit form shows only the settings the selected chart uses.
+- Data is read as the current user, within fixed limits on hosts, items and history values.
+- ECharts is bundled privately, so the module can run beside other modules that load their own copy.
+- The release package is reproducible: the same commit builds the same bytes.

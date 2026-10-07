@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildColumnOption, groupSeries } from '../../src/renderers/column.js';
+import { buildColumnOption } from '../../src/renderers/column.js';
+import { groupSeries } from '../../src/renderers/dimensions.js';
 import { themeByName } from '../../src/ui/theme.js';
 import { item, payload } from '../fixtures/payload.js';
 

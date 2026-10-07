@@ -31,10 +31,12 @@ export function buildDoughnutOption(payload, context) {
 
 	const percent = (value) => (total > 0 ? `${formatValue((value / total) * 100, '', 1)}%` : '');
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				const { entry } = segments[param.dataIndex];

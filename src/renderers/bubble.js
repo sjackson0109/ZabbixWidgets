@@ -32,8 +32,10 @@ export function buildBubbleOption(payload, context) {
 
 	const line = (label, member) => `${escapeHtml(label)}: <b>${escapeHtml(formatValue(member.value, member.units, context.decimals))}</b>`;
 
+	const base = baseOption(context);
+
 	return {
-		...baseOption(context),
+		...base,
 		legend: { show: false },
 		grid: { left: 16, right: 24, top: 24, bottom: 32, containLabel: true },
 		xAxis: {
@@ -53,7 +55,7 @@ export function buildBubbleOption(payload, context) {
 			nameTextStyle: { color: context.theme.mutedText }
 		},
 		tooltip: {
-			...baseOption(context).tooltip,
+			...base.tooltip,
 			trigger: 'item',
 			formatter: (param) => {
 				const { label, members } = points[param.dataIndex];

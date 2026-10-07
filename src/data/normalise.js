@@ -104,10 +104,6 @@ export function normalisePayload(payload = {}) {
 	};
 }
 
-export function seriesForRole(payload, role) {
-	return payload.series.filter((series) => series.role === role);
-}
-
 export function tagValue(tags, name) {
 	return tags.find((tag) => tag.tag === name)?.value ?? null;
 }
