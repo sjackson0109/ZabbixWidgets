@@ -1,5 +1,5 @@
 /**
- * Every chart's sample payload passes its contract and renders through the
+ * Every ECharts chart's sample payload passes its contract and renders through the
  * module's own ECharts build (server-side, to SVG) without warnings. This
  * catches options that ECharts rejects and components that are used but not
  * registered.
@@ -27,7 +27,10 @@ function render(option) {
 	}
 }
 
-describe.each(listCharts().map((chart) => [chart.id, chart]))('%s', (id, chart) => {
+// HTML renderers are drawn in tests/renderers/dom.test.js, which runs in jsdom.
+const echartsCharts = listCharts().filter((chart) => getRenderer(chart.renderer)?.kind !== 'dom');
+
+describe.each(echartsCharts.map((chart) => [chart.id, chart]))('%s', (id, chart) => {
 	let warn;
 	let fail;
 

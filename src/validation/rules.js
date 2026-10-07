@@ -10,6 +10,8 @@ import { pairSeries } from '../data/pairing.js';
 import { parseEdgeList, edgesFromHostTag, resolveEdges } from '../data/edges.js';
 import { tagValue, toNumber } from '../data/normalise.js';
 import { activeRoles, isRoleRequired } from '../registry/index.js';
+import { buildTable } from '../data/table.js';
+import { parseDefinitions } from '../data/patterns.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -344,6 +346,39 @@ export const RULES = {
 	bullet_ranges(ctx) {
 		const { error: problem } = parseRanges(ctx.config.ranges);
 		return problem === null ? [] : [error('invalid_ranges', problem)];
+	},
+
+	table_rows(ctx) {
+		const { errors: lines } = parseDefinitions(ctx.config.table_columns);
+		if (lines.length > 0) {
+			return [error('invalid_columns',
+				`Line ${lines[0].line} of the column list is not in the form "Heading = item name pattern".`)];
+		}
+		const table = buildTable(ctx.payload);
+		if (table.error !== null) {
+			return [error('invalid_row_expression', table.error)];
+		}
+		const problems = [];
+		if (table.collisions.length > 0) {
+			const detail = table.collisions.map(({ row, column }) => `${row.host} / ${row.label} / ${column}`);
+			problems.push(error('ambiguous_cells',
+				`More than one item falls in the same cell: ${listNames(detail)}. Choose a more specific row identity or narrower column patterns.`));
+		}
+		if (table.unresolved.length > 0) {
+			const why = {
+				key: 'have no key parameter',
+				name: 'have no text where the column pattern has "*"',
+				tag: `have no "${String(ctx.config.row_tag ?? '').trim()}" tag`,
+				regex: 'do not match the row expression'
+			}[ctx.config.row_identity] ?? 'have no row identity';
+			problems.push((table.rows.length === 0 ? error : warning)('unresolved_rows',
+				`These items ${why} and are not shown: ${listNames(table.unresolved.map(seriesLabel))}.`));
+		}
+		if (table.unmatched.length > 0) {
+			problems.push((table.rows.length === 0 && table.unresolved.length === 0 ? error : warning)('unmatched_columns',
+				`These items match no column pattern and are not shown: ${listNames(table.unmatched.map(seriesLabel))}.`));
+		}
+		return problems;
 	},
 
 	heat_axes(ctx) {

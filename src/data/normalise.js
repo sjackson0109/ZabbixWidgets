@@ -58,10 +58,25 @@ function normaliseHistory(history, numeric) {
 		.sort((a, b) => a.clock - b.clock);
 }
 
+function normaliseMappings(mappings) {
+	return Array.isArray(mappings)
+		? mappings.map(({ type, value, newvalue }) => ({ type: Number(type), value: String(value ?? ''), newvalue: String(newvalue ?? '') }))
+		: null;
+}
+
+function normaliseProblems(problems) {
+	return Array.isArray(problems)
+		? problems.map(({ name, severity }) => ({ name: String(name ?? ''), severity: Number(severity) || 0 }))
+		: [];
+}
+
 export function normaliseSeries(raw) {
 	const numeric = isNumericType(raw.value_type);
 	const hasLatest = raw.value !== null && raw.value !== undefined;
 	const value = hasLatest ? (numeric ? toNumber(raw.value) : String(raw.value)) : null;
+	const previous = raw.previous && raw.previous.value !== null && raw.previous.value !== undefined
+		? { value: numeric ? toNumber(raw.previous.value) : String(raw.previous.value), clock: Number(raw.previous.clock) }
+		: null;
 
 	return {
 		itemid: String(raw.itemid),
@@ -78,6 +93,11 @@ export function normaliseSeries(raw) {
 		// A latest value that exists but does not parse is reported, not hidden.
 		invalidValue: hasLatest && value === null,
 		clock: raw.clock == null ? null : Number(raw.clock),
+		previous,
+		// Update interval in seconds when Zabbix stores a plain one; null otherwise.
+		delay: Number(raw.delay) > 0 ? Number(raw.delay) : null,
+		valuemap: normaliseMappings(raw.valuemap),
+		problems: normaliseProblems(raw.problems),
 		history: normaliseHistory(raw.history, numeric)
 	};
 }
@@ -100,6 +120,9 @@ export function normalisePayload(payload = {}) {
 			? { from: Number(payload.time_period.from), to: Number(payload.time_period.to) }
 			: null,
 		historySource: payload.history_source ?? null,
+		severities: Array.isArray(payload.severities)
+			? payload.severities.map(({ name, color }) => ({ name: String(name ?? ''), color: String(color ?? '') }))
+			: [],
 		errors: Array.isArray(payload.errors) ? payload.errors.map(String) : []
 	};
 }

@@ -1,5 +1,5 @@
 {
-	"$comment": "Single source of truth for chart capabilities. Read by the PHP action (data retrieval) and form validation, the edit form (visible controls) and the JS runtime (validation and renderer selection). See docs/CHART-CONTRACTS.md. form_value is the integer Zabbix stores for the chart type, and each enum value is stored as its index in its list: both must never change once released (append only). control_conditions show a control only under a setting; a chart may override an entry with its own control_conditions. required_controls must be filled in whenever they are shown.",
+	"$comment": "Single source of truth for chart capabilities. Read by the PHP action (data retrieval) and form validation, the edit form (visible controls) and the JS runtime (validation and renderer selection). See docs/CHART-CONTRACTS.md. form_value is the integer Zabbix stores for the chart type, and each enum value is stored as its index in its list: both must never change once released (append only). control_conditions show a control only under a setting; a chart may override an entry with its own control_conditions. required_controls must be filled in whenever they are shown. macro_fields name the settings whose user macros are resolved per host, while those settings are shown.",
 	"version": 1,
 	"common_controls": ["chart_type", "groupids", "hostids", "override_hostid", "show_legend", "decimals"],
 	"enums": {
@@ -14,7 +14,9 @@
 		"ohlc_mode": ["derived", "explicit"],
 		"gantt_timing": ["start_end", "start_duration"],
 		"tree_source": ["host_group", "tags", "item_path"],
-		"edge_source": ["list", "tag"]
+		"edge_source": ["list", "tag"],
+		"row_identity": ["item", "key", "name", "tag", "regex"],
+		"table_page_size": ["10", "25", "50", "100"]
 	},
 	"item_fields": {
 		"items": "Items",
@@ -39,10 +41,14 @@
 		"tree_tags": "when:tree_source=tags",
 		"tree_delimiter": "when:tree_source=item_path",
 		"edge_list": "when:edge_source=list",
-		"edge_tag": "when:edge_source=tag"
+		"edge_tag": "when:edge_source=tag",
+		"row_tag": "when:row_identity=tag",
+		"row_regex": "when:row_identity=regex",
+		"show_item_name": "when:row_identity=item"
 	},
 	"required_controls": [
-		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag"
+		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
+		"row_tag", "row_regex"
 	],
 	"charts": [
 		{
@@ -124,6 +130,7 @@
 				}
 			},
 			"data": ["latest", "macros"],
+			"macro_fields": ["target_macro"],
 			"history": "none",
 			"time_period": false,
 			"min_series": 1,
@@ -365,6 +372,32 @@
 			"min_series": 1,
 			"controls": ["items", "aggregation", "time_period"],
 			"rules": ["numeric_only", "has_history"]
+		},
+		{
+			"id": "lld_table",
+			"code": "C14",
+			"form_value": 14,
+			"name": "LLD Data Table",
+			"renderer": "lld_table",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": false
+				}
+			},
+			"data": ["latest", "previous", "valuemaps", "problems"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": [
+				"items", "row_identity", "row_tag", "row_regex", "row_heading", "table_columns", "show_host", "show_item_name",
+				"show_last_update", "show_change", "show_problems", "use_valuemap", "table_page_size", "table_dense", "table_striped"
+			],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["has_values", "table_rows"]
 		}
 	]
 }

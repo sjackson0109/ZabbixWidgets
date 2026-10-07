@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const instance = { setOption: vi.fn(), clear: vi.fn(), resize: vi.fn(), dispose: vi.fn() };
+const instance = { setOption: vi.fn(), clear: vi.fn(), resize: vi.fn(), dispose: vi.fn(), on: vi.fn(), getOption: vi.fn() };
 vi.mock('../../src/echarts.js', () => ({ echarts: { init: vi.fn(() => instance) } }));
 
-const { ChartController } = await import('../../src/ui/controller.js');
+const { ChartController, restoreView } = await import('../../src/ui/controller.js');
 const { echarts } = await import('../../src/echarts.js');
 
 function widgetRoot() {
@@ -77,5 +77,39 @@ describe('ChartController', () => {
 		new ChartController(second).render({ chart: 'column', errors: ['Second widget problem'] });
 		expect(first.querySelector('.zw-charts-errors')).toBeNull();
 		expect(second.querySelector('.zw-charts-errors').textContent).toBe('Second widget problem');
+	});
+
+	it('draws HTML renderers without an ECharts instance and switches back cleanly', () => {
+		const root = widgetRoot();
+		const controller = new ChartController(root);
+		controller.render(goodPayload);
+		const table = { chart: 'lld_table', config: { row_identity: 'item' }, series: [{ ...goodPayload.series[0], name: 'Disk /' }] };
+		expect(controller.render(table).ok).toBe(true);
+		expect(instance.dispose).toHaveBeenCalled();
+		expect(root.querySelector('.zw-charts-canvas').dataset.zwView).toBe('dom');
+		expect(root.querySelector('.zw-charts-canvas table')).not.toBeNull();
+		controller.render(goodPayload);
+		expect(root.querySelector('.zw-charts-canvas table')).toBeNull();
+		expect(echarts.init).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps table sorting across refreshes but not across chart types', () => {
+		const controller = new ChartController(widgetRoot());
+		const table = { chart: 'lld_table', config: { row_identity: 'item' }, series: goodPayload.series };
+		controller.render(table);
+		controller.state.sort = { column: 'host', direction: 'desc' };
+		controller.render(table);
+		expect(controller.state.sort).toEqual({ column: 'host', direction: 'desc' });
+		controller.render(goodPayload);
+		expect(controller.state.sort).toBeUndefined();
+	});
+
+	it('restores legend selection and zoom after a refresh', () => {
+		const option = { legend: { show: true }, dataZoom: [{ type: 'inside' }, { type: 'slider' }] };
+		const restored = restoreView(option, { legendSelected: { a: false }, zoom: { start: 10, end: 60 } });
+		expect(restored.legend.selected).toEqual({ a: false });
+		expect(restored.dataZoom.map((zoom) => [zoom.start, zoom.end])).toEqual([[10, 60], [10, 60]]);
+		expect(restoreView({ legend: { show: false } }, { legendSelected: { a: false } }).legend.selected).toBeUndefined();
+		expect(option.legend.selected).toBeUndefined();
 	});
 });

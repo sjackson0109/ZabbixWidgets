@@ -51,3 +51,136 @@
 	border-left: 3px solid #e69f00;
 	opacity: 0.85;
 }
+
+/* HTML renderers (data table, status matrix, sparkline grid) fill the canvas area and scroll inside it. */
+
+.zw-charts .zw-charts-canvas[data-zw-view="dom"] {
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+/* C14 LLD Data Table */
+
+.zw-charts .zw-table {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+	color: var(--zw-text);
+	font-size: 12px;
+}
+
+.zw-charts .zw-table-toolbar,
+.zw-charts .zw-table-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 12px;
+	padding: 4px 6px;
+	flex: 0 0 auto;
+}
+
+.zw-charts .zw-table-footer {
+	justify-content: flex-end;
+	color: var(--zw-muted);
+	border-top: 1px solid var(--zw-line);
+}
+
+.zw-charts .zw-table-search {
+	flex: 0 1 240px;
+	min-width: 120px;
+}
+
+.zw-charts .zw-table-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+}
+
+.zw-charts .zw-table-grid {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.zw-charts .zw-table-grid th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	text-align: left;
+	white-space: nowrap;
+	background-color: var(--zw-surface);
+	border-bottom: 2px solid var(--zw-axis);
+	padding: 0;
+}
+
+.zw-charts .zw-table-grid td {
+	padding: 5px 8px;
+	border-bottom: 1px solid var(--zw-line);
+	max-width: 360px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.zw-charts .zw-table-dense .zw-table-grid td {
+	padding: 1px 6px;
+}
+
+.zw-charts .zw-table-striped tbody tr:nth-child(even) {
+	background-color: var(--zw-stripe);
+}
+
+.zw-charts .zw-table-grid tbody tr:hover {
+	background-color: var(--zw-hover);
+}
+
+.zw-charts .zw-table-grid .zw-table-number {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.zw-charts .zw-table-sort {
+	width: 100%;
+	padding: 5px 8px;
+	border: 0;
+	background: transparent;
+	color: var(--zw-text);
+	font: inherit;
+	font-weight: bold;
+	text-align: inherit;
+	cursor: pointer;
+}
+
+.zw-charts .zw-table-dense .zw-table-sort {
+	padding: 2px 6px;
+}
+
+.zw-charts .zw-table-missing,
+.zw-charts .zw-table-empty,
+.zw-charts .zw-table-ok,
+.zw-charts .zw-table-count {
+	color: var(--zw-muted);
+}
+
+.zw-charts .zw-table-change {
+	color: var(--zw-muted);
+	font-size: 11px;
+}
+
+.zw-charts .zw-table-severity {
+	display: inline-block;
+	padding: 0 6px;
+	border-radius: 2px;
+	color: #1f2c33;
+}
+
+.zw-charts .zw-table-page {
+	min-width: 24px;
+	cursor: pointer;
+}
+
+.zw-charts .zw-table-page[disabled] {
+	cursor: default;
+	opacity: 0.4;
+}

@@ -11,6 +11,7 @@ import column from './column.js';
 import doughnut from './doughnut.js';
 import gantt from './gantt.js';
 import heatmap from './heatmap.js';
+import lldTable from './lld_table.js';
 import network from './network.js';
 import radar from './radar.js';
 import relationship from './relationship.js';
@@ -18,7 +19,8 @@ import stackedBar from './stacked_bar.js';
 import tree from './tree.js';
 
 const RENDERERS = new Map([
-	column, stackedBar, doughnut, bullet, radar, heatmap, candlestick, bubble, gantt, tree, network, relationship, calendarHeatmap
+	column, stackedBar, doughnut, bullet, radar, heatmap, candlestick, bubble, gantt, tree, network, relationship, calendarHeatmap,
+	lldTable
 ].map((renderer) => [renderer.id, renderer]));
 
 export function getRenderer(id) {

@@ -5,14 +5,14 @@ let nextItemId = 1000;
 
 export function item({
 	role = 'value', hostid = '1', host = 'Host A', name = 'CPU utilization', key, units = '%',
-	value_type = 0, value = '10', clock = 1700000000, tags = [], history
+	value_type = 0, value = '10', clock = 1700000000, tags = [], history, ...extra
 } = {}) {
 	const itemid = String(nextItemId++);
-	return { itemid, role, hostid, host, name, key: key ?? `key.${itemid}`, units, value_type, value, clock, tags, history };
+	return { itemid, role, hostid, host, name, key: key ?? `key.${itemid}`, units, value_type, value, clock, tags, history, ...extra };
 }
 
-export function payload(chart, { config = {}, series = [], hosts = [], time_period = null, errors = [] } = {}) {
-	return normalisePayload({ chart, config, series, hosts, time_period, errors });
+export function payload(chart, { config = {}, series = [], hosts = [], time_period = null, errors = [], severities = [] } = {}) {
+	return normalisePayload({ chart, config, series, hosts, time_period, errors, severities });
 }
 
 export function host({ hostid = '1', name = 'Host A', groups = [], tags = [], macros = {} } = {}) {

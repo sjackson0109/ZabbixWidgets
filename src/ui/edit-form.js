@@ -16,7 +16,11 @@ const PLACEHOLDERS = {
 	edge_list: 'core-router -> access-switch-1\naccess-switch-1 -> server-01',
 	edge_tag: 'uplink',
 	source_tag: 'source',
-	target_tag: 'target'
+	target_tag: 'target',
+	row_tag: 'interface',
+	row_regex: '^Interface (.+?):',
+	row_heading: 'Interface',
+	table_columns: 'In = Interface *: Bits received\nOut = Interface *: Bits sent\nStatus = Interface *: Operational status'
 };
 
 const ENUM_FIELDS = Object.keys(ENUMS);

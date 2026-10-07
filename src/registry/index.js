@@ -103,7 +103,8 @@ export function visibleControls(chartId, config = {}) {
 		return field in conditions ? evaluateCondition(conditions[field], config) : true;
 	});
 
-	return [...COMMON_CONTROLS, ...fields];
+	const common = COMMON_CONTROLS.filter((field) => !(field in conditions) || evaluateCondition(conditions[field], config));
+	return [...common, ...fields];
 }
 
 /** Shown controls that must not be left empty. */

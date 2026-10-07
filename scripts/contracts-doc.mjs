@@ -29,7 +29,8 @@ const RULE_TEXT = {
 	edges_resolve: 'Every relationship endpoint is one of the selected hosts.',
 	relationship_tags: 'Every item carries both the source and the target tag; flows from an endpoint to itself are reported and not drawn.',
 	bullet_ranges: 'Qualitative ranges, when set, are ascending numbers.',
-	heat_axes: 'X and Y are different dimensions; a time axis has a valid bucket size and yields at most 1000 buckets.'
+	heat_axes: 'X and Y are different dimensions; a time axis has a valid bucket size and yields at most 1000 buckets.',
+	table_rows: 'Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern\'s "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.'
 };
 
 const lines = [

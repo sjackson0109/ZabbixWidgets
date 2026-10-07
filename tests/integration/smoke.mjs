@@ -135,6 +135,44 @@ for (const [hostIndex, hostid] of hostIds.entries()) {
 	}
 }
 
+// Items shaped like low-level discovery output: one set per interface, with the interface in the key and a tag.
+// Their names start with "ZWT" so the numeric-only charts above, which match "ZW *", do not pick them up.
+step('Create interface items');
+const interfaces = ['eth0', 'eth1', 'eth2'];
+for (const [hostIndex, hostid] of hostIds.entries()) {
+	const existingMap = await api('valuemap.get', { hostids: hostid, filter: { name: 'ZW interface status' } });
+	const mappings = [{ value: '1', newvalue: 'up' }, { value: '2', newvalue: 'down' }];
+	const valuemapid = existingMap.length
+		? existingMap[0].valuemapid
+		: (await api('valuemap.create', { hostid, name: 'ZW interface status', mappings })).valuemapids[0];
+
+	for (const [ifIndex, name] of interfaces.entries()) {
+		const defs = [
+			{ name: `ZWT Interface ${name}: Bits received`, key_: `zwt.if.in[${name}]`, units: 'bps', value_type: 3 },
+			{ name: `ZWT Interface ${name}: Operational status`, key_: `zwt.if.status[${name}]`, units: '', value_type: 3, valuemapid }
+		];
+		for (const def of defs) {
+			const found = await api('item.get', { hostids: hostid, filter: { key_: def.key_ } });
+			const fields = { ...def, tags: [{ tag: 'interface', value: name }] };
+			const itemid = found.length
+				? (await api('item.update', { itemid: found[0].itemid, ...fields })).itemids[0]
+				: (await api('item.create', { ...fields, hostid, type: 2 })).itemids[0];
+			if (def.valuemapid) {
+				// Hourly states over the last day; eth2 on the second host goes down in the last few hours.
+				for (let clock = now - 86400, hour = 0; clock < now; clock += 3600, hour++) {
+					const down = hostIndex === 1 && ifIndex === 2 ? hour >= 20 : (hour + ifIndex) % 9 === 0;
+					values.push({ itemid, clock, value: down ? '2' : '1' });
+				}
+				values.push({ itemid, clock: now, value: hostIndex === 1 && ifIndex === 2 ? '2' : '1' });
+			}
+			else {
+				values.push({ itemid, clock: now - 60, value: String(1000000 * (ifIndex + 1)) });
+				values.push({ itemid, clock: now, value: String(1000000 * (ifIndex + 1) + 250000 * (hostIndex + 1)) });
+			}
+		}
+	}
+}
+
 step('Push values');
 for (let attempt = 0; ; attempt++) {
 	try {
@@ -190,7 +228,12 @@ const chartWidgets = [
 	['Tree Diagram', 10, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*')]],
 	['Network', 11, [...hostFields, ...patterns('items', 'ZW CPU*'), int('edge_source', 1), str('edge_tag', 'uplink')]],
 	['Chord', 12, [...hostFields, ...patterns('items', 'ZW Flow*'), str('source_tag', 'from'), str('target_tag', 'to')]],
-	['Calendar Heat Map', 13, [...firstHost, ...patterns('items', 'ZW CPU*'), int('aggregation', 3), str('time_period.from', 'now-7d'), str('time_period.to', 'now')]]
+	['Calendar Heat Map', 13, [...firstHost, ...patterns('items', 'ZW CPU*'), int('aggregation', 3), str('time_period.from', 'now-7d'), str('time_period.to', 'now')]],
+	['LLD Data Table', 14, [
+		...hostFields, ...patterns('items', 'ZWT Interface*'), int('row_identity', 1), str('row_heading', 'Interface'),
+		str('table_columns', 'Received = ZWT Interface *: Bits received\nStatus = ZWT Interface *: Operational status'),
+		int('show_change', 1), int('show_problems', 1)
+	]]
 ];
 const { dashboardids: [chartsDashboardid] } = await api('dashboard.create', {
 	name: `ZW all charts ${now}`,
@@ -290,7 +333,9 @@ try {
 	await page.screenshot({ path: `${OUT}/all-charts-${version}.png`, fullPage: true });
 	for (const [name] of chartWidgets) {
 		const chart = widget(`ZW ${name}`);
-		const drew = await chart.locator('.zw-charts-canvas canvas').count() > 0
+		// ECharts charts draw a canvas; HTML renderers (tables, grids) mark the canvas area with data-zw-view="dom".
+		const drew = (await chart.locator('.zw-charts-canvas canvas').count() > 0
+			|| await chart.locator('.zw-charts-canvas[data-zw-view="dom"] td, .zw-charts-canvas[data-zw-view="dom"] .zw-cell').count() > 0)
 			&& await chart.locator('.zw-charts-canvas').isVisible();
 		const text = drew ? '' : (await chart.innerText().catch(() => '')).trim().replace(/\s+/g, ' ');
 		check(drew, `${name} draws from Zabbix data${text ? `: "${text.slice(0, 300)}"` : ''}`);

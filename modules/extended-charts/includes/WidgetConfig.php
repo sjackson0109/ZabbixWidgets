@@ -15,10 +15,13 @@ class WidgetConfig {
 
 	private const TEXT_FIELDS = [
 		'target_macro', 'target_constant', 'ranges', 'pair_tag', 'radar_max', 'bucket', 'colour_min', 'colour_max',
-		'tree_tags', 'tree_delimiter', 'edge_list', 'edge_tag', 'source_tag', 'target_tag'
+		'tree_tags', 'tree_delimiter', 'edge_list', 'edge_tag', 'source_tag', 'target_tag', 'row_tag', 'row_regex', 'row_heading',
+		'table_columns'
 	];
 
-	private const FLAG_FIELDS = ['show_percent', 'hide_zero', 'show_legend'];
+	private const FLAG_FIELDS = ['show_percent', 'hide_zero', 'show_legend', 'show_host', 'show_item_name', 'show_last_update',
+		'show_change', 'show_problems', 'use_valuemap', 'table_dense', 'table_striped'
+	];
 
 	public static function fromFieldValues(array $values): array {
 		$config = [];

@@ -86,3 +86,27 @@ describe('history and trend planning', () => {
 		}
 	});
 });
+
+describe('limits and settings', () => {
+	it('reports more items than the limit instead of showing part of them', () => {
+		const [within, over] = run([
+			{ chart: 'lld_table', config: {}, call: 'items', stub: { items: 500 } },
+			{ chart: 'lld_table', config: {}, call: 'items', stub: { items: 900 } }
+		]);
+		expect(within).toEqual({ count: 500, errors: [] });
+		expect(over.count).toBe(0);
+		expect(over.errors).toEqual(['More than 500 items match "ZW *". Narrow the item pattern.']);
+	});
+
+	it('reads plain update intervals and leaves the rest to the browser', () => {
+		const [delays] = run([{ chart: 'column', config: {}, call: 'delay', delays: ['30s', '1m', '60', '1m;50s/1-7,00:00-24:00', '{$DELAY}', '0', 'wd1-5h9'] }]);
+		expect(delays).toEqual([30, 60, 60, 60, null, null, null]);
+	});
+
+	it('resolves macros only from settings that are shown', () => {
+		const bullet = (target_source) => ({ chart: 'bullet', call: 'macro_names', config: {
+			target_source, target_macro: '{$CPU.TARGET}', pair_by: 'host', group_by: 'host'
+		} });
+		expect(run([bullet('macro'), bullet('constant')])).toEqual([['{$CPU.TARGET}'], []]);
+	});
+});

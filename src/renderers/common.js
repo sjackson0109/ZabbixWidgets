@@ -88,15 +88,19 @@ function dateParts(clock, timeZone) {
 		day: '2-digit',
 		hour: '2-digit',
 		minute: '2-digit',
+		second: '2-digit',
 		hourCycle: 'h23'
 	}).formatToParts(new Date(clock * 1000));
 	return Object.fromEntries(parts.map((part) => [part.type, part.value]));
 }
 
-/** "YYYY-MM-DD HH:mm" (or just the date) in the dashboard user's time zone. */
-export function formatClock(clock, timeZone, { time = true } = {}) {
+/** "YYYY-MM-DD HH:mm[:ss]" (or just the date) in the dashboard user's time zone. */
+export function formatClock(clock, timeZone, { time = true, seconds = false } = {}) {
 	const p = dateParts(clock, timeZone);
-	return time ? `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}` : `${p.year}-${p.month}-${p.day}`;
+	if (!time) {
+		return `${p.year}-${p.month}-${p.day}`;
+	}
+	return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}${seconds ? `:${p.second}` : ''}`;
 }
 
 /** Rounds up to 1, 2 or 5 times a power of ten, for readable axis ends. */

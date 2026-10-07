@@ -9,9 +9,9 @@ const FROM = TO - 2 * 86400;
 
 let nextId = 1;
 
-function raw({ role = 'value', hostid = '1', host = 'web01', name = 'CPU utilization', key, units = '%', value = '10', tags = [], history } = {}) {
+function raw({ role = 'value', hostid = '1', host = 'web01', name = 'CPU utilization', key, units = '%', value = '10', value_type = 0, tags = [], history, ...extra } = {}) {
 	const itemid = String(nextId++);
-	return { itemid, role, hostid, host, name, key: key ?? `key.${itemid}`, units, value_type: 0, value, clock: TO, tags, history };
+	return { itemid, role, hostid, host, name, key: key ?? `key.${itemid}`, units, value_type, value, clock: TO, tags, history, ...extra };
 }
 
 function hourly(base, step = 1) {
@@ -102,6 +102,25 @@ export const SAMPLES = {
 			raw({ role: 'weight', name: 'Traffic', units: 'bps', value: '300', tags: [{ tag: 'from', value: 'London' }, { tag: 'to', value: 'Paris' }] }),
 			raw({ role: 'weight', name: 'Traffic', units: 'bps', value: '120', tags: [{ tag: 'from', value: 'Paris' }, { tag: 'to', value: 'Berlin' }] }),
 			raw({ role: 'weight', name: 'Traffic', units: 'bps', value: '80', tags: [{ tag: 'from', value: 'Berlin' }, { tag: 'to', value: 'London' }] })
+		]
+	},
+	lld_table: {
+		config: {
+			...common, row_identity: 'tag', row_tag: 'interface', table_columns: 'In = Interface *: In\nOut = Interface *: Out\nStatus = Interface *: Status',
+			show_host: true, show_last_update: true, show_change: true, show_problems: true, use_valuemap: true, table_page_size: '25', table_striped: true
+		},
+		series: ['eth0', 'eth1', 'eth2'].flatMap((name, index) => [
+			raw({ name: `Interface ${name}: In`, units: 'bps', value: String(1000 * (index + 1)), tags: [{ tag: 'interface', value: name }], previous: { value: '900', clock: TO - 60 } }),
+			raw({ name: `Interface ${name}: Out`, units: 'bps', value: String(400 * (index + 1)), tags: [{ tag: 'interface', value: name }] }),
+			raw({
+				name: `Interface ${name}: Status`, units: '', value_type: 3, value: index === 2 ? '2' : '1', tags: [{ tag: 'interface', value: name }],
+				valuemap: [{ type: 0, value: '1', newvalue: 'up' }, { type: 0, value: '2', newvalue: 'down' }],
+				problems: index === 2 ? [{ name: 'Link down on eth2', severity: 4 }] : []
+			})
+		]),
+		severities: [
+			{ name: 'Not classified', color: '#97AAB3' }, { name: 'Information', color: '#7499FF' }, { name: 'Warning', color: '#FFC859' },
+			{ name: 'Average', color: '#FFA059' }, { name: 'High', color: '#E97659' }, { name: 'Disaster', color: '#E45959' }
 		]
 	},
 	calendar_heatmap: {

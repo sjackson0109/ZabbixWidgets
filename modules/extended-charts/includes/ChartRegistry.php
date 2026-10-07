@@ -137,7 +137,12 @@ class ChartRegistry {
 			return !array_key_exists($field, $conditions) || self::evaluate($conditions[$field], $config);
 		});
 
-		return array_merge(self::definitions()['common_controls'], array_values($fields));
+		$common = array_filter(self::definitions()['common_controls'], static function (string $field) use ($conditions,
+				$config): bool {
+			return !array_key_exists($field, $conditions) || self::evaluate($conditions[$field], $config);
+		});
+
+		return array_merge(array_values($common), array_values($fields));
 	}
 
 	/**

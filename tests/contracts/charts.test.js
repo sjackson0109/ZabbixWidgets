@@ -308,6 +308,38 @@ describe('C13 calendar heat map', () => {
 	});
 });
 
+describe('C14 LLD data table', () => {
+	const tagged = (name, value = '1') => item({ name, value, tags: [{ tag: 'if', value: name.split(' ')[0] }] });
+	const config = { row_identity: 'tag', row_tag: 'if', table_columns: 'In = * in\nOut = * out' };
+
+	it('accepts items that fall in distinct cells, including text items', () => {
+		expect(check('lld_table', { config, series: [tagged('eth0 in'), tagged('eth0 out'), item({ name: 'eth1 in', value_type: 1, value: 'n/a', tags: [{ tag: 'if', value: 'eth1' }] })] }).ok).toBe(true);
+	});
+
+	it('rejects two items in one cell', () => {
+		expect(codes(check('lld_table', { config, series: [tagged('eth0 in'), tagged('eth0 in')] }))).toContain('ambiguous_cells');
+	});
+
+	it('warns about items it cannot place, and fails when none can be placed', () => {
+		const partial = check('lld_table', { config, series: [tagged('eth0 in'), item({ name: 'eth1 in' }), tagged('eth0 errors')] });
+		expect(partial.ok).toBe(true);
+		expect(partial.warnings.map((problem) => problem.code)).toEqual(['unresolved_rows', 'unmatched_columns']);
+		expect(codes(check('lld_table', { config, series: [item({ name: 'eth1 in' })] }))).toEqual(['unresolved_rows']);
+		expect(codes(check('lld_table', { config, series: [tagged('eth0 errors')] }))).toEqual(['unmatched_columns']);
+	});
+
+	it('checks the column list and the row expression', () => {
+		expect(codes(check('lld_table', { config: { ...config, table_columns: '= x' }, series: [tagged('eth0 in')] }))).toEqual(['invalid_columns']);
+		expect(codes(check('lld_table', { config: { row_identity: 'regex', row_regex: 'eth.' }, series: [tagged('eth0 in')] })))
+			.toEqual(['invalid_row_expression']);
+		expect(check('lld_table', { config: { row_identity: 'regex', row_regex: '^(eth\\d)' }, series: [tagged('eth0 in')] }).ok).toBe(true);
+	});
+
+	it('lists one row per item by default', () => {
+		expect(check('lld_table', { series: [item({ name: 'a' }), item({ name: 'a' })] }).ok).toBe(true);
+	});
+});
+
 describe('server errors', () => {
 	it('are shown before any data rule runs', () => {
 		const result = check('column', { series: [item()], errors: ['Too many items matched; showing the first 500.'] });

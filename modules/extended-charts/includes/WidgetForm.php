@@ -89,6 +89,24 @@ class WidgetForm extends CWidgetForm {
 			->addField(new CWidgetFieldTextBox('edge_tag', _('Link tag')))
 			->addField(new CWidgetFieldTextBox('source_tag', _('Source tag')))
 			->addField(new CWidgetFieldTextBox('target_tag', _('Target tag')))
+			->addField($this->enumField('row_identity', _('Rows by'), [
+				_('Item'), _('Key parameter'), _('Name pattern'), _('Item tag'), _('Regular expression')
+			]))
+			->addField(new CWidgetFieldTextBox('row_tag', _('Row tag')))
+			->addField(new CWidgetFieldTextBox('row_regex', _('Row expression')))
+			->addField(new CWidgetFieldTextBox('row_heading', _('Row heading')))
+			->addField(new CWidgetFieldTextArea('table_columns', _('Columns')))
+			->addField((new CWidgetFieldCheckBox('show_host', _('Show host')))->setDefault(1))
+			->addField((new CWidgetFieldCheckBox('show_item_name', _('Show item name')))->setDefault(1))
+			->addField((new CWidgetFieldCheckBox('show_last_update', _('Show last update')))->setDefault(1))
+			->addField(new CWidgetFieldCheckBox('show_change', _('Show change')))
+			->addField(new CWidgetFieldCheckBox('show_problems', _('Show problems')))
+			->addField((new CWidgetFieldCheckBox('use_valuemap', _('Use value mappings')))->setDefault(1))
+			->addField(
+				(new CWidgetFieldSelect('table_page_size', _('Rows per page'), ['10', '25', '50', '100']))->setDefault(1)
+			)
+			->addField(new CWidgetFieldCheckBox('table_dense', _('Compact rows')))
+			->addField((new CWidgetFieldCheckBox('table_striped', _('Striped rows')))->setDefault(1))
 			->addField((new CWidgetFieldCheckBox('show_legend', _('Show legend')))->setDefault(1))
 			->addField((new CWidgetFieldIntegerBox('decimals', _('Decimal places'), 0, 10))->setDefault(2));
 	}

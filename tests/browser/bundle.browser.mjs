@@ -102,6 +102,13 @@ for (const chart of Object.keys(SAMPLES)) {
 
 		const canvas = target.querySelector('.zw-charts-canvas canvas');
 		const messages = target.querySelector('.zw-charts-messages')?.textContent ?? '';
+		const html = target.querySelector('.zw-charts-canvas[data-zw-view="dom"]');
+		if (html !== null) {
+			// HTML renderers: count the area covered by drawn elements instead of canvas pixels.
+			const box = html.getBoundingClientRect();
+			const cells = [...html.querySelectorAll('td, th, .zw-cell, svg')];
+			return { painted: cells.length > 0 && box.width * box.height > 0 ? 1 : 0, messages, html: true };
+		}
 		if (canvas === null) {
 			return { painted: 0, messages };
 		}
@@ -131,7 +138,7 @@ const checks = [
 	[result.disposed, 'Destroying the widget disposes the chart'],
 	[result.foreignEchartsIntact, 'An existing window.echarts is left untouched'],
 	...charts.map(([chart, outcome]) => [outcome.painted > 0.005,
-		`${chart} draws its sample (${(outcome.painted * 100).toFixed(1)}% of pixels)${outcome.messages ? `: ${outcome.messages}` : ''}`]),
+		`${chart} draws its sample (${outcome.html ? 'HTML' : `${(outcome.painted * 100).toFixed(1)}% of pixels`})${outcome.messages ? `: ${outcome.messages}` : ''}`]),
 	[errors.length === 0, `No page errors ${errors.join(' | ')}`]
 ];
 

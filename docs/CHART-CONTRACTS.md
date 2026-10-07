@@ -205,3 +205,16 @@ Every chart also needs items for each required role, no more than `Max items` pe
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_history`: Every mapped item has history in the period.
+
+## C14 LLD Data Table (`lld_table`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | no |  |
+
+- **Data fetched:** latest, previous, valuemaps, problems
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `row_identity`, `row_tag`, `row_regex`, `row_heading`, `table_columns`, `show_host`, `show_item_name`, `show_last_update`, `show_change`, `show_problems`, `use_valuemap`, `table_page_size`, `table_dense`, `table_striped`
+- **Rules:**
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `table_rows`: Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern's "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.
