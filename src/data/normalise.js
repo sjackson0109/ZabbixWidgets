@@ -38,7 +38,7 @@ function normaliseTags(tags) {
 
 /**
  * History rows are [clock, value]. Trend rows are [clock, avg, min, max, num]
- * and keep their hourly summary so later aggregation stays exact.
+ * and keep their hourly summary (count, min, max) for weighted aggregation.
  */
 function normaliseHistory(history, numeric) {
 	if (!Array.isArray(history)) {
