@@ -17,7 +17,7 @@ Independent Zabbix dashboard widgets built on Apache ECharts.
 ```sh
 npm ci
 npm run check   # lint (JS and PHP), tests, build, browser test, docs, licences, provenance
-npm run package # release zip in dist/ (needs LICENSE)
+npm run package # release zip in dist/
 ```
 
-The licence will be MIT once the copyright holder is confirmed.
+Released under the MIT licence, see [LICENSE](LICENSE).
