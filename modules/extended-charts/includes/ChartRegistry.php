@@ -108,6 +108,10 @@ class ChartRegistry {
 	 */
 	public static function activeRoles(array $chart, array $config): array {
 		return array_filter($chart['roles'], static function (array $role) use ($config): bool {
+			if (array_key_exists('applies', $role) && !self::evaluate($role['applies'], $config)) {
+				return false;
+			}
+
 			return !is_string($role['required']) || self::evaluate($role['required'], $config);
 		});
 	}

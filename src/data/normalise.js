@@ -66,7 +66,11 @@ function normaliseMappings(mappings) {
 
 function normaliseProblems(problems) {
 	return Array.isArray(problems)
-		? problems.map(({ name, severity }) => ({ name: String(name ?? ''), severity: Number(severity) || 0 }))
+		? problems.map(({ name, severity, triggerid }) => ({
+			name: String(name ?? ''),
+			severity: Number(severity) || 0,
+			triggerid: /^\d+$/.test(String(triggerid ?? '')) ? String(triggerid) : null
+		}))
 		: [];
 }
 

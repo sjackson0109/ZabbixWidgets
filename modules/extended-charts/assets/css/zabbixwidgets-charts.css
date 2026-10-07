@@ -331,3 +331,324 @@
 	width: 100%;
 	height: 28px;
 }
+
+/* C27 Switch Port Panel */
+
+.zw-charts .zw-ports {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 2px;
+	color: var(--zw-text);
+	font-size: 11px;
+}
+
+.zw-charts .zw-port-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.zw-charts .zw-port-section-title {
+	margin-bottom: 3px;
+	color: var(--zw-muted);
+	font-weight: bold;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.zw-charts .zw-port-groups {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 6px 14px;
+}
+
+.zw-charts .zw-port-group {
+	flex-shrink: 1;
+	flex-basis: 0;
+	min-width: calc(var(--zw-port-columns) * 20px);
+	max-width: calc(var(--zw-port-columns) * 60px);
+	padding: 3px;
+	border: 1px solid var(--zw-line);
+	border-radius: 3px;
+	background-color: var(--zw-stripe);
+}
+
+.zw-charts .zw-port-group-name {
+	margin: 0 0 3px;
+	color: var(--zw-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.zw-charts .zw-port-grid {
+	display: grid;
+	grid-template-columns: repeat(var(--zw-port-columns), minmax(0, 1fr));
+	grid-auto-rows: auto;
+	gap: 3px;
+}
+
+.zw-charts .zw-port {
+	--zw-port-fill: var(--zw-neutral);
+	--zw-port-ink: var(--zw-text);
+	--zw-port-border: var(--zw-axis);
+	--zw-port-border-style: solid;
+	position: relative;
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	aspect-ratio: 1 / 0.82;
+	box-sizing: border-box;
+	overflow: hidden;
+	border: 3px var(--zw-port-border-style) var(--zw-port-border);
+	border-radius: 2px;
+	background-color: var(--zw-port-fill);
+	color: var(--zw-port-ink);
+	line-height: 1.1;
+	text-align: center;
+	text-decoration: none;
+	cursor: default;
+	outline-offset: 1px;
+}
+
+.zw-charts a.zw-port {
+	cursor: pointer;
+}
+
+.zw-charts .zw-port:focus-visible {
+	outline: 2px solid var(--zw-text);
+}
+
+/* Generic port art: a latch notch for sockets, an inner cage line for
+   transceiver cages, a ferrule ring for fibre and a corner cut for special ports. */
+.zw-charts .zw-port-socket::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 32%;
+	right: 32%;
+	height: 12%;
+	background-color: var(--zw-port-border);
+	opacity: 0.55;
+}
+
+.zw-charts .zw-port-cage,
+.zw-charts .zw-port-wide {
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), inset 0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
+.zw-charts .zw-port-wide {
+	aspect-ratio: 1 / 0.6;
+}
+
+.zw-charts .zw-port-fibre {
+	border-radius: 40%;
+}
+
+.zw-charts .zw-port-special {
+	border-radius: 0 8px 0 0;
+}
+
+.zw-charts .zw-port-unknown {
+	background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--zw-line) 4px 6px);
+}
+
+.zw-charts .zw-port-admin-down {
+	opacity: 0.6;
+}
+
+.zw-charts .zw-port-stale {
+	filter: grayscale(0.7);
+	opacity: 0.7;
+}
+
+.zw-charts .zw-port-label,
+.zw-charts .zw-port-sub {
+	max-width: 100%;
+	padding: 0 1px;
+	box-sizing: border-box;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.zw-charts .zw-port-label {
+	font-size: clamp(8px, 24cqi, 12px);
+	font-weight: bold;
+}
+
+.zw-charts .zw-port-sub {
+	font-size: clamp(7px, 19cqi, 10px);
+	opacity: 0.85;
+}
+
+.zw-charts .zw-port-mark {
+	position: absolute;
+	top: 0;
+	min-width: 9px;
+	height: 9px;
+	font-size: 8px;
+	font-weight: bold;
+	line-height: 9px;
+	text-align: center;
+}
+
+.zw-charts .zw-port-mark-admin {
+	left: 0;
+	color: var(--zw-port-ink);
+}
+
+.zw-charts .zw-port-mark-problem {
+	right: 0;
+	border-radius: 0 0 0 3px;
+}
+
+.zw-charts .zw-port-util {
+	position: absolute;
+	left: 2px;
+	right: 2px;
+	bottom: 1px;
+	height: 3px;
+	background-color: rgba(0, 0, 0, 0.25);
+}
+
+.zw-charts .zw-port-util > span {
+	display: block;
+	height: 100%;
+	background-color: var(--zw-port-ink);
+}
+
+/* Small tiles drop the secondary label first, then shrink the main one. */
+@container (max-width: 34px) {
+	.zw-charts .zw-port-sub {
+		display: none;
+	}
+}
+
+@container (max-width: 20px) {
+	.zw-charts .zw-port-mark-admin {
+		display: none;
+	}
+}
+
+.zw-charts .zw-port-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 3px 12px;
+	color: var(--zw-muted);
+}
+
+.zw-charts .zw-port-legend-entry {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.zw-charts .zw-port-key {
+	display: inline-block;
+	width: 12px;
+	height: 10px;
+	box-sizing: border-box;
+	font-size: 8px;
+	font-weight: bold;
+	line-height: 10px;
+	text-align: center;
+}
+
+.zw-charts .zw-port-key-border {
+	border: 3px solid;
+}
+
+.zw-charts .zw-port-key-unknown {
+	background-color: var(--zw-neutral);
+	background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--zw-axis) 3px 4px);
+}
+
+.zw-charts .zw-port-key-admin {
+	border: 2px dotted var(--zw-axis);
+	color: var(--zw-text);
+}
+
+.zw-charts .zw-port-key-problem {
+	background-color: var(--zw-axis);
+	color: var(--zw-surface);
+}
+
+.zw-charts .zw-port-key-stale {
+	background-color: var(--zw-neutral);
+	opacity: 0.6;
+}
+
+.zw-charts .zw-port-tip {
+	position: fixed;
+	z-index: 1000;
+	max-width: min(360px, calc(100vw - 16px));
+	padding: 6px 8px;
+	border: 1px solid var(--zw-axis);
+	border-radius: 3px;
+	background-color: var(--zw-surface);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+	color: var(--zw-text);
+	font-size: 11px;
+	pointer-events: none;
+	overflow-wrap: anywhere;
+}
+
+.zw-charts .zw-port-tip[hidden] {
+	display: none;
+}
+
+.zw-charts .zw-port-tip table {
+	border-collapse: collapse;
+}
+
+.zw-charts .zw-port-tip th {
+	padding: 1px 8px 1px 0;
+	color: var(--zw-muted);
+	font-weight: normal;
+	text-align: left;
+	vertical-align: top;
+	white-space: nowrap;
+}
+
+.zw-charts .zw-port-tip td {
+	padding: 1px 0;
+}
+
+.zw-charts .zw-port-tip-heading {
+	margin-top: 4px;
+	color: var(--zw-muted);
+}
+
+.zw-charts .zw-port-tip ul {
+	margin: 2px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.zw-charts .zw-port-tip li {
+	display: flex;
+	align-items: baseline;
+	gap: 4px;
+}
+
+.zw-charts .zw-port-tip-severity {
+	flex: none;
+	width: 8px;
+	height: 8px;
+}
+
+.zw-charts .zw-port-tip-note {
+	margin-top: 3px;
+	font-style: italic;
+	color: var(--zw-muted);
+}

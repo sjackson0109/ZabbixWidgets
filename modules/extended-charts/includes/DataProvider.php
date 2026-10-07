@@ -289,7 +289,11 @@ class DataProvider {
 
 		foreach ($triggers as $trigger) {
 			foreach ($trigger['items'] as $item) {
-				$problems[$item['itemid']][] = ['name' => $trigger['description'], 'severity' => (int) $trigger['priority']];
+				$problems[$item['itemid']][] = [
+					'name' => $trigger['description'],
+					'severity' => (int) $trigger['priority'],
+					'triggerid' => (string) $trigger['triggerid']
+				];
 			}
 		}
 

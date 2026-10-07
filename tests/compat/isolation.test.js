@@ -50,7 +50,8 @@ describe('isolation from other modules', () => {
 	it('scopes every CSS rule under .zw-charts', async () => {
 		const css = await readFile(path.join(moduleDir, 'assets/css/zabbixwidgets-charts.css'), 'utf8');
 		const selectors = css.replace(/\/\*[\s\S]*?\*\//g, '').match(/[^{}]+(?=\{)/g).flatMap((rule) => rule.split(','));
-		for (const selector of selectors) {
+		// Conditional group rules (@container, @media) only wrap rules, whose selectors are checked too.
+		for (const selector of selectors.filter((text) => !/^\s*@(container|media)\b/.test(text))) {
 			expect(selector.trim()).toMatch(/^\.zw-charts\b/);
 		}
 	});

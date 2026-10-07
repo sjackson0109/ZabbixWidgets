@@ -46,6 +46,60 @@ const severities = [
 ];
 const statusMap = [{ type: 0, value: '1', newvalue: 'up' }, { type: 0, value: '2', newvalue: 'down' }, { type: 0, value: '3', newvalue: 'testing' }];
 
+const operMap = [
+	{ type: 0, value: '1', newvalue: 'up' }, { type: 0, value: '2', newvalue: 'down' }, { type: 0, value: '3', newvalue: 'testing' },
+	{ type: 0, value: '5', newvalue: 'dormant' }, { type: 0, value: '7', newvalue: 'lowerLayerDown' }
+];
+const adminMap = [{ type: 0, value: '1', newvalue: 'up' }, { type: 0, value: '2', newvalue: 'down' }, { type: 0, value: '3', newvalue: 'testing' }];
+
+/**
+ * A 48-port access switch with four SFP+ uplinks, as a network template
+ * would collect it: operational and administrative status, speed,
+ * utilisation and alias per interface, each item tagged with its interface.
+ */
+export function switchSeries({ access = 48, uplinks = 4, hostid = '3', host = 'core01' } = {}) {
+	const series = [];
+	const ports = [
+		...Array.from({ length: access }, (_, index) => ({ name: `Gi1/0/${index + 1}`, n: index + 1, uplink: false })),
+		...Array.from({ length: uplinks }, (_, index) => ({ name: `Te1/1/${index + 1}`, n: index + 1, uplink: true }))
+	];
+	for (const { name, n, uplink } of ports) {
+		const adminDown = !uplink && (n === 14 || n === 35);
+		const oper = uplink ? (n === 4 ? '2' : '1') : adminDown || n % 7 === 0 ? '2' : n === 13 ? '7' : n === 22 ? '9' : '1';
+		const up = oper === '1';
+		const alias = uplink ? (n <= 2 ? `uplink-dist0${n}` : '') : n === 1 ? 'AP-floor2' : n === 2 ? 'printer-3' : '';
+		const label = `Interface ${name}(${alias})`;
+		const tags = [{ tag: 'component', value: 'network' }, { tag: 'interface', value: name }];
+		const item = (role, suffix, extra) => series.push(raw({
+			role, hostid, host, name: `${label}: ${suffix}`, key: `net.if.${role}[${name}]`, tags, delay: 60, ...extra
+		}));
+		if (uplink || n !== 30) {
+			item('oper', 'Operational status', { units: '', value_type: 3, value: oper, valuemap: operMap,
+				problems: oper === '2' && !adminDown ? [{ name: `Interface ${name}: Link down`, severity: 3, triggerid: String(5000 + n + (uplink ? 100 : 0)) }] : [] });
+		}
+		item('admin', 'Administrative status', { units: '', value_type: 3, value: adminDown ? '2' : '1', valuemap: adminMap });
+		const speed = uplink ? 10e9 : n === 41 ? 10e6 : n % 10 === 3 ? 100e6 : n === 30 ? null : 1e9;
+		item('speed', 'Speed', { units: 'bps', value_type: 3, value: speed === null ? null : String(up ? speed : 0) });
+		item('util_in', 'Inbound utilisation', { units: '%', value: up ? String((n * 7) % 60 + (uplink ? 20 : 0)) : '0',
+			problems: !uplink && n === 21 ? [{ name: `Interface ${name}: High bandwidth usage`, severity: 2, triggerid: '6021' }] : [] });
+		item('util_out', 'Outbound utilisation', { units: '%', value: up ? String((n * 11) % 45 + (!uplink && n === 21 ? 50 : 0)) : '0' });
+		item('alias', 'Alias', { units: '', value_type: 1, value: alias });
+	}
+	return series;
+}
+
+export const SWITCH_CONFIG = Object.freeze({
+	port_identity: 'regex', port_regex: '^Interface ((?:Gi|Te)1/\\d/(\\d+))\\(', port_regex_target: 'name',
+	port_id_group: 1, port_member_group: 0, port_number_group: 2,
+	port_roles_shown: 'core', port_layout: 'two_row', port_columns: 0,
+	port_grouping: 'definitions', port_groups: 'Access = /^Gi/\nUplinks = /^Te/',
+	port_type: 'rj45', port_type_rules: 'SFP+ = /^Te/', port_type_tag: '',
+	port_fill: 'neg_speed', port_border: 'oper', port_marker: 'admin_problem',
+	speed_colours: '', state_colours: '', admin_down: 'down', port_metric: 'util_max', thresholds: '', threshold_order: 'higher_worse',
+	port_fixed_colour: '', port_label: 'number', port_label_regex: '', port_abbreviate: true, port_sublabel: 'speed',
+	port_util_bar: 'max', stale_after: '', port_click: 'latest'
+});
+
 const common = { show_legend: true, decimals: 2, time_zone: 'Europe/London' };
 const period = { from: FROM, to: TO };
 const hosts = [
@@ -234,6 +288,12 @@ export const SAMPLES = {
 		series: [raw({ history: hourly(70, 4), delay: 1800 }), raw({ hostid: '2', host: 'web02', history: gapped(55, 3, 30 * 3600, 3 * 3600), delay: 1800 })],
 		time_period: period,
 		hosts: hosts.map((host) => ({ ...host, macros: { '{$CPU.WARN}': '75' } }))
+	},
+	switch_ports: {
+		config: { ...common, ...SWITCH_CONFIG },
+		series: switchSeries(),
+		severities,
+		hosts
 	},
 	calendar_heatmap: {
 		config: { ...common, aggregation: 'max' },

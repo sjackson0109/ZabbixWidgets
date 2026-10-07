@@ -19,6 +19,8 @@ import { funnelStages } from '../data/funnel.js';
 import { pairColours } from '../renderers/treemap.js';
 import { parseGap, unitGroups } from '../data/temporal.js';
 import { parseColourMap } from '../data/states.js';
+import { buildPanel, compileCapture, parseStale, speedPalette, ROLE_LABELS as PORT_ROLE_LABELS } from '../data/ports.js';
+import { isHexColour } from '../utils/colour.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -627,5 +629,108 @@ export const RULES = {
 		return parseBucket(ctx.config.bucket) === null
 			? [error('invalid_bucket', 'Time buckets must look like 15m, 1h or 1d.')]
 			: tooManyBuckets(ctx, 'buckets');
+	},
+
+	/**
+	 * C27: every item must belong to exactly one port and role. Ambiguity is
+	 * an error naming the port, role and items; it is never resolved by
+	 * picking one of them.
+	 */
+	port_mapping(ctx) {
+		const series = roleSeries(ctx);
+		if (series.length === 0) {
+			return [error('no_port_items',
+				'No interface items were found. Enter an item pattern for at least one port role, for example operational status.')];
+		}
+		const panel = buildPanel(ctx.payload);
+		if (panel.error !== null) {
+			return [error('invalid_port_identity', panel.error)];
+		}
+		const problems = [];
+		const itemText = (entry) => `${seriesLabel(entry)} (item ${entry.itemid})`;
+		if (panel.shared.length > 0) {
+			const detail = panel.shared.map(({ item, roles }) => `${itemText(item)} as ${listNames(roles.map((role) => PORT_ROLE_LABELS[role] ?? role))}`);
+			problems.push(error('shared_port_item',
+				`One item cannot fill several port roles: ${listNames(detail)}. Make the role patterns more specific.`));
+		}
+		if (panel.ambiguous.length > 0) {
+			const detail = panel.ambiguous.map(({ host, identity, role, items }) =>
+				`${host} / ${identity} / ${PORT_ROLE_LABELS[role] ?? role}: ${items.map((entry) => `${entry.name} (item ${entry.itemid})`).join(', ')}`);
+			problems.push(error('ambiguous_port',
+				`More than one item matches the same port and role: ${listNames(detail, 2)}. Make the role pattern or the port identity more specific.`));
+		}
+		if (panel.badNumbers.length > 0) {
+			problems.push(error('invalid_port_number',
+				`The port number capture group must hold a whole number, but not for: ${listNames(panel.badNumbers.map(seriesLabel))}.`));
+		}
+		if (panel.unresolved.length > 0) {
+			const why = {
+				tag: `have no "${String(ctx.config.port_tag ?? '').trim()}" tag`,
+				key: 'have no key parameter',
+				regex: 'do not match the port expression'
+			}[ctx.config.port_identity ?? 'tag'] ?? 'have no port identity';
+			problems.push((panel.ports.length === 0 ? error : warning)('unresolved_ports',
+				`These items ${why} and are not shown: ${listNames(panel.unresolved.map(seriesLabel))}.`));
+		}
+		for (const section of panel.sections) {
+			for (const group of section.groups) {
+				if (group.layout.duplicates.length > 0) {
+					const where = [section.host, section.member === null ? null : `member ${section.member}`, group.name || null].filter(Boolean).join(' / ');
+					problems.push(warning('duplicate_port_numbers',
+						`Port number${group.layout.duplicates.length === 1 ? '' : 's'} ${listNames(group.layout.duplicates.map(String))} appear${group.layout.duplicates.length === 1 ? 's' : ''} more than once on ${where}, so its ports are placed in name order. Capture the stack member as well as the port number.`));
+				}
+			}
+		}
+		return problems;
+	},
+
+	/** C27: the panel's own settings (type and group rules, colours, labels, thresholds). */
+	port_settings(ctx) {
+		const { config } = ctx;
+		const problems = [];
+		const panel = buildPanel(ctx.payload);
+		for (const rule of panel.typeErrors) {
+			problems.push(error('invalid_port_types', rule.line === null
+				? `${capitalise(rule.reason)}.`
+				: `Line ${rule.line} of the interface types is not valid: ${rule.reason}.`));
+		}
+		for (const rule of panel.groupErrors) {
+			problems.push(error('invalid_port_groups', `Line ${rule.line} of the port groups is not valid: ${rule.reason}.`));
+		}
+		if (config.port_fill === 'neg_speed' || config.port_fill === 'cfg_speed') {
+			for (const line of speedPalette(config.speed_colours).errors) {
+				problems.push(error('invalid_speed_colours', `Line ${line.line} of the speed colours is not in the form "1G = #rrggbb".`));
+			}
+		}
+		problems.push(...parseColourMap(config.state_colours).errors.map((line) => error('invalid_colours',
+			`Line ${line.line} of the status colours is not in the form "value = #rrggbb".`)));
+		if (config.port_fill === 'fixed' && !isHexColour(config.port_fixed_colour)) {
+			problems.push(error('invalid_fixed_colour', 'The port colour must be a colour such as #2e7d32.'));
+		}
+		if (config.port_label === 'regex') {
+			const { error: message } = compileCapture(config.port_label_regex, 'label expression', []);
+			if (message !== null) {
+				problems.push(error('invalid_label_regex', message));
+			}
+		}
+		const stale = parseStale(config.stale_after);
+		if (stale.error !== null) {
+			problems.push(error('invalid_stale', stale.error));
+		}
+		if (config.port_fill === 'thresholds') {
+			const hosts = new Map(ctx.payload.hosts.map((host) => [host.hostid, host]));
+			const found = new Map();
+			for (const hostid of new Set(panel.ports.map((port) => port.hostid))) {
+				const scale = resolveScale({ thresholds: config.thresholds }, hosts.get(hostid) ?? null);
+				for (const message of scale.errors) {
+					found.set(message, error('invalid_thresholds', `${message}.`));
+				}
+				if (scale.errors.length === 0 && scale.thresholds.length === 0) {
+					found.set('none', error('no_thresholds', 'Colouring ports by thresholds requires at least one threshold (numbers or user macros, separated by commas).'));
+				}
+			}
+			problems.push(...found.values());
+		}
+		return problems;
 	}
 };
