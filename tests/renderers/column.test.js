@@ -9,9 +9,9 @@ describe('column renderer', () => {
 	const data = payload('column', {
 		config: { group_by: 'host' },
 		series: [
-			item({ hostid: '1', host: 'web01', name: 'CPU', value: '40' }),
-			item({ hostid: '2', host: 'web02', name: 'CPU', value: '-5' }),
-			item({ hostid: '1', host: 'web01', name: 'Memory', value: '70' })
+			item({ hostid: '1', host: 'web01', name: 'CPU', key: 'cpu', value: '40' }),
+			item({ hostid: '2', host: 'web02', name: 'CPU', key: 'cpu', value: '-5' }),
+			item({ hostid: '1', host: 'web01', name: 'Memory', key: 'mem', value: '70' })
 		]
 	});
 
@@ -27,6 +27,26 @@ describe('column renderer', () => {
 		const { categories, groups } = groupSeries(data.series, 'item');
 		expect(categories).toEqual(['CPU', 'Memory']);
 		expect(groups.map((group) => group.name)).toEqual(['web01', 'web02']);
+	});
+
+	it('keeps distinct items that share a display name', () => {
+		const duplicate = payload('column', { config: { group_by: 'host' }, series: [
+			item({ hostid: '1', host: 'web01', name: 'Traffic', key: 'net.if.in[eth0]', value: '1' }),
+			item({ hostid: '1', host: 'web01', name: 'Traffic', key: 'net.if.in[eth1]', value: '2' })
+		] });
+		const option = buildColumnOption(duplicate, context);
+		expect(option.series.map((series) => series.name)).toEqual(['Traffic (net.if.in[eth0])', 'Traffic (net.if.in[eth1])']);
+		expect(option.series.map((series) => series.data)).toEqual([[1], [2]]);
+	});
+
+	it('keeps distinct hosts that share a visible name', () => {
+		const duplicate = payload('column', { config: { group_by: 'host' }, series: [
+			item({ hostid: '1', host: 'db', key: 'cpu', value: '1' }),
+			item({ hostid: '2', host: 'db', key: 'cpu', value: '2' })
+		] });
+		const option = buildColumnOption(duplicate, context);
+		expect(option.xAxis.data).toEqual(['db (1)', 'db (2)']);
+		expect(option.series[0].data).toEqual([1, 2]);
 	});
 
 	it('escapes names in tooltips', () => {

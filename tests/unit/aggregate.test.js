@@ -113,8 +113,15 @@ describe('trend aggregation', () => {
 	];
 	const raw = samples([[0, 1], [10, 3], [3600, 10], [3610, 20], [3620, 30]]);
 
-	it.each(['avg', 'sum', 'min', 'max', 'count'])('%s over trends equals %s over the raw samples', (fn) => {
-		expect(aggregateSamples(trends, fn)).toBe(aggregate(raw.map((sample) => sample.value), fn));
+	it.each(['avg', 'sum', 'min', 'max', 'count'])('%s over whole-hour trends matches %s over the raw samples', (fn) => {
+		expect(aggregateSamples(trends, fn)).toBeCloseTo(aggregate(raw.map((sample) => sample.value), fn));
+	});
+
+	it('combines trend hours with raw edge samples', () => {
+		const mixed = [{ clock: 1800, value: 4 }, ...trends.map((trend) => ({ ...trend, clock: trend.clock + 3600 }))];
+		expect(aggregateSamples(mixed, 'count')).toBe(6);
+		expect(aggregateSamples(mixed, 'sum')).toBe(68);
+		expect(aggregateSamples(mixed, 'min')).toBe(1);
 	});
 
 	it('aggregates trend rows per day', () => {

@@ -4,10 +4,11 @@ import { normalisePayload } from '../../src/data/normalise.js';
 let nextItemId = 1000;
 
 export function item({
-	role = 'value', hostid = '1', host = 'Host A', name = 'CPU utilization', units = '%',
+	role = 'value', hostid = '1', host = 'Host A', name = 'CPU utilization', key, units = '%',
 	value_type = 0, value = '10', clock = 1700000000, tags = [], history
 } = {}) {
-	return { itemid: String(nextItemId++), role, hostid, host, name, key: 'key', units, value_type, value, clock, tags, history };
+	const itemid = String(nextItemId++);
+	return { itemid, role, hostid, host, name, key: key ?? `key.${itemid}`, units, value_type, value, clock, tags, history };
 }
 
 export function payload(chart, { config = {}, series = [], hosts = [], time_period = null, errors = [] } = {}) {
