@@ -1,0 +1,291 @@
+/**
+ * Integration smoke test against a live Zabbix (see docker-compose.yml).
+ *
+ * 1. Registers ZabbixWidgets and, if installed, the Monzphere ECharts module.
+ * 2. Creates hosts with trapper items and pushes real values.
+ * 3. Builds a dashboard with a working Column widget, a Bubble widget missing
+ *    its mappings, and (when present) a Monzphere widget, plus a second
+ *    dashboard with one configured widget for every chart type.
+ * 4. Opens the dashboards in Chromium and checks the Column chart draws, the
+ *    Bubble widget explains what is missing, the Monzphere widget still
+ *    draws, every chart type draws from real Zabbix data, the edit form
+ *    opens, and no page errors occur.
+ *
+ * Screenshots and page HTML go to test-results/ for inspection.
+ */
+import { mkdir, writeFile } from 'node:fs/promises';
+import { chromium } from 'playwright';
+
+const BASE = process.env.ZABBIX_URL ?? 'http://localhost:8080';
+const WITH_MONZPHERE = process.env.WITH_MONZPHERE === '1';
+const OUT = 'test-results';
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let token = null;
+let requestId = 1;
+
+async function api(method, params = {}) {
+	const headers = { 'Content-Type': 'application/json-rpc' };
+	if (token !== null && method !== 'apiinfo.version' && method !== 'user.login') {
+		headers.Authorization = `Bearer ${token}`;
+	}
+	const response = await fetch(`${BASE}/api_jsonrpc.php`, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify({ jsonrpc: '2.0', method, params, id: requestId++ })
+	});
+	const body = await response.json();
+	if (body.error) {
+		throw new Error(`${method}: ${body.error.message} ${body.error.data}`);
+	}
+	return body.result;
+}
+
+async function waitForApi() {
+	for (let attempt = 0; attempt < 90; attempt++) {
+		try {
+			return await api('apiinfo.version');
+		}
+		catch {
+			await sleep(5000);
+		}
+	}
+	throw new Error('Zabbix API did not come up.');
+}
+
+function step(message) {
+	console.log(`\n== ${message}`);
+}
+
+const version = await waitForApi();
+step(`Zabbix ${version}`);
+token = await api('user.login', { username: 'Admin', password: 'zabbix' });
+
+step('Register modules');
+const modules = [{ id: 'zabbixwidgets_charts', relative_path: 'modules/zabbixwidgets_charts' }];
+if (WITH_MONZPHERE) {
+	modules.push({ id: 'echarts', relative_path: 'modules/monzphere_echarts' });
+}
+for (const module of modules) {
+	const existing = await api('module.get', { filter: { id: module.id } });
+	if (existing.length === 0) {
+		await api('module.create', { ...module, status: 1 });
+	}
+	console.log(`registered ${module.id}`);
+}
+
+step('Create hosts and items');
+const [{ groupid }] = await api('hostgroup.get', { filter: { name: ['ZW tests'] } })
+	.then(async (found) => (found.length ? found : [{ groupid: (await api('hostgroup.create', { name: 'ZW tests' })).groupids[0] }]));
+
+const hostIds = [];
+// zw-host-2 names zw-host-1 as its uplink, giving the Network chart one real edge.
+const hostTags = { 'zw-host-1': [], 'zw-host-2': [{ tag: 'uplink', value: 'zw-host-1' }] };
+for (const name of ['zw-host-1', 'zw-host-2']) {
+	const found = await api('host.get', { filter: { host: [name] } });
+	const hostid = found.length ? found[0].hostid : (await api('host.create', { host: name, groups: [{ groupid }] })).hostids[0];
+	await api('host.update', { hostid, tags: hostTags[name] });
+	hostIds.push(hostid);
+}
+
+const now = Math.floor(Date.now() / 1000);
+const flows = [[{ tag: 'from', value: 'London' }, { tag: 'to', value: 'Paris' }], [{ tag: 'from', value: 'Paris' }, { tag: 'to', value: 'Berlin' }]];
+
+// latest(hostIndex) gives the current value; history, when present, adds a day of half-hourly samples.
+const itemDefs = [
+	{ name: 'ZW CPU utilisation', key_: 'zw.cpu', units: '%', value_type: 0, latest: (h) => 10 + h * 7, history: true },
+	{ name: 'ZW Memory used', key_: 'zw.mem', units: '%', value_type: 3, latest: (h) => 40 + h * 15 },
+	{ name: 'ZW Disk used', key_: 'zw.disk', units: '%', value_type: 0, latest: (h) => 55 - h * 20 },
+	{ name: 'ZW Load average', key_: 'zw.load', units: '', value_type: 0, latest: (h) => 1.5 + h * 2 },
+	{ name: 'ZW Sessions', key_: 'zw.sessions', units: '', value_type: 3, latest: (h) => 40 + h * 120 },
+	{ name: 'ZW Job start', key_: 'zw.job.start', units: 'unixtime', value_type: 3, latest: (h) => now - 7200 + h * 1800 },
+	{ name: 'ZW Job end', key_: 'zw.job.end', units: 'unixtime', value_type: 3, latest: (h) => now - 3600 + h * 2400 },
+	{ name: 'ZW Job progress', key_: 'zw.job.progress', units: '%', value_type: 0, latest: (h) => (h === 0 ? 100 : 45) },
+	{ name: 'ZW Flow', key_: 'zw.flow', units: 'bps', value_type: 0, latest: (h) => 300 - h * 120, tags: (h) => flows[h] }
+];
+const itemIds = [];
+const values = [];
+for (const [hostIndex, hostid] of hostIds.entries()) {
+	for (const { latest, history, tags, ...def } of itemDefs) {
+		const found = await api('item.get', { hostids: hostid, filter: { key_: def.key_ } });
+		const fields = { ...def, ...(tags ? { tags: tags(hostIndex) } : {}) };
+		const itemid = found.length
+			? (await api('item.update', { itemid: found[0].itemid, ...fields })).itemids[0]
+			: (await api('item.create', { ...fields, hostid, type: 2 })).itemids[0];
+		itemIds.push(itemid);
+		if (history) {
+			for (let clock = now - 86400; clock < now; clock += 1800) {
+				values.push({ itemid, clock, value: String(30 + hostIndex * 20 + ((clock / 1800) % 13)) });
+			}
+		}
+		values.push({ itemid, clock: now, value: String(latest(hostIndex)) });
+	}
+}
+
+step('Push values');
+for (let attempt = 0; ; attempt++) {
+	try {
+		const result = await api('history.push', values);
+		if ((result.data ?? []).some((entry) => entry.error)) {
+			throw new Error(JSON.stringify(result.data));
+		}
+		break;
+	}
+	catch (error) {
+		if (attempt >= 24) {
+			throw error;
+		}
+		await sleep(5000);
+	}
+}
+await sleep(5000);
+
+step('Create dashboard');
+const hostFields = hostIds.map((hostid, index) => ({ type: 3, name: `hostids.${index}`, value: hostid }));
+const widgets = [
+	{
+		type: 'zabbixwidgets_charts', name: 'ZW column', x: 0, y: 0, width: 36, height: 6,
+		fields: [{ type: 0, name: 'chart_type', value: 1 }, ...hostFields, { type: 1, name: 'items.0', value: 'ZW *' }]
+	},
+	{
+		type: 'zabbixwidgets_charts', name: 'ZW bubble', x: 36, y: 0, width: 36, height: 6,
+		fields: [{ type: 0, name: 'chart_type', value: 8 }, ...hostFields, { type: 1, name: 'x_items.0', value: 'ZW CPU*' }]
+	}
+];
+if (WITH_MONZPHERE) {
+	widgets.push({
+		type: 'echarts', name: 'Monzphere gauge', x: 0, y: 6, width: 36, height: 6,
+		fields: [{ type: 0, name: 'display_type', value: 0 }, ...hostFields, { type: 1, name: 'items.0', value: 'ZW CPU*' }]
+	});
+}
+const { dashboardids: [dashboardid] } = await api('dashboard.create', {
+	name: `ZW smoke ${now}`,
+	pages: [{ widgets }]
+});
+
+// One configured widget per chart type, fed by the items above.
+const int = (name, value) => ({ type: 0, name, value });
+const str = (name, value) => ({ type: 1, name, value });
+const patterns = (field, ...values) => values.map((value, index) => str(`${field}.${index}`, value));
+const firstHost = [{ type: 3, name: 'hostids.0', value: hostIds[0] }];
+const lastDay = [str('time_period.from', 'now-1d'), str('time_period.to', 'now')];
+const chartWidgets = [
+	['Stacked Bar', 2, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*')]],
+	['Doughnut', 3, [...hostFields, ...patterns('items', 'ZW Memory*'), int('centre_value', 1)]],
+	['Bullet Graph', 4, [...hostFields, ...patterns('items', 'ZW CPU*'), int('target_source', 2), str('target_constant', '25'), str('ranges', '20, 40')]],
+	['Radar', 5, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*')]],
+	['Heat Map', 6, [...hostFields, ...patterns('items', 'ZW CPU*'), int('heat_x', 2), int('heat_y', 1), str('bucket', '2h'), ...lastDay]],
+	['Candlestick', 7, [...firstHost, ...patterns('items', 'ZW CPU*'), str('bucket', '2h'), ...lastDay]],
+	['Bubble', 8, [...hostFields, ...patterns('x_items', 'ZW CPU*'), ...patterns('y_items', 'ZW Load*'), ...patterns('size_items', 'ZW Sessions*')]],
+	['Gantt', 9, [...hostFields, ...patterns('start_items', 'ZW Job start*'), ...patterns('end_items', 'ZW Job end*'), ...patterns('progress_items', 'ZW Job progress*')]],
+	['Tree Diagram', 10, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*')]],
+	['Network', 11, [...hostFields, ...patterns('items', 'ZW CPU*'), int('edge_source', 1), str('edge_tag', 'uplink')]],
+	['Chord', 12, [...hostFields, ...patterns('items', 'ZW Flow*'), str('source_tag', 'from'), str('target_tag', 'to')]],
+	['Calendar Heat Map', 13, [...firstHost, ...patterns('items', 'ZW CPU*'), int('aggregation', 3), str('time_period.from', 'now-7d'), str('time_period.to', 'now')]]
+];
+const { dashboardids: [chartsDashboardid] } = await api('dashboard.create', {
+	name: `ZW all charts ${now}`,
+	pages: [{
+		widgets: chartWidgets.map(([name, chartType, fields], index) => ({
+			type: 'zabbixwidgets_charts', name: `ZW ${name}`, x: (index % 3) * 24, y: Math.floor(index / 3) * 5, width: 24, height: 5,
+			fields: [int('chart_type', chartType), ...fields]
+		}))
+	}]
+});
+
+step('Open dashboard in Chromium');
+await mkdir(OUT, { recursive: true });
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+const pageErrors = [];
+page.on('pageerror', (error) => pageErrors.push(error.message));
+
+const failures = [];
+const check = (condition, message) => {
+	console.log(`${condition ? 'PASS' : 'FAIL'} ${message}`);
+	if (!condition) {
+		failures.push(message);
+	}
+};
+
+try {
+	await page.goto(`${BASE}/index.php`);
+	await page.fill('#name', 'Admin');
+	await page.fill('#password', 'zabbix');
+	await page.click('#enter');
+	await page.waitForLoadState('networkidle');
+
+	await page.goto(`${BASE}/zabbix.php?action=dashboard.view&dashboardid=${dashboardid}`);
+	await page.waitForTimeout(8000);
+	await page.screenshot({ path: `${OUT}/dashboard-${version}.png`, fullPage: true });
+	await writeFile(`${OUT}/dashboard-${version}.html`, await page.content());
+
+	const widget = (name) => page.locator('.dashboard-grid-widget', { has: page.locator('.dashboard-grid-widget-header', { hasText: name }) });
+
+	const column = widget('ZW column');
+	check(await column.locator('.zw-charts-canvas canvas').count() > 0, 'Column widget draws a canvas');
+	check(await column.locator('.zw-charts-errors').count() === 0, 'Column widget shows no errors');
+
+	// The message may come from the module's own validation (.zw-charts-errors) or from Zabbix
+	// showing WidgetForm::validate() errors in place of the widget; either explains the problem.
+	const bubble = widget('ZW bubble');
+	const bubbleText = (await bubble.locator('.dashboard-grid-widget-contents, .dashboard-grid-widget-container').first().innerText().catch(() => '')).trim();
+	check(/requires/i.test(bubbleText), `Bubble widget explains missing mappings: "${bubbleText.slice(0, 200)}"`);
+
+	if (WITH_MONZPHERE) {
+		check(await widget('Monzphere gauge').locator('canvas').count() > 0, 'Monzphere widget still draws alongside ZabbixWidgets');
+	}
+
+	check(await page.evaluate(() => typeof window.WidgetZabbixWidgetsCharts === 'function'), 'Widget class is registered');
+
+	step('Every chart type');
+	await page.goto(`${BASE}/zabbix.php?action=dashboard.view&dashboardid=${chartsDashboardid}`);
+	await page.waitForTimeout(10000);
+	await page.screenshot({ path: `${OUT}/all-charts-${version}.png`, fullPage: true });
+	for (const [name] of chartWidgets) {
+		const chart = widget(`ZW ${name}`);
+		const drew = await chart.locator('.zw-charts-canvas canvas').count() > 0
+			&& await chart.locator('.zw-charts-canvas').isVisible();
+		const text = drew ? '' : (await chart.innerText().catch(() => '')).trim().replace(/\s+/g, ' ');
+		check(drew, `${name} draws from Zabbix data${text ? `: "${text.slice(0, 300)}"` : ''}`);
+	}
+
+	await page.goto(`${BASE}/zabbix.php?action=dashboard.view&dashboardid=${dashboardid}`);
+	await page.waitForTimeout(5000);
+
+	step('Open the edit form');
+	await page.getByRole('button', { name: /edit dashboard/i }).click();
+	await page.waitForTimeout(1000);
+	await column.hover();
+	await column.locator('.js-widget-edit, button[title="Edit"]').first().click();
+	const dialogue = page.locator('.overlay-dialogue').last();
+	await dialogue.waitFor({ timeout: 15000 });
+	await page.waitForTimeout(1500);
+	console.log(`dialogue form id: ${await dialogue.locator('form').first().getAttribute('id').catch(() => null)}`);
+	const form = dialogue.locator('form').first();
+	await page.waitForTimeout(1000);
+	await page.screenshot({ path: `${OUT}/edit-form-${version}.png` });
+	await writeFile(`${OUT}/edit-form-${version}.html`, await form.innerHTML());
+	check(await page.locator('.overlay-dialogue .msg-bad').count() === 0, 'Edit form opens without errors');
+	check(await form.locator('[name^="start_items"]').first().isHidden(), 'Edit form hides Gantt fields for Column');
+	check(await form.locator('[name="group_by"]').first().isVisible(), 'Edit form shows Column grouping');
+}
+catch (error) {
+	failures.push(`Unexpected: ${error.message}`);
+	console.error(error);
+	const dialogueHtml = await page.locator('.overlay-dialogue').last().innerHTML({ timeout: 2000 }).catch(() => '(no dialogue)');
+	console.log(`--- dialogue HTML (first 4000 chars) ---\n${dialogueHtml.slice(0, 4000)}`);
+	await page.screenshot({ path: `${OUT}/failure-${version}.png`, fullPage: true }).catch(() => {});
+	await writeFile(`${OUT}/failure-${version}.html`, await page.content().catch(() => '')).catch(() => {});
+}
+finally {
+	await browser.close();
+}
+
+check(pageErrors.length === 0, `No page errors${pageErrors.length ? `: ${pageErrors.join(' | ')}` : ''}`);
+
+if (failures.length > 0) {
+	console.error(`\n${failures.length} check(s) failed on Zabbix ${version}.`);
+	process.exit(1);
+}
+console.log(`\nAll checks passed on Zabbix ${version}.`);
