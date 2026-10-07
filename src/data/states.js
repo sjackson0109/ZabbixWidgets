@@ -66,6 +66,14 @@ export function stateSegments(entry, period, { useValuemap = true, gap = parseGa
 	const threshold = gapThreshold(entry, gap, points);
 	const segments = [];
 	let cursor = period.from;
+	// Status items repeat a handful of values; each is turned into a state once.
+	const known = new Map();
+	const state = (value) => {
+		if (!known.has(value)) {
+			known.set(value, stateOf(entry, value, useValuemap));
+		}
+		return known.get(value);
+	};
 
 	const push = (start, end, state) => {
 		if (end <= start) {
@@ -84,7 +92,7 @@ export function stateSegments(entry, period, { useValuemap = true, gap = parseGa
 		push(cursor, start, null);
 		const next = points[index + 1]?.clock ?? period.to;
 		const end = Math.min(next, point.clock + threshold, period.to);
-		push(start, end, stateOf(entry, point.value, useValuemap));
+		push(start, end, state(point.value));
 		cursor = Math.max(cursor, end);
 	});
 	push(cursor, period.to, null);

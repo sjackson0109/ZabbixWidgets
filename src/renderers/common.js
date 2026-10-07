@@ -104,14 +104,7 @@ export function formatClock(clock, timeZone, { time = true, seconds = false } = 
 }
 
 /** Rounds up to 1, 2 or 5 times a power of ten, for readable axis ends. */
-export function niceCeil(value) {
-	if (!(value > 0)) {
-		return value;
-	}
-	const power = 10 ** Math.floor(Math.log10(value));
-	const step = [1, 2, 5, 10].find((factor) => factor * power >= value);
-	return step * power;
-}
+export { niceCeil } from '../data/scale.js';
 
 /**
  * Continuous colour scale whose bounds are the configured values or, when not

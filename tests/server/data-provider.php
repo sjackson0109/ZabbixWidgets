@@ -35,6 +35,7 @@ class StubService {
 
 	public function get(array $options): array {
 		$data = $GLOBALS['stub'];
+		$GLOBALS['calls'][$this->name] = ($GLOBALS['calls'][$this->name] ?? 0) + 1;
 
 		if ($this->name === 'Item') {
 			$items = [];
@@ -122,6 +123,13 @@ foreach ($input as $case) {
 		$errors = (new ReflectionProperty($provider, 'errors'));
 		$errors->setAccessible(true);
 		$results[] = ['count' => count($items['value']), 'errors' => $errors->getValue($provider)];
+	}
+	elseif ($case['call'] === 'item_calls') {
+		// How many item lookups one refresh makes: one per configured role, however many items match.
+		$GLOBALS['stub'] = $case['stub'];
+		$GLOBALS['calls'] = [];
+		$items = call($provider, 'resolveItems', $case['fields'], ['1']);
+		$results[] = ['calls' => $GLOBALS['calls'], 'roles' => count(array_filter($items))];
 	}
 	elseif ($case['call'] === 'macro_names') {
 		$results[] = call($provider, 'macroNames');

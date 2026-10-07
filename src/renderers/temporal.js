@@ -10,6 +10,7 @@ import { bandColours, sharedScale } from '../data/thresholds.js';
 import { formatValue, displayUnits } from '../data/units.js';
 import { escapeHtml } from '../utils/escape.js';
 import { withAlpha } from '../utils/colour.js';
+import { axisRange } from '../data/scale.js';
 
 const DAY = 86400;
 
@@ -71,15 +72,14 @@ export function tooltipHtml(list, pointerMs, context, visible) {
 
 /** Lower and upper ends of the value axis for the bands chart: data, thresholds and target all fit. */
 export function bandExtent(list, scale, fixed) {
-	const extent = valueExtent(list) ?? { min: 0, max: 1 };
-	const values = [extent.min, extent.max, ...scale.thresholds, ...(scale.target === null ? [] : [scale.target])];
-	const low = fixed.min ?? Math.min(...values);
-	let high = fixed.max ?? Math.max(...values);
-	if (high <= low) {
-		high = low + (Math.abs(low) || 1);
-	}
-	const pad = (high - low) * 0.05;
-	return { min: fixed.min ?? low - pad, max: fixed.max ?? high + pad };
+	const extent = valueExtent(list);
+	return axisRange({
+		values: extent === null ? [] : [extent.min, extent.max],
+		include: [...scale.thresholds, ...(scale.target === null ? [] : [scale.target])],
+		min: fixed.min ?? null,
+		max: fixed.max ?? null,
+		pad: 0.05
+	});
 }
 
 /**

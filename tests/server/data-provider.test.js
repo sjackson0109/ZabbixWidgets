@@ -131,3 +131,21 @@ describe('limits and settings', () => {
 		expect(plain).toEqual([]);
 	});
 });
+
+describe('switch port panel lookups (no per-port calls)', () => {
+	const roles = ['oper', 'admin', 'speed', 'cfg_speed', 'util', 'util_in', 'util_out', 'traffic_in', 'traffic_out', 'errors_in', 'errors_out',
+		'discard', 'duplex', 'poe_state', 'poe_power', 'vlan', 'pvid', 'alias', 'description', 'mtu', 'last_change'];
+	const fields = Object.fromEntries(roles.map((role) => [`port_${role}_items`, [`Interface *: ${role}`]]));
+
+	it('reads items once per configured role, for 4 or 500 ports alike', () => {
+		for (const items of [4, 500]) {
+			const [result] = run([{ chart: 'switch_ports', config: { port_roles_shown: 'all' }, call: 'item_calls', fields, stub: { items } }]);
+			expect(result).toEqual({ calls: { Item: 21 }, roles: 21 });
+		}
+	});
+
+	it('looks up only the common roles unless all port data is shown', () => {
+		const [result] = run([{ chart: 'switch_ports', config: { port_roles_shown: 'core' }, call: 'item_calls', fields, stub: { items: 4 } }]);
+		expect(result).toEqual({ calls: { Item: 6 }, roles: 6 });
+	});
+});

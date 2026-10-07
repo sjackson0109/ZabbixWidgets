@@ -22,11 +22,16 @@ function round(value, decimals) {
 	return Math.round(value * factor) / factor;
 }
 
+// One formatter per number of decimals: creating one per call is slow on large charts.
+const NUMBER_FORMATS = new Map();
+
 function formatNumber(value, decimals) {
-	return round(value, decimals).toLocaleString('en-US', {
-		maximumFractionDigits: decimals,
-		useGrouping: false
-	});
+	let format = NUMBER_FORMATS.get(decimals);
+	if (format === undefined) {
+		format = new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals, useGrouping: false });
+		NUMBER_FORMATS.set(decimals, format);
+	}
+	return format.format(round(value, decimals));
 }
 
 export function formatDuration(totalSeconds) {

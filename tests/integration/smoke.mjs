@@ -265,6 +265,11 @@ const widgets = [
 	{
 		type: 'zabbixwidgets_charts', name: 'ZW misconfigured bubble (expected error)', x: 36, y: 0, width: 36, height: 6,
 		fields: [{ type: 0, name: 'chart_type', value: 8 }, ...hostFields, { type: 1, name: 'x_items.0', value: 'ZW CPU*' }]
+	},
+	{
+		// No time period of its own: it follows the dashboard's time selector.
+		type: 'zabbixwidgets_charts', name: 'ZW line (dashboard period)', x: 0, y: 6, width: 36, height: 5,
+		fields: [{ type: 0, name: 'chart_type', value: 21 }, ...hostFields, { type: 1, name: 'items.0', value: 'ZW CPU*' }]
 	}
 ];
 const { dashboardids: [dashboardid] } = await api('dashboard.create', {
@@ -411,6 +416,7 @@ const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 const pageErrors = [];
 const consoleErrors = [];
 const failedActions = [];
+const actionRequests = [];
 
 /**
  * Every page is watched the same way: uncaught exceptions, unhandled promise
@@ -426,6 +432,11 @@ async function watch(target) {
 		const text = message.text();
 		if (message.type() === 'error' || (message.type() === 'warning' && /echarts/i.test(text))) {
 			consoleErrors.push(`${message.type()}: ${text}`);
+		}
+	});
+	target.on('request', (request) => {
+		if (request.url().includes('widget.zabbixwidgets_charts.view')) {
+			actionRequests.push(decodeURIComponent(request.postData() ?? ''));
 		}
 	});
 	target.on('response', async (response) => {
@@ -488,6 +499,20 @@ try {
 	check(/requires/i.test(bubbleText), `Bubble widget explains missing mappings: "${bubbleText.slice(0, 200)}"`);
 
 	check(await page.evaluate(() => typeof window.WidgetZabbixWidgetsCharts === 'function'), 'Widget class is registered');
+
+	// S01: a widget without its own period follows the dashboard, and asks again when the time selector changes.
+	step('Dashboard time period');
+	check(await widget('ZW line (dashboard period)').locator('.zw-charts-canvas canvas').count() > 0, 'Temporal Line follows the dashboard period and draws');
+	actionRequests.length = 0;
+	try {
+		await page.locator('.btn-time').first().click();
+		await page.locator('a[data-from="now-6h"][data-to="now"]').first().click();
+		await page.waitForTimeout(5000);
+		check(actionRequests.some((data) => data.includes('now-6h')), 'Changing the dashboard time period refreshes the widgets with the new period');
+	}
+	catch (error) {
+		check(false, `Changing the dashboard time period: ${error.message}`);
+	}
 
 	step('Every chart type');
 	await page.goto(`${BASE}/zabbix.php?action=dashboard.view&dashboardid=${chartsDashboardid}`);

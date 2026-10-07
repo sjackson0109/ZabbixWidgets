@@ -11,6 +11,7 @@ import { seriesLabels } from './common.js';
 import { sortEntities } from '../data/groups.js';
 import { gapThreshold, parseGap } from '../data/temporal.js';
 import { formatValue } from '../data/units.js';
+import { extentOf } from '../data/scale.js';
 import { applyThemeVariables } from '../ui/theme.js';
 import { el } from '../utils/dom.js';
 import { naturalCompare } from '../utils/natural.js';
@@ -26,9 +27,7 @@ export function sparklinePaths(points, threshold, period) {
 	}
 	const from = period?.from ?? points[0].clock;
 	const to = period?.to ?? points[points.length - 1].clock;
-	const values = points.map((point) => point.value);
-	const low = Math.min(...values);
-	const high = Math.max(...values);
+	const { min: low, max: high } = extentOf(points.map((point) => point.value));
 	const x = (clock) => (to === from ? WIDTH / 2 : ((clock - from) / (to - from)) * WIDTH);
 	const y = (value) => (high === low ? HEIGHT / 2 : HEIGHT - 2 - ((value - low) / (high - low)) * (HEIGHT - 4));
 	const runs = [[]];
