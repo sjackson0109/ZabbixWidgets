@@ -18,9 +18,10 @@ src/                             browser code, bundled with ECharts by esbuild
 ├── registry/                    registry access, conditions, visible controls
 ├── data/                        normalisation, units, aggregation, OHLC, pairing,
 │                                hierarchy, edges, relationships, radar, value maps,
-│                                row identity, thresholds, time series, states
+│                                row identity, thresholds, time series, states,
+│                                axis ranges (scale.js), switch ports (ports.js)
 ├── validation/                  contract rules and user-facing messages
-├── renderers/                   one module per chart (C01-C26), plus shared axes, dimensions and the time-series builder
+├── renderers/                   one module per chart (C01-C27), plus shared axes, dimensions and the time-series builder
 ├── ui/                          widget class, chart controller, edit form, theme
 └── utils/
 ```
@@ -29,8 +30,8 @@ src/                             browser code, bundled with ECharts by esbuild
 
 `registry/charts.json` is read by both sides. `ChartRegistry.php` and `src/registry/index.js` implement the same functions over it (active roles, visible controls, required controls, history and time-period needs), and `tests/compat/registry-parity.test.js` checks they agree for every chart and setting.
 
-- **Charts:** roles (which item field feeds which role, whether it is required, numeric, and how many items it takes), the data to fetch, `min_series`, the controls the chart uses and the validation rules it runs.
-- **Enums:** radio and select values, stored by Zabbix as their index. Append only.
+- **Charts:** roles (which item field feeds which role, whether it is required, numeric, how many items it takes, and an optional `applies` condition under which the role is used at all), the data to fetch, `min_series`, the controls the chart uses and the validation rules it runs.
+- **Enums:** radio and select values, stored by Zabbix as their index. Append only; `tests/fixtures/stored-values.json` records every form value and enum, and a test fails if one is renumbered.
 - **Item fields:** the item pattern fields and their labels.
 - **Control conditions:** when a control is shown, for example `target_macro` only when the target comes from a macro. A chart can override one, as the heat map does for its time controls.
 - **Required controls:** settings that must be filled in whenever they are shown. The form enforces them on save; the browser reports them for widgets saved another way.
@@ -49,7 +50,7 @@ Adding a chart means adding its entry, its renderer and any new rule, field or c
    - History or trends are read only when the chart needs them.
    - Host groups, tags and macros are read only when the chart needs them. A bullet target macro is resolved in Zabbix's order: the host, then its templates level by level (in template ID order within a level), then the global macro.
 3. The payload goes to the browser as `zw_payload`. It contains `chart`, `config`, `series[]`, `hosts[]`, `time_period`, `history_source` and `errors[]`.
-4. `ChartController` normalises the payload, validates it against the contract, and then either renders or shows the problems as text. ECharts renderers return an option; HTML renderers (`kind: "dom"`: C14, C23, C25) draw into the canvas themselves. The controller keeps one ECharts instance per widget, disposes it when the widget is destroyed or switches to an HTML chart, and keeps view state (legend selection, zoom, table sorting and paging) across refreshes of the same chart.
+4. `ChartController` normalises the payload, validates it against the contract, and then either renders or shows the problems as text. ECharts renderers return an option; HTML renderers (`kind: "dom"`: C14, C23, C25, C27) draw into the canvas themselves. The controller keeps one ECharts instance per widget, disposes it when the widget is destroyed or switches to an HTML chart, and keeps view state (legend selection, zoom, table sorting and paging) across refreshes of the same chart.
 
 ## Data limits
 
@@ -82,6 +83,18 @@ Under these conditions, trend-based sums, averages, counts, minima and maxima ma
 - **Axes.** Each distinct unit gets its own Y-axis, at most two. Axis limits are numbers or macros.
 - **Stacking.** Stacked areas average each series into shared buckets (the longest typical interval, rounded up to a usual step). A bucket missing any series is left empty for all of them, so a stack never adds up a partial set. Only one additive unit can be stacked.
 - **States.** A state lasts from its sample until the next one, but no longer than the gap threshold; unknown time is drawn as "no data". Colours come from the value colour list, then from the palette in a stable order.
+
+## Switch Port Panel
+
+`src/data/ports.js` turns interface items into ports; `src/renderers/switch_ports.js` draws them as HTML.
+
+- **Boundary.** The panel consumes existing Zabbix interface data only. It contains no switch discovery, SNMP polling, LLDP/CDP processing, VLAN discovery or MAC-address discovery.
+- **Roles.** Each role (operational and administrative status, negotiated and configured speed, utilisation, traffic, errors, discards, duplex, PoE, VLAN, PVID, alias, description, MTU, last change) has its own item pattern field and is optional. The common six are always offered; the rest appear when "Port data" is set to all (the role's `applies` condition).
+- **Identity.** Every item gets a port identity from an item tag, its first key parameter, or a capture group of the user's regular expression on its name or key. Further capture groups can give the stack member and the physical port number. The role items of one identity on one host make one port. Two items for one port and role, or one item in two roles, are errors that name the port, role and items.
+- **Numbers.** A physical port number comes only from an identity that is a whole number or from the port number capture group. Numbers are never picked out of compound names such as Gi1/0/12.
+- **Layouts.** Two rows (the default): odd numbers along the top and even numbers beneath, port 1 top-left, port 2 under port 1, port 3 to the right of port 1; gaps in the numbering stay empty. One row. Automatic: two rows only when every port in a group has a unique number. Groups (from rules, interface type, name prefix or tag) and stack members are laid out separately with the same rules. Tile positions are grid cells, so resizing changes tile size, never the arrangement.
+- **Visuals.** Fill (speed, status, thresholds, severity or a fixed colour), border colour and style, admin-down and problem markers, labels, a utilisation bar and staleness are separate channels. Unknown speeds and unmapped statuses stay neutral; admin-down is a dotted border and a marker, distinct from an operational failure. Every tile has an ARIA label with its identity, status and speed, and arrow keys move between tiles.
+- **Cost.** One item lookup per role, latest values in one read and triggers in one read, however many ports.
 
 ## Isolation from other modules
 

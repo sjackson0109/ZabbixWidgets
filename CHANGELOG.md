@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- Thirteen more charts: LLD Data Table (C14), Pie (C15), Vertical Level Gauge (C16), Horizontal Ranking Bar (C17), Treemap (C18), Sunburst (C19), Funnel (C20), Temporal Line (C21), Temporal Area (C22), Status Matrix (C23), State Timeline (C24), Sparkline Grid (C25) and Threshold Band (C26). C01-C13 keep their stored chart type values.
+- Fourteen more charts: LLD Data Table (C14), Pie (C15), Vertical Level Gauge (C16), Horizontal Ranking Bar (C17), Treemap (C18), Sunburst (C19), Funnel (C20), Temporal Line (C21), Temporal Area (C22), Status Matrix (C23), State Timeline (C24), Sparkline Grid (C25), Threshold Band (C26) and Switch Port Panel (C27). C01-C13 keep their stored chart type values.
+- The Switch Port Panel draws existing interface items as a switch front panel: port identity from an item tag, key parameter or regular expression (with stack member and port number captures), odd-over-even two-row, single-row, automatic, grouped and stacked layouts, interface types, speed, status, threshold, severity or fixed colours, admin-down and problem markers, utilisation bars, staleness, keyboard navigation and optional links to Latest data, history or Problems. Ambiguous item mappings are reported, never guessed. It contains no switch discovery, SNMP polling, LLDP/CDP processing, VLAN discovery or MAC-address discovery.
+- One axis range helper for charts that size their own axes, one number formatter per precision (noticeably faster on large charts), and shared natural sort and colour helpers.
+- Problems now carry their trigger id, used for links to the Problems page.
 - Time-series charts share one layer: real samples only, lines broken at gaps (2.5 update intervals by default, or a set maximum), a crosshair tooltip with each series' nearest sample and "no data" where there is none, one Y-axis per unit, zoom and pan, and hourly trends for long periods.
 - Thresholds, targets and scale limits accept numbers or user macros, resolved per host; a chart that draws one set for several hosts reports macros that differ.
 - Value mappings, previous values and the item's triggers in the problem state, with Zabbix's severity names and colours, are read when a chart uses them.
