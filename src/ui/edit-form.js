@@ -2,13 +2,7 @@
  * Edit form behaviour: shows only the controls the selected chart uses, and
  * re-evaluates whenever a setting that changes the required inputs is edited.
  */
-import definitions from '../../modules/extended-charts/registry/charts.json';
-import { visibleControls } from '../registry/index.js';
-
-const ALL_FIELDS = [...new Set([
-	...definitions.common_controls,
-	...definitions.charts.flatMap((chart) => chart.controls)
-])];
+import { ALL_CONTROLS, ENUMS, chartByFormValue, visibleControls } from '../registry/index.js';
 
 const PLACEHOLDERS = {
 	target_macro: '{$CPU.TARGET}',
@@ -25,7 +19,7 @@ const PLACEHOLDERS = {
 	target_tag: 'target'
 };
 
-const ENUM_FIELDS = Object.keys(definitions.enums).filter((name) => !name.startsWith('$'));
+const ENUM_FIELDS = Object.keys(ENUMS);
 
 function controlsFor(form, name) {
 	return [...form.querySelectorAll(`[name="${name}"], [name^="${name}["]`)];
@@ -62,10 +56,9 @@ export function readConfig(form) {
 	const config = {};
 	for (const name of ENUM_FIELDS) {
 		const stored = readValue(form, name);
-		config[name] = stored === null ? undefined : definitions.enums[name][Number(stored)];
+		config[name] = stored === null ? undefined : ENUMS[name][Number(stored)];
 	}
-	const chartValue = Number(readValue(form, 'chart_type'));
-	const chart = definitions.charts.find((candidate) => candidate.form_value === chartValue);
+	const chart = chartByFormValue(Number(readValue(form, 'chart_type')));
 	return { chartId: chart?.id ?? null, config };
 }
 
@@ -73,7 +66,7 @@ export function updateVisibility(form) {
 	const { chartId, config } = readConfig(form);
 	const visible = new Set(visibleControls(chartId, config));
 
-	for (const name of ALL_FIELDS) {
+	for (const name of ALL_CONTROLS) {
 		for (const row of rowsFor(form, name)) {
 			row.style.display = visible.has(name) ? '' : 'none';
 		}

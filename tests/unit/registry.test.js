@@ -7,7 +7,7 @@ const EXPECTED_IDS = [
 	'bubble', 'gantt', 'tree', 'network', 'relationship', 'calendar_heatmap'
 ];
 
-const REQUIRED_KEYS = ['id', 'code', 'name', 'renderer', 'roles', 'data', 'history', 'time_period', 'min_series', 'controls', 'rules', 'aggregations'];
+const REQUIRED_KEYS = ['id', 'code', 'name', 'renderer', 'roles', 'data', 'history', 'time_period', 'min_series', 'controls', 'rules'];
 
 describe('chart registry', () => {
 	it('defines exactly the 13 charts with semantic ids', () => {

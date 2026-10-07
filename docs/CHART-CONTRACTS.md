@@ -6,6 +6,8 @@ A chart renders only when its contract is met. Otherwise the widget shows the re
 
 Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only for that setting.
 
+Every chart also needs items for each required role, no more than `Max items` per role, and at least `min_series` series in total.
+
 ## C01 Vertical Column (`column`)
 
 | Role | Form field | Required | Numeric | Max items |
@@ -13,7 +15,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | yes | yes |  |
 
 - **Data fetched:** latest
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Controls:** `items`, `group_by`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
@@ -26,7 +28,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | yes | yes |  |
 
 - **Data fetched:** latest
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 2
 - **Controls:** `items`, `group_by`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
@@ -40,8 +42,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | yes | yes |  |
 
 - **Data fetched:** latest
-- **History:** `none`; **time period:** `false`
-- **Aggregations:** sum, avg
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Controls:** `items`, `show_percent`, `hide_zero`, `centre_value`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
@@ -54,10 +55,10 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | Role | Form field | Required | Numeric | Max items |
 |---|---|---|---|---|
 | actual | `items` | yes | yes |  |
-| target | `target_items` | no | yes |  |
+| target | `target_items` | `when:target_source=item` | yes |  |
 
 - **Data fetched:** latest, macros
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Controls:** `items`, `target_source`, `target_items`, `target_macro`, `target_constant`, `ranges`, `pair_by`, `pair_tag`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
@@ -73,7 +74,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | yes | yes |  |
 
 - **Data fetched:** latest
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Minimum dimensions:** 3
 - **Controls:** `items`, `radar_scale`, `radar_max`
 - **Rules:**
@@ -89,15 +90,14 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | yes | yes |  |
 
 - **Data fetched:** latest, history
-- **History:** `when:heat_x=time`; **time period:** `when:heat_x=time`
-- **Aggregations:** avg, sum, min, max, count
+- **History:** `when:heat_x=time`; **time period:** `when:heat_x=time`; **min_series:** 1
 - **Controls:** `items`, `heat_x`, `heat_y`, `bucket`, `aggregation`, `colour_min`, `colour_max`, `time_period`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `same_units`: All series share units; otherwise the widget reports the incompatible units.
-  - `heat_axes`: X and Y are different dimensions; a time axis yields at most 1000 buckets.
-  - `colour_bounds`: Configured colour bounds are numbers with minimum below maximum; time buckets are valid.
+  - `heat_axes`: X and Y are different dimensions; a time axis has a valid bucket size and yields at most 1000 buckets.
+  - `colour_bounds`: Configured colour bounds are numbers with minimum below maximum.
 
 ## C07 Candlestick / OHLC (`candlestick`)
 
@@ -110,12 +110,11 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | close | `close_items` | `when:ohlc_mode=explicit` | yes | 1 |
 
 - **Data fetched:** history
-- **History:** `always`; **time period:** `true`
-- **Aggregations:** ohlc
+- **History:** `always`; **time period:** `true`; **min_series:** 1
 - **Controls:** `ohlc_mode`, `items`, `open_items`, `high_items`, `low_items`, `close_items`, `bucket`, `time_period`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
-  - `has_history`: Every mapped item has history in the period; at most `max_items` items per role.
+  - `has_history`: Every mapped item has history in the period.
   - `ohlc_consistent`: The candle period is valid and yields at most 1000 candles; explicit OHLC candles satisfy low <= open, close <= high; periods missing a component are skipped and reported.
 
 ## C08 Bubble (`bubble`)
@@ -127,7 +126,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | size | `size_items` | yes | yes |  |
 
 - **Data fetched:** latest
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Controls:** `x_items`, `y_items`, `size_items`, `pair_by`, `pair_tag`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
@@ -145,7 +144,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | progress | `progress_items` | no | yes |  |
 
 - **Data fetched:** latest
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Controls:** `gantt_timing`, `start_items`, `end_items`, `duration_items`, `progress_items`, `pair_by`, `pair_tag`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
@@ -160,7 +159,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | yes | no |  |
 
 - **Data fetched:** latest, hosts, groups, tags
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Controls:** `items`, `tree_source`, `tree_tags`, `tree_delimiter`
 - **Rules:**
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
@@ -173,7 +172,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | no | yes |  |
 
 - **Data fetched:** latest, hosts, tags
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 0
 - **Controls:** `items`, `edge_source`, `edge_list`, `edge_tag`
 - **Rules:**
   - `has_edges`: Relationships come from an explicit list or a host tag naming the peer host. None are inferred.
@@ -186,7 +185,7 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | weight | `items` | yes | yes |  |
 
 - **Data fetched:** latest, tags
-- **History:** `none`; **time period:** `false`
+- **History:** `none`; **time period:** `false`; **min_series:** 1
 - **Controls:** `items`, `source_tag`, `target_tag`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
@@ -201,9 +200,8 @@ Conditions such as `when:ohlc_mode=explicit` mean the requirement applies only f
 | value | `items` | yes | yes | 1 |
 
 - **Data fetched:** history
-- **History:** `always`; **time period:** `true`
-- **Aggregations:** avg, sum, min, max, count
+- **History:** `always`; **time period:** `true`; **min_series:** 1
 - **Controls:** `items`, `aggregation`, `time_period`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
-  - `has_history`: Every mapped item has history in the period; at most `max_items` items per role.
+  - `has_history`: Every mapped item has history in the period.

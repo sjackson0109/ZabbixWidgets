@@ -9,7 +9,7 @@ import { parseRanges } from '../data/targets.js';
 import { pairSeries } from '../data/pairing.js';
 import { parseEdgeList, edgesFromHostTag, resolveEdges } from '../data/edges.js';
 import { tagValue, toNumber } from '../data/normalise.js';
-import { isRoleRequired } from '../registry/index.js';
+import { activeRoles, isRoleRequired } from '../registry/index.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -18,13 +18,6 @@ function error(code, message) {
 
 function warning(code, message) {
 	return { level: 'warning', code, message };
-}
-
-/** Roles that apply under the current configuration (required or optional). */
-export function activeRoles(chart, config) {
-	return Object.entries(chart.roles)
-		.filter(([, role]) => typeof role.required !== 'string' || isRoleRequired(role, config))
-		.map(([name]) => name);
 }
 
 function numericRoles(chart, config) {
@@ -184,31 +177,13 @@ export const RULES = {
 		if (parsedMin !== null && parsedMax !== null && parsedMin >= parsedMax) {
 			problems.push(error('invalid_bounds', 'Colour scale minimum must be lower than the maximum.'));
 		}
-		if (ctx.config.heat_x === 'time' && parseBucket(ctx.config.bucket) === null) {
-			problems.push(error('invalid_bucket', 'Time buckets must look like 15m, 1h or 1d.'));
-		}
 		return problems;
 	},
 
 	has_history(ctx) {
-		const series = roleSeries(ctx);
-		const empty = series.filter((entry) => entry.history.length === 0);
-		const problems = [];
-		if (empty.length > 0) {
-			problems.push(error('no_history',
-				`No history in the selected time period for ${listNames(empty.map(seriesLabel))}.`));
-		}
-		const maxItems = activeRoles(ctx.chart, ctx.config)
-			.map((name) => [name, ctx.chart.roles[name].max_items])
-			.filter(([, max]) => max !== undefined);
-		for (const [name, max] of maxItems) {
-			const count = ctx.payload.series.filter((entry) => entry.role === name).length;
-			if (count > max) {
-				problems.push(error('too_many_items',
-					`${ctx.chart.name} uses ${max === 1 ? 'one item' : `${max} items`} for ${ROLE_LABELS[name]}; ${count} matched. Narrow the item pattern.`));
-			}
-		}
-		return problems;
+		const empty = roleSeries(ctx).filter((entry) => entry.history.length === 0);
+		return empty.length === 0 ? [] : [error('no_history',
+			`No history in the selected time period for ${listNames(empty.map(seriesLabel))}.`)];
 	},
 
 	ohlc_consistent(ctx) {
@@ -376,6 +351,11 @@ export const RULES = {
 		if (x === y) {
 			return [error('invalid_axes', 'Heat Map needs different X and Y axes: choose hosts against items, or time against hosts or items.')];
 		}
-		return x === 'time' && parseBucket(ctx.config.bucket) !== null ? tooManyBuckets(ctx, 'buckets') : [];
+		if (x !== 'time') {
+			return [];
+		}
+		return parseBucket(ctx.config.bucket) === null
+			? [error('invalid_bucket', 'Time buckets must look like 15m, 1h or 1d.')]
+			: tooManyBuckets(ctx, 'buckets');
 	}
 };
