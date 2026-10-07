@@ -60,9 +60,10 @@ describe('security', () => {
 
 	it('keeps no passwords in the integration setup', async () => {
 		const compose = await readFile(path.join(root, 'tests/integration/docker-compose.yml'), 'utf8');
+		// A key with no value takes it from the environment that starts the stack.
 		const passwords = compose.match(/PASSWORD:.*/g) ?? [];
 		expect(passwords.length).toBeGreaterThan(0);
-		expect(passwords.filter((line) => !line.includes('${ZW_DB_PASSWORD:?'))).toEqual([]);
+		expect(passwords.filter((line) => line !== 'PASSWORD:')).toEqual([]);
 
 		// The image's first-login password is the one literal, used once and then replaced.
 		const smoke = await readFile(path.join(root, 'tests/integration/smoke.mjs'), 'utf8');

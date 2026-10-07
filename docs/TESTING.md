@@ -20,13 +20,13 @@ To run the integration test locally (needs Docker and Node 22+):
 ```sh
 npm ci && npm run build && npx playwright install chromium
 export ZABBIX_TAG=alpine-7.0-latest
-export ZW_DB_PASSWORD=$(openssl rand -hex 24) ZW_ADMIN_PASSWORD=$(openssl rand -hex 24)
+export POSTGRES_PASSWORD=$(openssl rand -hex 24) ZW_ADMIN_PASSWORD=$(openssl rand -hex 24)
 docker compose -f tests/integration/docker-compose.yml up -d
 tests/integration/install-modules.sh
 node tests/integration/smoke.mjs
 ```
 
-No password is stored in the repository. The database password comes from `ZW_DB_PASSWORD`. The test signs in once with the image's first-login Admin password and replaces it with `ZW_ADMIN_PASSWORD` (or a random one when unset), and the read-only test user gets a new random password on every run. To run the test again against the same containers, keep the same `ZW_ADMIN_PASSWORD`.
+No password is stored in the repository. The database password comes from `POSTGRES_PASSWORD`. The test signs in once with the image's first-login Admin password and replaces it with `ZW_ADMIN_PASSWORD` (or a random one when unset), and the read-only test user gets a new random password on every run. To run the test again against the same containers, keep the same `ZW_ADMIN_PASSWORD`.
 
 ## Still manual
 

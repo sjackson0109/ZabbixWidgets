@@ -1,12 +1,13 @@
 # Disposable Zabbix stack for integration tests. ZABBIX_TAG selects the
 # release line, e.g. alpine-7.0-latest, alpine-7.2-latest, alpine-7.4-latest.
-# ZW_DB_PASSWORD is the database password; CI makes up a new one for each run.
+# POSTGRES_PASSWORD is taken from the environment that starts the stack; CI
+# makes up a new one for each run.
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: zabbix
-      POSTGRES_PASSWORD: ${ZW_DB_PASSWORD:?set ZW_DB_PASSWORD, see docs/TESTING.md}
+      POSTGRES_PASSWORD:
       POSTGRES_DB: zabbix
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U zabbix"]
@@ -18,7 +19,7 @@ services:
     environment:
       DB_SERVER_HOST: postgres
       POSTGRES_USER: zabbix
-      POSTGRES_PASSWORD: ${ZW_DB_PASSWORD:?set ZW_DB_PASSWORD, see docs/TESTING.md}
+      POSTGRES_PASSWORD:
       POSTGRES_DB: zabbix
       ZBX_CACHEUPDATEFREQUENCY: 5
     depends_on:
@@ -30,7 +31,7 @@ services:
     environment:
       DB_SERVER_HOST: postgres
       POSTGRES_USER: zabbix
-      POSTGRES_PASSWORD: ${ZW_DB_PASSWORD:?set ZW_DB_PASSWORD, see docs/TESTING.md}
+      POSTGRES_PASSWORD:
       POSTGRES_DB: zabbix
       ZBX_SERVER_HOST: server
       PHP_TZ: UTC
