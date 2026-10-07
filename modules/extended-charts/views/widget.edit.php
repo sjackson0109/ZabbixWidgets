@@ -51,6 +51,14 @@ $form
 	->addField(new CWidgetFieldCheckBoxView($fields['hide_zero']))
 	->addField(new CWidgetFieldCheckBoxView($fields['show_legend']))
 	->addField(new CWidgetFieldIntegerBoxView($fields['decimals']))
-	->includeJsFile('widget.edit.js.php')
-	->initFormJs('widget_zabbixwidgets_charts_form.init();')
-	->show();
+	->includeJsFile('widget.edit.js.php');
+
+// Zabbix 7.4 runs form scripts through initFormJs(); 7.0 and 7.2 use addJavaScript().
+if (method_exists($form, 'initFormJs')) {
+	$form->initFormJs('widget_zabbixwidgets_charts_form.init();');
+}
+else {
+	$form->addJavaScript('widget_zabbixwidgets_charts_form.init();');
+}
+
+$form->show();

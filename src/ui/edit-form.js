@@ -80,7 +80,17 @@ export function updateVisibility(form) {
 	}
 }
 
-export function initEditForm(form) {
+/**
+ * The widget configuration form. Its id differs between Zabbix releases, so
+ * the known id is tried first and then the form inside the open dialogue.
+ */
+export function findEditForm() {
+	return document.getElementById('widget-dialogue-form')
+		?? [...document.querySelectorAll('.overlay-dialogue form')].pop()
+		?? null;
+}
+
+export function initEditForm(form = findEditForm()) {
 	if (form === null) {
 		return;
 	}
