@@ -242,7 +242,15 @@ const chartWidgets = [
 	['Ranking Bar', 17, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*'), int('rank_limit', 1), int('rank_count', 4), str('thresholds', '30, 60')]],
 	['Treemap', 18, [...hostFields, ...patterns('items', 'ZW Sessions*'), ...patterns('colour_items', 'ZW CPU*'), str('levels', 'group, host')]],
 	['Sunburst', 19, [...hostFields, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('levels', 'group, host')]],
-	['Funnel', 20, [...firstHost, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('stages', 'Sessions = ZW Sessions\nLoad = ZW Load average')]]
+	['Funnel', 20, [...firstHost, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('stages', 'Sessions = ZW Sessions\nLoad = ZW Load average')]],
+	['Temporal Line', 21, [...hostFields, ...patterns('items', 'ZW CPU*'), ...lastDay]],
+	['Temporal Area', 22, [...hostFields, ...patterns('items', 'ZW CPU*'), int('area_gradient', 1), ...lastDay]],
+	['Status Matrix', 23, [
+		...hostFields, ...patterns('items', 'ZWT Interface*: Operational status'), int('colour_by', 1), str('colour_map', 'up = #1A9850\ndown = #D73027')
+	]],
+	['State Timeline', 24, [...firstHost, ...patterns('items', 'ZWT Interface*: Operational status'), str('colour_map', 'up = #1A9850\ndown = #D73027'), ...lastDay]],
+	['Sparkline Grid', 25, [...hostFields, ...patterns('items', 'ZW CPU*'), int('show_change', 1), int('show_minmax', 1), ...lastDay]],
+	['Threshold Band', 26, [...firstHost, ...patterns('items', 'ZW CPU*'), str('thresholds', '40, 50'), str('target_value', '{$ZW.TARGET}'), ...lastDay]]
 ];
 const { dashboardids: [chartsDashboardid] } = await api('dashboard.create', {
 	name: `ZW all charts ${now}`,

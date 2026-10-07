@@ -184,3 +184,150 @@
 	cursor: default;
 	opacity: 0.4;
 }
+
+/* C23 Status Matrix */
+
+.zw-charts .zw-matrix {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	color: var(--zw-text);
+	font-size: 12px;
+}
+
+.zw-charts .zw-matrix-grid {
+	border-collapse: separate;
+	border-spacing: 2px;
+}
+
+.zw-charts .zw-matrix-grid th {
+	font-weight: normal;
+	color: var(--zw-muted);
+	background-color: var(--zw-surface);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.zw-charts .zw-matrix-corner,
+.zw-charts .zw-matrix-column {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+}
+
+.zw-charts .zw-matrix-corner {
+	left: 0;
+	z-index: 2;
+}
+
+.zw-charts .zw-matrix-column {
+	max-width: 120px;
+	padding: 2px 4px;
+	text-align: center;
+	vertical-align: bottom;
+}
+
+.zw-charts .zw-matrix-row {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	max-width: 180px;
+	padding: 0 8px 0 2px;
+	text-align: right;
+}
+
+.zw-charts .zw-matrix-cell {
+	min-width: 56px;
+	max-width: 140px;
+	height: 26px;
+	padding: 0 6px;
+	border-radius: 2px;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-variant-numeric: tabular-nums;
+}
+
+.zw-charts .zw-matrix-compact .zw-matrix-cell {
+	min-width: 18px;
+	height: 18px;
+	padding: 0;
+}
+
+.zw-charts .zw-matrix-neutral {
+	background-color: var(--zw-neutral);
+}
+
+.zw-charts .zw-matrix-missing {
+	color: var(--zw-muted);
+	font-style: italic;
+	background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--zw-line) 4px 5px);
+}
+
+/* C25 Sparkline Grid */
+
+.zw-charts .zw-spark {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	display: grid;
+	gap: 6px;
+	align-content: start;
+	padding: 2px;
+	color: var(--zw-text);
+	font-size: 12px;
+}
+
+.zw-charts .zw-spark-tile {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	padding: 6px 8px;
+	border: 1px solid var(--zw-line);
+	border-radius: 3px;
+	background-color: var(--zw-surface);
+}
+
+.zw-charts .zw-spark-label {
+	color: var(--zw-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.zw-charts .zw-spark-value {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 6px;
+	font-size: 16px;
+	font-weight: bold;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.zw-charts .zw-spark-change,
+.zw-charts .zw-spark-range {
+	color: var(--zw-muted);
+	font-size: 11px;
+	font-weight: normal;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.zw-charts .zw-spark-missing {
+	color: var(--zw-muted);
+	font-weight: normal;
+	font-style: italic;
+}
+
+.zw-charts .zw-spark-line {
+	display: block;
+	width: 100%;
+	height: 28px;
+}

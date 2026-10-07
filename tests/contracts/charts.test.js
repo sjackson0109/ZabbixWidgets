@@ -434,6 +434,28 @@ describe('C20 funnel', () => {
 	});
 });
 
+describe('C21-C26 time series and states', () => {
+	const period = { from: 0, to: 3600 };
+	const text = item({ value_type: 1, units: '', value: 'running', history: [[0, 'running']] });
+
+	it('needs numeric items for lines, areas, bands and sparklines', () => {
+		for (const chart of ['line', 'area', 'threshold_band', 'sparkline_grid']) {
+			expect(codes(check(chart, { config: { thresholds: '1' }, series: [text], time_period: period })), chart).toContain('numeric_only');
+		}
+	});
+
+	it('accepts text items for the state timeline and the status matrix', () => {
+		expect(check('state_timeline', { config: {}, series: [text], time_period: period }).ok).toBe(true);
+		expect(check('status_matrix', { config: { colour_by: 'none' }, series: [text] }).ok).toBe(true);
+	});
+
+	it('warns that thresholds leave text cells neutral', () => {
+		const result = check('status_matrix', { config: { colour_by: 'thresholds', thresholds: '5' }, series: [text, item({ value: '3' })] });
+		expect(result.ok).toBe(true);
+		expect(result.warnings.map((problem) => problem.code)).toEqual(['text_values']);
+	});
+});
+
 describe('server errors', () => {
 	it('are shown before any data rule runs', () => {
 		const result = check('column', { series: [item()], errors: ['Too many items matched; showing the first 500.'] });

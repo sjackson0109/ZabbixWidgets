@@ -27,7 +27,11 @@ const PLACEHOLDERS = {
 	thresholds: '70, 90',
 	levels: 'group, host',
 	path_delimiter: '/',
-	stages: 'Visits = Web visits\nSign-ins = Web sign-ins\nOrders = Web orders'
+	stages: 'Visits = Web visits\nSign-ins = Web sign-ins\nOrders = Web orders',
+	y_min: '0',
+	y_max: '100',
+	max_gap: 'automatic; or 10m, or 0 to never break',
+	colour_map: 'up = #2e7d32\ndown = #c62828\n0 = #9e9e9e'
 };
 
 const ENUM_FIELDS = Object.keys(ENUMS);

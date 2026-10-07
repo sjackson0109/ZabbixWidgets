@@ -85,6 +85,16 @@ describe('history and trend planning', () => {
 			expect(plan.every((read) => read.table === 'history')).toBe(true);
 		}
 	});
+
+	it('draws hourly trends of both numeric types for time series, but never for state timelines', () => {
+		const period = { from: base, to: base + 3 * 86400 };
+		const [line, states] = run([
+			{ chart: 'line', config: {}, call: 'plan', series, period },
+			{ chart: 'state_timeline', config: {}, call: 'plan', series, period }
+		]);
+		expect(line.filter((read) => read.table === 'trends').map((read) => read.itemids)).toEqual([['1'], ['2']]);
+		expect(states.every((read) => read.table === 'history')).toBe(true);
+	});
 });
 
 describe('limits and settings', () => {
@@ -108,5 +118,16 @@ describe('limits and settings', () => {
 			target_source, target_macro: '{$CPU.TARGET}', pair_by: 'host', group_by: 'host'
 		} });
 		expect(run([bullet('macro'), bullet('constant')])).toEqual([['{$CPU.TARGET}'], []]);
+	});
+
+	it('resolves macros from every shown band and axis setting', () => {
+		const [bands, matrix, plain] = run([
+			{ chart: 'threshold_band', call: 'macro_names', config: { thresholds: '{$WARN}, {$HIGH}', target_value: '{$GOAL}', y_min: '0', y_max: '{$MAX}' } },
+			{ chart: 'status_matrix', call: 'macro_names', config: { colour_by: 'thresholds', thresholds: '{$WARN}' } },
+			{ chart: 'status_matrix', call: 'macro_names', config: { colour_by: 'severity', thresholds: '{$WARN}' } }
+		]);
+		expect(bands.sort()).toEqual(['{$GOAL}', '{$HIGH}', '{$MAX}', '{$WARN}']);
+		expect(matrix).toEqual(['{$WARN}']);
+		expect(plain).toEqual([]);
 	});
 });

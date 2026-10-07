@@ -2,7 +2,7 @@
 
 Independent Zabbix dashboard widgets built on Apache ECharts.
 
-All 13 charts (C01-C13) have renderers and are tested against Zabbix 7.0, 7.2 and 7.4. See [chart contracts](docs/CHART-CONTRACTS.md) for what each chart needs.
+26 charts (C01-C26) have renderers and are tested against Zabbix 7.0, 7.2 and 7.4. The widgets only read what Zabbix already holds (hosts, items, latest values, history, trends, tags, macros, value maps, triggers and problems); they never collect data or infer topology. See [chart contracts](docs/CHART-CONTRACTS.md) for what each chart needs.
 
 ## Documentation
 

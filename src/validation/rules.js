@@ -17,6 +17,8 @@ import { resolveScale, sharedScale } from '../data/thresholds.js';
 import { buildLevelTree, parseLevels } from '../data/levels.js';
 import { funnelStages } from '../data/funnel.js';
 import { pairColours } from '../renderers/treemap.js';
+import { parseGap, unitGroups } from '../data/temporal.js';
+import { parseColourMap } from '../data/states.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -39,6 +41,26 @@ function tooManyBuckets(ctx, what) {
 	const count = bucketCount(ctx.payload.timePeriod, parseBucket(ctx.config.bucket));
 	return count > MAX_BUCKETS ? [error('too_many_buckets',
 		`The time period holds ${count} ${what}, more than the ${MAX_BUCKETS} this widget draws. Choose a longer ${what === 'candles' ? 'candle period' : 'bucket'} or a shorter time period.`)] : [];
+}
+
+/**
+ * Axis limits, thresholds and target of a time-series chart, resolved once
+ * for all its hosts. Only the settings the chart shows are read.
+ */
+function temporalScale(ctx) {
+	const shown = (field) => (ctx.chart.controls.includes(field) ? ctx.config[field] : '');
+	const hostids = new Set(roleSeries(ctx).map((entry) => entry.hostid));
+	return sharedScale({ scale_min: shown('y_min'), scale_max: shown('y_max'), target_value: shown('target_value'), thresholds: shown('thresholds') },
+		ctx.payload.hosts.filter((host) => hostids.has(host.hostid)));
+}
+
+function capitalise(message) {
+	return `${message.charAt(0).toUpperCase()}${message.slice(1)}`;
+}
+
+function colourMapErrors(text) {
+	return parseColourMap(text).errors.map((line) => error('invalid_colours',
+		`Line ${line.line} of the value colours is not in the form "value = #rrggbb".`));
 }
 
 function pairingRoles(chart, config) {
@@ -429,9 +451,8 @@ export const RULES = {
 
 	shared_thresholds(ctx) {
 		const hostids = new Set(roleSeries(ctx).map((entry) => entry.hostid));
-		const { errors } = sharedScale({ thresholds: ctx.config.thresholds, target_value: ctx.config.target_value,
-			y_min: ctx.config.y_min, y_max: ctx.config.y_max }, ctx.payload.hosts.filter((host) => hostids.has(host.hostid)));
-		return errors.map((message) => error('invalid_thresholds', `${message.charAt(0).toUpperCase()}${message.slice(1)}.`));
+		const { errors } = sharedScale({ thresholds: ctx.config.thresholds }, ctx.payload.hosts.filter((host) => hostids.has(host.hostid)));
+		return errors.map((message) => error('invalid_thresholds', `${capitalise(message)}.`));
 	},
 
 	size_units(ctx) {
@@ -505,6 +526,94 @@ export const RULES = {
 			problems.push(warning('unused_items', `These items match no stage and are not shown: ${listNames(unused.map(seriesLabel))}.`));
 		}
 		return problems;
+	},
+
+	some_history(ctx) {
+		const series = roleSeries(ctx);
+		const empty = series.filter((entry) => entry.history.length === 0);
+		if (series.length > 0 && empty.length === series.length) {
+			return [error('no_history', 'No history in the selected time period for any of the selected items.')];
+		}
+		return empty.length === 0 ? [] : [warning('no_history',
+			`No history in the selected time period for ${listNames(empty.map(seriesLabel))}; shown in the legend only.`)];
+	},
+
+	temporal_units(ctx) {
+		const units = unitGroups(roleSeries(ctx));
+		return units.length <= 2 ? [] : [error('too_many_units',
+			`${ctx.chart.name} draws at most two units, one per Y-axis, but the items use ${listNames(units.map((unit) => `"${unit}"`))}. Select items with at most two units.`)];
+	},
+
+	temporal_settings(ctx) {
+		const problems = [];
+		const gap = parseGap(ctx.config.max_gap);
+		if (gap.error !== null) {
+			problems.push(error('invalid_gap', gap.error));
+		}
+		const { scale, errors } = temporalScale(ctx);
+		problems.push(...errors.map((message) => error('invalid_scale', `${capitalise(message.replace(/^Minimum/, 'Y-axis minimum').replace(/^Maximum/, 'Y-axis maximum'))}.`)));
+		if (errors.length === 0 && scale.min !== null && scale.max !== null && scale.min >= scale.max) {
+			problems.push(error('invalid_scale', 'Y-axis minimum must be lower than the maximum.'));
+		}
+		return problems;
+	},
+
+	stack_units(ctx) {
+		if (ctx.config.area_mode !== 'stacked') {
+			return [];
+		}
+		const units = unitGroups(roleSeries(ctx));
+		if (units.length > 1) {
+			return [error('mixed_units', `Stacked areas add values up, so all items need the same units, but they use ${listNames(units.map((unit) => `"${unit}"`))}. Use overlapping areas instead.`)];
+		}
+		return units.length === 1 && !isAdditive(units[0]) && roleSeries(ctx).length > 1 ? [error('non_additive',
+			`Values in "${units[0]}" cannot be added up, so they cannot be stacked. Use overlapping areas instead.`)] : [];
+	},
+
+	has_thresholds(ctx) {
+		const { scale, errors } = temporalScale(ctx);
+		return errors.length === 0 && scale.thresholds.length === 0 ? [error('no_thresholds',
+			`${ctx.chart.name} requires at least one threshold (numbers or user macros, separated by commas).`)] : [];
+	},
+
+	state_settings(ctx) {
+		const problems = colourMapErrors(ctx.config.colour_map);
+		const gap = parseGap(ctx.config.max_gap);
+		if (gap.error !== null) {
+			problems.push(error('invalid_gap', gap.error));
+		}
+		return problems;
+	},
+
+	matrix_settings(ctx) {
+		const { colour_by: by } = ctx.config;
+		if (by === 'value_map') {
+			const problems = colourMapErrors(ctx.config.colour_map);
+			if (problems.length === 0 && parseColourMap(ctx.config.colour_map).entries.size === 0) {
+				problems.push(warning('no_colours', 'No value colours are set, so every cell stays neutral. Add lines such as "up = #2e7d32".'));
+			}
+			return problems;
+		}
+		if (by !== 'thresholds') {
+			return [];
+		}
+		const hosts = new Map(ctx.payload.hosts.map((host) => [host.hostid, host]));
+		const problems = new Map();
+		for (const entry of roleSeries(ctx)) {
+			const scale = resolveScale({ thresholds: ctx.config.thresholds }, hosts.get(entry.hostid) ?? null);
+			for (const message of scale.errors) {
+				problems.set(message, error('invalid_thresholds', `${message}.`));
+			}
+			if (scale.errors.length === 0 && scale.thresholds.length === 0) {
+				problems.set('none', error('no_thresholds', 'Colouring by thresholds requires at least one threshold (numbers or user macros, separated by commas).'));
+			}
+		}
+		const text = roleSeries(ctx).filter((entry) => !entry.numeric);
+		const list = [...problems.values()];
+		if (text.length > 0) {
+			list.push(warning('text_values', `Thresholds apply to numbers only; these items stay neutral: ${listNames(text.map(seriesLabel))}.`));
+		}
+		return list;
 	},
 
 	heat_axes(ctx) {

@@ -22,6 +22,30 @@ function hourly(base, step = 1) {
 	return rows;
 }
 
+/** Every 30 minutes, leaving out samples from `skipFrom` (seconds after FROM) for `skipFor` seconds: a real gap in the data. */
+function gapped(base, step, skipFrom, skipFor) {
+	return hourly(base, step).filter(([clock]) => clock < FROM + skipFrom || clock >= FROM + skipFrom + skipFor);
+}
+
+/** A status item's history: state changes at fixed times, sampled every 30 minutes, with an outage in the data. */
+function states(changes) {
+	const rows = [];
+	for (let clock = FROM; clock <= TO; clock += 1800) {
+		if (clock >= FROM + 30 * 3600 && clock < FROM + 34 * 3600) {
+			continue;
+		}
+		const current = changes.filter(([at]) => clock >= FROM + at).pop();
+		rows.push([clock, current[1]]);
+	}
+	return rows;
+}
+
+const severities = [
+	{ name: 'Not classified', color: '#97AAB3' }, { name: 'Information', color: '#7499FF' }, { name: 'Warning', color: '#FFC859' },
+	{ name: 'Average', color: '#FFA059' }, { name: 'High', color: '#E97659' }, { name: 'Disaster', color: '#E45959' }
+];
+const statusMap = [{ type: 0, value: '1', newvalue: 'up' }, { type: 0, value: '2', newvalue: 'down' }, { type: 0, value: '3', newvalue: 'testing' }];
+
 const common = { show_legend: true, decimals: 2, time_zone: 'Europe/London' };
 const period = { from: FROM, to: TO };
 const hosts = [
@@ -118,10 +142,7 @@ export const SAMPLES = {
 				problems: index === 2 ? [{ name: 'Link down on eth2', severity: 4 }] : []
 			})
 		]),
-		severities: [
-			{ name: 'Not classified', color: '#97AAB3' }, { name: 'Information', color: '#7499FF' }, { name: 'Warning', color: '#FFC859' },
-			{ name: 'Average', color: '#FFA059' }, { name: 'High', color: '#E97659' }, { name: 'Disaster', color: '#E45959' }
-		]
+		severities
 	},
 	pie: {
 		config: { ...common, entity_by: 'item', pie_sort: 'desc', label_position: 'outside', show_percent: true, show_value: true },
@@ -159,6 +180,60 @@ export const SAMPLES = {
 	funnel: {
 		config: { ...common, stages: 'Requests = Web requests\nAuthenticated = Web logins\nOrders = Web orders', funnel_order: 'listed', pct_first: true, pct_previous: true, show_value: true },
 		series: [raw({ name: 'Web requests', units: '', value: '1000' }), raw({ name: 'Web logins', units: '', value: '420' }), raw({ name: 'Web orders', units: '', value: '63' })]
+	},
+	line: {
+		config: { ...common, y_min: '', y_max: '', zero_baseline: false, smooth: false, show_points: false, max_gap: '' },
+		series: [
+			raw({ history: gapped(40, 1, 20 * 3600, 3 * 3600), delay: 1800 }),
+			raw({ hostid: '2', host: 'web02', history: hourly(60, 3), delay: 1800 }),
+			raw({ name: 'Load average', units: '', history: hourly(12, 2), delay: 1800 })
+		],
+		time_period: period,
+		hosts
+	},
+	area: {
+		config: { ...common, y_min: '', y_max: '', zero_baseline: true, smooth: false, show_points: false, area_mode: 'stacked', area_opacity: 40, area_gradient: false, max_gap: '' },
+		series: [
+			raw({ name: 'Bits received', units: 'bps', history: hourly(4000, 300), delay: 1800 }),
+			raw({ name: 'Bits sent', units: 'bps', history: gapped(2000, 200, 10 * 3600, 2 * 3600), delay: 1800 })
+		],
+		time_period: period,
+		hosts
+	},
+	status_matrix: {
+		config: { ...common, matrix_rows: 'host', colour_by: 'value_map', colour_map: 'up = #1A9850\ndown = #D73027\ntesting = #FEE08B', show_value: true, use_valuemap: true },
+		series: ['web01', 'web02', 'core01'].flatMap((host, index) => ['eth0', 'eth1', 'eth2', 'eth3'].map((port, column) => raw({
+			hostid: String(index + 1), host, name: `Interface ${port}: Operational status`, key: `net.if.status[${port}]`, units: '', value_type: 3,
+			value: (index + column) % 5 === 4 ? '2' : column === 3 && index === 0 ? null : (index === 2 && column === 1 ? '3' : '1'),
+			valuemap: statusMap,
+			problems: (index + column) % 5 === 4 ? [{ name: `Link down on ${port}`, severity: 3 }] : []
+		}))),
+		severities,
+		hosts
+	},
+	state_timeline: {
+		config: { ...common, use_valuemap: true, colour_map: 'up = #1A9850\ndown = #D73027', max_gap: '' },
+		series: [
+			raw({ name: 'Interface eth0: Operational status', units: '', value_type: 3, valuemap: statusMap, delay: 1800, history: states([[0, '1'], [9 * 3600, '2'], [11 * 3600, '1'], [40 * 3600, '3'], [41 * 3600, '1']]) }),
+			raw({ hostid: '2', host: 'web02', name: 'Service state', units: '', value_type: 1, delay: 1800, history: states([[0, 'running'], [20 * 3600, 'degraded'], [26 * 3600, 'running']]) })
+		],
+		time_period: period
+	},
+	sparkline_grid: {
+		config: { ...common, grid_columns: 0, tile_sort: 'name', rank_limit: 'all', rank_count: 10, show_change: true, show_minmax: true, max_gap: '' },
+		series: [
+			raw({ value: '33', history: hourly(40), delay: 1800 }),
+			raw({ hostid: '2', host: 'web02', value: '71', history: gapped(60, 3, 5 * 3600, 4 * 3600), delay: 1800 }),
+			raw({ name: 'Memory used', units: 'B', value: '6200000000', history: hourly(6000000000, 50000000), delay: 1800 }),
+			raw({ hostid: '3', host: 'core01', name: 'Temperature', units: '°C', value: null, history: [] })
+		],
+		time_period: period
+	},
+	threshold_band: {
+		config: { ...common, thresholds: '{$CPU.WARN}, 90', threshold_order: 'higher_worse', target_value: '50', y_min: '0', y_max: '100', smooth: false, show_points: false, max_gap: '' },
+		series: [raw({ history: hourly(70, 4), delay: 1800 }), raw({ hostid: '2', host: 'web02', history: gapped(55, 3, 30 * 3600, 3 * 3600), delay: 1800 })],
+		time_period: period,
+		hosts: hosts.map((host) => ({ ...host, macros: { '{$CPU.WARN}': '75' } }))
 	},
 	calendar_heatmap: {
 		config: { ...common, aggregation: 'max' },

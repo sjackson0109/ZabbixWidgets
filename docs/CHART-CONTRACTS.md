@@ -263,7 +263,7 @@ Every chart also needs items for each required role, no more than `Max items` pe
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `same_units`: All series share units; otherwise the widget reports the incompatible units.
   - `additive_groups`: Host totals add up a host's items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.
-  - `shared_thresholds`: Thresholds and other shared settings are numbers or macros that resolve to the same value on every selected host.
+  - `shared_thresholds`: Thresholds are numbers or macros that resolve to the same values on every selected host.
 
 ## C18 Treemap (`treemap`)
 
@@ -314,3 +314,90 @@ Every chart also needs items for each required role, no more than `Max items` pe
   - `non_negative`: Values must not be negative.
   - `same_units`: All series share units; otherwise the widget reports the incompatible units.
   - `funnel_stages`: At least two stages, one per line ("Stage = item name pattern"), each matching exactly one item with a value. Order is as listed unless ordered by value.
+
+## C21 Temporal Line (`line`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** history, macros
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `y_min`, `y_max`, `zero_baseline`, `smooth`, `show_points`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `temporal_units`: At most two distinct units, each on its own Y-axis.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+
+## C22 Temporal Area (`area`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** history, macros
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `y_min`, `y_max`, `zero_baseline`, `smooth`, `show_points`, `area_mode`, `area_opacity`, `area_gradient`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `temporal_units`: At most two distinct units, each on its own Y-axis.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+  - `stack_units`: Stacked areas need one additive unit. Series are averaged into shared buckets and a bucket missing any series is left empty, so a stack never adds up a partial set.
+
+## C23 Status Matrix (`status_matrix`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | no |  |
+
+- **Data fetched:** latest, valuemaps, problems, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `matrix_rows`, `colour_by`, `colour_map`, `thresholds`, `threshold_order`, `show_value`, `use_valuemap`
+- **Rules:**
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `matrix_settings`: Cells are coloured only by the chosen source: value colours ("value = #rrggbb"), thresholds (numbers or macros per host, numeric items only) or the severity of the item's triggers in the problem state. Otherwise cells stay neutral.
+
+## C24 State Timeline (`state_timeline`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | no |  |
+
+- **Data fetched:** history, valuemaps
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `use_valuemap`, `colour_map`, `max_gap`
+- **Rules:**
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `state_settings`: Value colour lines read "value = #rrggbb"; maximum gap is valid. States last until the next sample, up to the gap threshold; unknown time is shown as no data.
+
+## C25 Sparkline Grid (`sparkline_grid`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, history
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `grid_columns`, `tile_sort`, `rank_limit`, `rank_count`, `show_change`, `show_minmax`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+
+## C26 Threshold Band (`threshold_band`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** history, macros
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `thresholds`, `threshold_order`, `target_value`, `y_min`, `y_max`, `smooth`, `show_points`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `temporal_units`: At most two distinct units, each on its own Y-axis.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+  - `has_thresholds`: At least one threshold is set. Bands come only from configured thresholds, never from the data.

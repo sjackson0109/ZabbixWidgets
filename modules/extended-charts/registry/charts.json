@@ -24,7 +24,11 @@
 		"gauge_display": ["native", "percent"],
 		"rank_order": ["desc", "asc"],
 		"rank_limit": ["all", "top", "bottom"],
-		"funnel_order": ["listed", "desc", "asc"]
+		"funnel_order": ["listed", "desc", "asc"],
+		"area_mode": ["overlap", "stacked"],
+		"matrix_rows": ["host", "item"],
+		"colour_by": ["none", "value_map", "thresholds", "severity"],
+		"tile_sort": ["name", "desc", "asc"]
 	},
 	"item_fields": {
 		"items": "Items",
@@ -54,7 +58,8 @@
 		"row_tag": "when:row_identity=tag",
 		"row_regex": "when:row_identity=regex",
 		"show_item_name": "when:row_identity=item",
-		"rank_count": "when:rank_limit=top|bottom"
+		"rank_count": "when:rank_limit=top|bottom",
+		"colour_map": "when:colour_by=value_map"
 	},
 	"required_controls": [
 		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
@@ -551,6 +556,113 @@
 			"min_series": 1,
 			"controls": ["items", "stages", "funnel_order", "pct_first", "pct_previous", "show_value"],
 			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "funnel_stages"]
+		},
+		{
+			"id": "line",
+			"code": "C21",
+			"form_value": 21,
+			"name": "Temporal Line",
+			"renderer": "line",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["history", "macros"],
+			"macro_fields": ["y_min", "y_max"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "y_min", "y_max", "zero_baseline", "smooth", "show_points", "max_gap"],
+			"rules": ["numeric_only", "some_history", "temporal_units", "temporal_settings"]
+		},
+		{
+			"id": "area",
+			"code": "C22",
+			"form_value": 22,
+			"name": "Temporal Area",
+			"renderer": "area",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["history", "macros"],
+			"macro_fields": ["y_min", "y_max"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "y_min", "y_max", "zero_baseline", "smooth", "show_points", "area_mode", "area_opacity", "area_gradient", "max_gap"],
+			"rules": ["numeric_only", "some_history", "temporal_units", "temporal_settings", "stack_units"]
+		},
+		{
+			"id": "status_matrix",
+			"code": "C23",
+			"form_value": 23,
+			"name": "Status Matrix",
+			"renderer": "status_matrix",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": false}
+			},
+			"data": ["latest", "valuemaps", "problems", "macros"],
+			"macro_fields": ["thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "matrix_rows", "colour_by", "colour_map", "thresholds", "threshold_order", "show_value", "use_valuemap"],
+			"control_conditions": {"show_legend": "none", "thresholds": "when:colour_by=thresholds", "threshold_order": "when:colour_by=thresholds"},
+			"rules": ["has_values", "matrix_settings"]
+		},
+		{
+			"id": "state_timeline",
+			"code": "C24",
+			"form_value": 24,
+			"name": "State Timeline",
+			"renderer": "state_timeline",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": false}
+			},
+			"data": ["history", "valuemaps"],
+			"history": "always",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "use_valuemap", "colour_map", "max_gap"],
+			"control_conditions": {"colour_map": "always"},
+			"rules": ["some_history", "state_settings"]
+		},
+		{
+			"id": "sparkline_grid",
+			"code": "C25",
+			"form_value": 25,
+			"name": "Sparkline Grid",
+			"renderer": "sparkline_grid",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["latest", "history"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "grid_columns", "tile_sort", "rank_limit", "rank_count", "show_change", "show_minmax", "max_gap"],
+			"control_conditions": {"show_legend": "none"},
+			"rules": ["numeric_only", "has_values", "temporal_settings"]
+		},
+		{
+			"id": "threshold_band",
+			"code": "C26",
+			"form_value": 26,
+			"name": "Threshold Band",
+			"renderer": "threshold_band",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["history", "macros"],
+			"macro_fields": ["thresholds", "target_value", "y_min", "y_max"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "thresholds", "threshold_order", "target_value", "y_min", "y_max", "smooth", "show_points", "max_gap"],
+			"rules": ["numeric_only", "some_history", "temporal_units", "temporal_settings", "has_thresholds"]
 		}
 	]
 }
