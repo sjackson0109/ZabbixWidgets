@@ -113,11 +113,15 @@ class WidgetForm extends CWidgetForm {
 	/**
 	 * Adds the checks that depend on the selected chart: required item mappings
 	 * and required text settings. Field-level checks run in the parent.
+	 *
+	 * They run only in strict mode (saving the form). A widget stored without
+	 * them, e.g. through the API, still renders and the browser explains the
+	 * missing mappings, instead of Zabbix's generic "not fully configured".
 	 */
 	public function validate(bool $strict = false): array {
 		$errors = parent::validate($strict);
 
-		if ($errors) {
+		if ($errors || !$strict) {
 			return $errors;
 		}
 
