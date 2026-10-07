@@ -28,8 +28,12 @@ export function aggregate(values, fn) {
 
 /**
  * Aggregates samples that may be hourly trend summaries ({ value: avg, min,
- * max, num }). Trend sums are avg * num, so sums, averages and counts over
- * trends equal those over the raw history they summarise.
+ * max, num }) mixed with raw samples. A trend contributes avg * num to sums
+ * and num to counts. This matches raw history only when each trend hour lies
+ * wholly inside the bucket and the stored average is precise; the server
+ * enforces the first and uses trends only for floating-point items (see
+ * DataProvider::planReads), so the remaining difference is floating-point
+ * rounding of the stored average.
  */
 export function aggregateSamples(samples, fn) {
 	if (!samples.some((sample) => sample.num !== undefined)) {

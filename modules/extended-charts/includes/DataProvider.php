@@ -14,8 +14,9 @@ use Manager;
  * Fetches exactly the data a chart's contract asks for, as the current user,
  * so Zabbix permissions apply to every host, item, value and macro.
  *
- * Nothing here fills gaps: missing values stay null and limits that would cut
- * data short are reported as errors instead of truncating silently.
+ * Nothing here fills gaps: missing values stay null, and a period holding more
+ * values than the shared read budget is reported as an error instead of
+ * being truncated.
  */
 class DataProvider {
 
@@ -23,7 +24,7 @@ class DataProvider {
 	public const MAX_ITEMS = 500;
 	public const MAX_HISTORY_VALUES = 200000;
 
-	/** Periods longer than this read hourly trends where the chart can use them exactly. */
+	/** Periods longer than this read hourly trends where they can stand in for history (see planReads()). */
 	public const TRENDS_AFTER = 2 * 86400;
 
 	private const NUMERIC_TYPES = [ITEM_VALUE_TYPE_FLOAT, ITEM_VALUE_TYPE_UINT64];
@@ -203,9 +204,11 @@ class DataProvider {
 	}
 
 	/**
-	 * Adds history (or hourly trends) to numeric series in place.
+	 * Adds history, or hourly trends where they can stand in for it, to
+	 * numeric series in place. All reads share one value budget; if the
+	 * period holds more, the widget reports it instead of truncating.
 	 *
-	 * @return string  'history' or 'trends'
+	 * @return string  'history' or 'mixed' (trends for whole hours, history at the edges)
 	 */
 	private function addHistory(array &$series, array $period): string {
 		$numeric = array_filter($series, static function (array $entry): bool {
@@ -216,30 +219,117 @@ class DataProvider {
 			return 'history';
 		}
 
-		$source = $this->canUseTrends() && $period['to'] - $period['from'] > self::TRENDS_AFTER ? 'trends' : 'history';
-		$rows_by_item = $source === 'trends'
-			? $this->fetchTrends($numeric, $period)
-			: $this->fetchHistory($numeric, $period);
+		$plan = $this->planReads($numeric, $period);
+		$total = 0;
+
+		foreach ($plan as &$read) {
+			$read['count'] = $this->countRows($read);
+			$total += $read['count'];
+		}
+		unset($read);
+
+		if ($total > self::MAX_HISTORY_VALUES) {
+			$this->errors[] = _s(
+				'The selected period holds %1$d values, more than the %2$d this widget reads. Choose a shorter period.',
+				$total, self::MAX_HISTORY_VALUES
+			);
+
+			return 'history';
+		}
+
+		$rows_by_item = [];
+		$remaining = self::MAX_HISTORY_VALUES;
+
+		foreach ($plan as $read) {
+			$rows = $this->readRows($read, $remaining + 1);
+
+			if (count($rows) > $remaining) {
+				// More values arrived between counting and reading; stop rather than show part of the period.
+				$this->errors[] = _('New values arrived while reading the period. Refresh the widget.');
+
+				return 'history';
+			}
+
+			$remaining -= count($rows);
+
+			foreach ($rows as $row) {
+				$rows_by_item[$row[0]][] = array_slice($row, 1);
+			}
+		}
 
 		foreach ($series as &$entry) {
-			$entry['history'] = $rows_by_item[$entry['itemid']] ?? [];
+			$entry_rows = $rows_by_item[$entry['itemid']] ?? [];
+			usort($entry_rows, static function (array $a, array $b): int {
+				return $a[0] <=> $b[0];
+			});
+			$entry['history'] = $entry_rows;
 		}
 		unset($entry);
 
-		return $source;
+		$uses_trends = (bool) array_filter($plan, static function (array $read): bool {
+			return $read['table'] === 'trends';
+		});
+
+		return $uses_trends ? 'mixed' : 'history';
 	}
 
 	/**
-	 * Trends hold hourly count, min, average and max, from which daily or
-	 * multi-hour sums, averages, minima, maxima and counts are exact. They
-	 * cannot give first/last samples, so OHLC always reads raw history.
+	 * Decides which table each part of the period is read from.
+	 *
+	 * Trends are only used for floating-point items (unsigned trends store a
+	 * rounded average), for whole hours inside the period (an hour that starts
+	 * or ends outside it would include samples from outside), and, for calendar
+	 * days, only where every UTC offset in the period is a whole number of
+	 * hours (otherwise an hour can straddle midnight). Everything else is raw
+	 * history.
 	 */
-	private function canUseTrends(): bool {
+	private function planReads(array $numeric, array $period): array {
+		$by_type = [];
+
+		foreach ($numeric as $entry) {
+			$by_type[$entry['value_type']][] = $entry['itemid'];
+		}
+
+		$trend_start = (int) ceil($period['from'] / 3600) * 3600;
+		$trend_end = (int) floor(($period['to'] + 1) / 3600) * 3600;
+		$use_trends = $this->canUseTrends($period) && $period['to'] - $period['from'] > self::TRENDS_AFTER
+			&& $trend_end > $trend_start;
+
+		$plan = [];
+
+		foreach ($by_type as $value_type => $itemids) {
+			if ($use_trends && $value_type == ITEM_VALUE_TYPE_FLOAT) {
+				$plan[] = ['table' => 'trends', 'itemids' => $itemids, 'from' => $trend_start, 'to' => $trend_end - 1];
+
+				if ($period['from'] < $trend_start) {
+					$plan[] = ['table' => 'history', 'value_type' => $value_type, 'itemids' => $itemids,
+						'from' => $period['from'], 'to' => $trend_start - 1
+					];
+				}
+
+				if ($trend_end <= $period['to']) {
+					$plan[] = ['table' => 'history', 'value_type' => $value_type, 'itemids' => $itemids,
+						'from' => $trend_end, 'to' => $period['to']
+					];
+				}
+			}
+			else {
+				$plan[] = ['table' => 'history', 'value_type' => $value_type, 'itemids' => $itemids,
+					'from' => $period['from'], 'to' => $period['to']
+				];
+			}
+		}
+
+		return $plan;
+	}
+
+	private function canUseTrends(array $period): bool {
 		if ($this->chart['id'] === 'calendar_heatmap') {
-			return true;
+			return self::wholeHourOffsets($this->config['time_zone'] ?? 'UTC', $period['from'], $period['to']);
 		}
 
 		if ($this->chart['id'] === 'heatmap') {
+			// Heat map time buckets are aligned to the Unix epoch, so whole-hour buckets align with trends.
 			$bucket = timeUnitToSeconds($this->config['bucket']);
 
 			return $bucket !== null && $bucket > 0 && $bucket % 3600 == 0;
@@ -248,72 +338,75 @@ class DataProvider {
 		return false;
 	}
 
-	private function fetchHistory(array $series, array $period): array {
-		$itemids_by_type = [];
-
-		foreach ($series as $entry) {
-			$itemids_by_type[$entry['value_type']][$entry['itemid']] = true;
+	private static function wholeHourOffsets(string $time_zone, int $from, int $to): bool {
+		try {
+			$zone = new \DateTimeZone($time_zone);
+		}
+		catch (\Exception $e) {
+			return false;
 		}
 
-		$rows_by_item = [];
+		$transitions = $zone->getTransitions($from, $to);
 
-		foreach ($itemids_by_type as $value_type => $itemids) {
-			$options = [
-				'history' => $value_type,
-				'itemids' => array_keys($itemids),
-				'time_from' => $period['from'],
-				'time_till' => $period['to']
-			];
+		if ($transitions === false) {
+			return false;
+		}
 
-			$count = (int) API::History()->get($options + ['countOutput' => true]);
-
-			if ($count > self::MAX_HISTORY_VALUES) {
-				$this->errors[] = _s(
-					'The selected period holds %1$d values, more than the %2$d this widget reads. Choose a shorter period.',
-					$count, self::MAX_HISTORY_VALUES
-				);
-
-				return [];
-			}
-
-			$rows = API::History()->get($options + [
-				'output' => ['itemid', 'clock', 'value'],
-				'sortfield' => 'clock',
-				'sortorder' => ZBX_SORT_UP
-			]);
-
-			foreach ($rows as $row) {
-				$rows_by_item[$row['itemid']][] = [(int) $row['clock'], $row['value']];
+		foreach ($transitions as $transition) {
+			if ($transition['offset'] % 3600 != 0) {
+				return false;
 			}
 		}
 
-		return $rows_by_item;
+		return true;
 	}
 
-	private function fetchTrends(array $series, array $period): array {
-		$rows = API::Trend()->get([
-			'output' => ['itemid', 'clock', 'num', 'value_min', 'value_avg', 'value_max'],
-			'itemids' => array_column($series, 'itemid'),
-			'time_from' => $period['from'],
-			'time_till' => $period['to']
+	private function readOptions(array $read): array {
+		return [
+			'itemids' => $read['itemids'],
+			'time_from' => $read['from'],
+			'time_till' => $read['to']
+		];
+	}
+
+	private function countRows(array $read): int {
+		$options = $this->readOptions($read) + ['countOutput' => true];
+
+		$result = $read['table'] === 'trends'
+			? API::Trend()->get($options)
+			: API::History()->get($options + ['history' => $read['value_type']]);
+
+		return is_array($result) ? count($result) : (int) $result;
+	}
+
+	/**
+	 * @return array  Rows of [itemid, clock, value] (history) or [itemid, clock, avg, min, max, num] (trends).
+	 */
+	private function readRows(array $read, int $limit): array {
+		$options = $this->readOptions($read) + ['limit' => $limit];
+
+		if ($read['table'] === 'trends') {
+			$rows = API::Trend()->get($options + [
+				'output' => ['itemid', 'clock', 'num', 'value_min', 'value_avg', 'value_max']
+			]);
+
+			return array_map(static function (array $row): array {
+				return [$row['itemid'], (int) $row['clock'], $row['value_avg'], $row['value_min'], $row['value_max'],
+					(int) $row['num']
+				];
+			}, $rows);
+		}
+
+		$rows = API::History()->get($options + [
+			'history' => $read['value_type'],
+			'output' => ['itemid', 'clock', 'value'],
+			'sortfield' => 'clock',
+			'sortorder' => ZBX_SORT_UP
 		]);
 
-		$rows_by_item = [];
-
-		foreach ($rows as $row) {
-			$rows_by_item[$row['itemid']][] = [
-				(int) $row['clock'], $row['value_avg'], $row['value_min'], $row['value_max'], (int) $row['num']
-			];
-		}
-
-		foreach ($rows_by_item as &$item_rows) {
-			usort($item_rows, static function (array $a, array $b): int {
-				return $a[0] <=> $b[0];
-			});
-		}
-		unset($item_rows);
-
-		return $rows_by_item;
+		return array_map(static function (array $row): array {
+			return [$row['itemid'], (int) $row['clock'], $row['value']];
+		}, $rows);
 	}
 
 	private function needsHostDetails(): bool {

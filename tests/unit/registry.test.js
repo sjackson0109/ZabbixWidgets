@@ -76,3 +76,10 @@ describe('visibleControls', () => {
 		expect(visibleControls('heatmap', { heat_x: 'time' })).toEqual(expect.arrayContaining(['time_period', 'bucket']));
 	});
 });
+
+describe('stored values', () => {
+	it('gives every chart a unique, stable form value', () => {
+		const values = listCharts().map((chart) => chart.form_value);
+		expect(values).toEqual(values.map((_, index) => index + 1));
+	});
+});
