@@ -104,7 +104,7 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": ["items", "target_source", "target_items", "target_macro", "target_constant", "ranges", "pair_by", "pair_tag"],
-			"rules": ["numeric_only", "has_values", "has_target"],
+			"rules": ["numeric_only", "has_values", "same_units", "has_target", "bullet_ranges"],
 			"aggregations": []
 		},
 		{
@@ -147,7 +147,7 @@
 			"time_period": "when:heat_x=time",
 			"min_series": 1,
 			"controls": ["items", "heat_x", "heat_y", "bucket", "aggregation", "colour_min", "colour_max", "time_period"],
-			"rules": ["numeric_only", "has_values", "colour_bounds"],
+			"rules": ["numeric_only", "has_values", "same_units", "heat_axes", "colour_bounds"],
 			"aggregations": ["avg", "sum", "min", "max", "count"]
 		},
 		{

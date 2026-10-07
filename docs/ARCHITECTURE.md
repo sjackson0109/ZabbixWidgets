@@ -19,7 +19,7 @@ src/                             browser code, bundled with ECharts by esbuild
 ├── data/                        normalisation, units, aggregation, OHLC, pairing,
 │                                hierarchy, edges, relationships, radar
 ├── validation/                  contract rules and user-facing messages
-├── renderers/                   one module per chart (C01 Column so far)
+├── renderers/                   one module per chart (C01-C13)
 ├── ui/                          widget class, chart controller, edit form, theme
 └── utils/
 ```

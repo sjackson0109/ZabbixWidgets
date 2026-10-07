@@ -2,7 +2,7 @@
 
 Independent Zabbix dashboard widgets built on Apache ECharts.
 
-> **Status: foundation, not yet released.** The chart registry, data contracts, validation and data layer cover all 13 planned charts. Only **C01 Vertical Column** has a renderer so far; the others report "not available in this version yet". The remaining renderers will follow once Column is confirmed working on Zabbix 7.0, 7.2 and 7.4.
+> **Status: not yet released.** All 13 charts (C01-C13) have renderers and are tested against Zabbix 7.0, 7.2 and 7.4. See [chart contracts](docs/CHART-CONTRACTS.md) for what each chart needs.
 
 ZabbixWidgets was inspired in part by the Monzphere ECharts-Zabbix project and by its use of Apache ECharts for Zabbix dashboard visualisation. ZabbixWidgets is an independent implementation and is not affiliated with, endorsed by, or a source-code continuation of the Monzphere project.
 
