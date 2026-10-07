@@ -21,11 +21,9 @@ export function tableColumns(config) {
 	return entries.length > 0 ? entries : parseDefinitions('Value = *').entries;
 }
 
-const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+import { naturalCompare as compareText } from '../utils/natural.js';
 
-export function compareText(a, b) {
-	return collator.compare(String(a), String(b));
-}
+export { compareText };
 
 /**
  * Rows, columns and the items that could not be placed.

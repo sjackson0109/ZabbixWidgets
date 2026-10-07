@@ -14,20 +14,11 @@ import { mappedColour, parseColourMap, stateOf } from '../data/states.js';
 import { formatValue } from '../data/units.js';
 import { applyThemeVariables } from '../ui/theme.js';
 import { el } from '../utils/dom.js';
+import { readableText } from '../utils/colour.js';
+
+export { readableText };
 
 const DIMENSIONS = { host: hostDimension, item: itemDimension };
-
-/** Text colour that stays readable on a background colour. */
-export function readableText(colour) {
-	const match = /^#([0-9a-f]{6})$/i.exec(colour ?? '') ?? /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(colour ?? '');
-	if (match === null) {
-		return null;
-	}
-	const hex = match.length === 4 ? match.slice(1).map((digit) => digit + digit).join('') : match[1];
-	const value = parseInt(hex, 16);
-	const luminance = (0.2126 * ((value >> 16) & 255) + 0.7152 * ((value >> 8) & 255) + 0.0722 * (value & 255)) / 255;
-	return luminance > 0.55 ? '#1f2c33' : '#ffffff';
-}
 
 /** Rows, columns and cells: { rows, columns, cells: Map("row|column" -> cell) }. */
 export function matrixCells(payload, context) {

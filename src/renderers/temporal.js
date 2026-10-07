@@ -9,6 +9,7 @@ import { alignForStack, lineData, parseGap, sampleAt, temporalSeries, unitGroups
 import { bandColours, sharedScale } from '../data/thresholds.js';
 import { formatValue, displayUnits } from '../data/units.js';
 import { escapeHtml } from '../utils/escape.js';
+import { withAlpha } from '../utils/colour.js';
 
 const DAY = 86400;
 
@@ -225,9 +226,4 @@ function areaStyle(colour, opacity, gradient) {
 			colorStops: [{ offset: 0, color: withAlpha(colour, opacity) }, { offset: 1, color: withAlpha(colour, 0) }]
 		}
 	};
-}
-
-function withAlpha(hex, alpha) {
-	const value = parseInt(hex.slice(1), 16);
-	return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
 }

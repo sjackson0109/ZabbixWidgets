@@ -11,8 +11,9 @@ import { gapThreshold, parseGap } from './temporal.js';
 import { mapValue } from './valuemap.js';
 import { formatValue } from './units.js';
 import { seriesLabels } from '../renderers/common.js';
+import { isHexColour } from '../utils/colour.js';
+import { naturalCompare } from '../utils/natural.js';
 
-const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 /**
  * Parses "value = #colour" lines. The value is a raw value or mapped text,
@@ -29,7 +30,7 @@ export function parseColourMap(text) {
 		const separator = line.lastIndexOf('=');
 		const value = separator === -1 ? '' : line.slice(0, separator).trim();
 		const colour = separator === -1 ? '' : line.slice(separator + 1).trim();
-		if (value === '' || !HEX.test(colour)) {
+		if (value === '' || !isHexColour(colour)) {
 			errors.push({ line: index + 1, text: line });
 			return;
 		}
@@ -118,7 +119,7 @@ export function stateLanes(payload, palette) {
 	}
 	const colours = new Map();
 	let next = 0;
-	for (const key of [...states.keys()].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))) {
+	for (const key of [...states.keys()].sort(naturalCompare)) {
 		const state = states.get(key);
 		colours.set(key, mappedColour(colourMap, state) ?? palette[next++ % palette.length]);
 	}

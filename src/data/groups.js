@@ -5,6 +5,7 @@
  */
 import { displayUnits } from './units.js';
 import { seriesLabels } from '../renderers/common.js';
+import { naturalCompare } from '../utils/natural.js';
 
 /**
  * Units whose values cannot be added up: shares, timestamps, temperatures,
@@ -51,7 +52,6 @@ export function chartEntities(series, groupBy) {
 		: entity));
 }
 
-const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 
 /**
  * Orders entities by value. Equal values keep a stable order: by label, then
@@ -62,5 +62,5 @@ export function sortEntities(entities, order) {
 		return [...entities];
 	}
 	const sign = order === 'asc' ? 1 : -1;
-	return [...entities].sort((a, b) => sign * (a.value - b.value) || collator.compare(a.label, b.label) || collator.compare(a.id, b.id));
+	return [...entities].sort((a, b) => sign * (a.value - b.value) || naturalCompare(a.label, b.label) || naturalCompare(a.id, b.id));
 }

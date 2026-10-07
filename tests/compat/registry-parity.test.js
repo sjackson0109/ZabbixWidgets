@@ -48,7 +48,7 @@ function cases() {
 describe('registry parity between PHP and JavaScript', () => {
 	it('makes the same decisions for every chart and setting', () => {
 		const list = cases();
-		const php = JSON.parse(execFileSync('php', [script], { input: JSON.stringify(list) }).toString());
+		const php = JSON.parse(execFileSync('php', [script], { input: JSON.stringify(list), maxBuffer: 512 * 1024 * 1024 }).toString());
 
 		const js = list.map(({ chart: id, config }) => {
 			const chart = listCharts().find((entry) => entry.id === id);

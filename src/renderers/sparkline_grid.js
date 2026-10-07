@@ -13,6 +13,7 @@ import { gapThreshold, parseGap } from '../data/temporal.js';
 import { formatValue } from '../data/units.js';
 import { applyThemeVariables } from '../ui/theme.js';
 import { el } from '../utils/dom.js';
+import { naturalCompare } from '../utils/natural.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const WIDTH = 100;
@@ -76,8 +77,7 @@ export function sparklineTiles(payload) {
 		const sorted = sortEntities(chosen.filter((tile) => typeof tile.value === 'number'), config.tile_sort);
 		return config.rank_limit === 'top' || config.rank_limit === 'bottom' ? sorted : [...sorted, ...missing];
 	}
-	const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
-	return [...chosen].sort((a, b) => collator.compare(a.label, b.label) || collator.compare(a.id, b.id));
+	return [...chosen].sort((a, b) => naturalCompare(a.label, b.label) || naturalCompare(a.id, b.id));
 }
 
 function sparkline(tile, period, colour) {
