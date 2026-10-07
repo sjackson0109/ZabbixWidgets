@@ -231,7 +231,7 @@ const usrgrpFound = await api('usergroup.get', { filter: { name: ['ZW viewers'] 
 const usrgrpid = usrgrpFound.length
 	? usrgrpFound[0].usrgrpid
 	: (await api('usergroup.create', { name: 'ZW viewers', hostgroup_rights: [{ id: groupid, permission: 2 }] })).usrgrpids[0];
-const viewer = { username: 'zw-viewer', password: 'Zw-viewer-2026!' };
+const viewer = { username: 'zw-viewer', password: 'Dashboard-Reader-2026!' };
 const viewerFound = await api('user.get', { filter: { username: viewer.username } });
 const viewerId = viewerFound.length
 	? viewerFound[0].userid
