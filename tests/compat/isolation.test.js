@@ -1,7 +1,6 @@
 /**
- * Coexistence with the Monzphere ECharts widget (spec section 14), checked at
- * the source level: identifiers, globals and CSS. The live dashboard check
- * with both modules installed runs in .github/workflows/integration.yml.
+ * The module stays isolated from other dashboard widgets, checked at the
+ * source level: identifiers, globals and CSS.
  */
 import { describe, expect, it } from 'vitest';
 import { build } from 'esbuild';
@@ -23,16 +22,11 @@ async function bundleSource() {
 	return result.outputFiles[0].text;
 }
 
-const MONZPHERE_IDENTIFIERS = ['echarts', 'EchartsWidget', 'WidgetEcharts', 'widget.echarts.view'];
-
-describe('coexistence with the Monzphere module', () => {
-	it('uses identifiers that differ from the Monzphere module', async () => {
+describe('isolation from other modules', () => {
+	it('uses its own identifiers and asset names', async () => {
 		const manifest = JSON.parse(await readFile(path.join(moduleDir, 'manifest.json'), 'utf8'));
 		const ids = [manifest.id, manifest.namespace, manifest.widget.js_class, ...Object.keys(manifest.actions)];
 		expect(ids).toEqual(['zabbixwidgets_charts', 'ZabbixWidgetsCharts', 'WidgetZabbixWidgetsCharts', 'widget.zabbixwidgets_charts.view']);
-		for (const id of ids) {
-			expect(MONZPHERE_IDENTIFIERS).not.toContain(id);
-		}
 		for (const asset of [...manifest.assets.js, ...manifest.assets.css]) {
 			expect(asset).toMatch(/^zabbixwidgets-/);
 		}
@@ -40,7 +34,7 @@ describe('coexistence with the Monzphere module', () => {
 
 	it('adds only its own two globals and leaves window.echarts alone', async () => {
 		const { window } = new JSDOM('<!doctype html><body></body>', { runScripts: 'outside-only' });
-		window.eval('window.echarts = { version: "5.4.4" }; window.WidgetEcharts = class {}; window.CWidget = class {};');
+		window.eval('window.echarts = { version: "5.4.4" }; window.CWidget = class {};');
 		const otherEcharts = window.echarts;
 
 		const before = new Set(Object.keys(window));

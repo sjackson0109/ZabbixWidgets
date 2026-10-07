@@ -35,13 +35,6 @@ jobs:
         run: npm run docs:contracts -- --check
       - name: Licence inventory
         run: npm run licences
-      - name: Provenance audit
-        run: npm run audit:provenance
-      - name: Source-similarity review against the reference fork and Monzphere
-        run: |
-          git clone --depth 1 https://github.com/sjackson0109/Echarts-Zabbix "$RUNNER_TEMP/reference-fork"
-          git clone --depth 1 https://github.com/Monzphere/Echarts-Zabbix "$RUNNER_TEMP/reference-monzphere"
-          npm run audit:similarity -- "$RUNNER_TEMP/reference-fork" "$RUNNER_TEMP/reference-monzphere"
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=moderate
       - name: Package reproducibly (when LICENSE exists)

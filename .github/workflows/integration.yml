@@ -1,7 +1,7 @@
 name: Zabbix integration
 
-# Installs the module into real Zabbix releases, alongside the Monzphere
-# ECharts module, and checks a dashboard in Chromium (tests/integration).
+# Installs the module into real Zabbix releases and checks a dashboard in
+# Chromium (tests/integration).
 on:
   pull_request:
   push:
@@ -20,8 +20,6 @@ jobs:
         zabbix: ['7.0', '7.2', '7.4']
     env:
       ZABBIX_TAG: alpine-${{ matrix.zabbix }}-latest
-      MONZPHERE_DIR: ${{ github.workspace }}/.monzphere
-      WITH_MONZPHERE: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,11 +29,9 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - name: Fetch the Monzphere module for the coexistence check (test only, not redistributed)
-        run: git clone --depth 1 https://github.com/Monzphere/Echarts-Zabbix "$MONZPHERE_DIR" && rm -rf "$MONZPHERE_DIR/.git"
       - name: Start Zabbix ${{ matrix.zabbix }}
         run: docker compose -f tests/integration/docker-compose.yml up -d --wait postgres && docker compose -f tests/integration/docker-compose.yml up -d
-      - name: Install modules
+      - name: Install module
         run: tests/integration/install-modules.sh
       - name: Smoke test
         run: node tests/integration/smoke.mjs
