@@ -220,16 +220,18 @@ async function showcase(page, widget) {
 
 	await page.getByRole('button', { name: /edit dashboard/i }).click();
 	await page.waitForTimeout(1000);
+	// The widget's edit dialogue holds a form; hover hints are also .overlay-dialogue but do not.
+	const dialogue = page.locator('.overlay-dialogue', { has: page.locator('form') }).last();
 	for (const [index, [name]] of chartWidgets.entries()) {
 		try {
 			const target = widget(`ZW ${name}`);
 			await target.hover();
 			await target.locator('.js-widget-edit, button[title="Edit"]').first().click();
-			const dialogue = page.locator('.overlay-dialogue').last();
 			await dialogue.waitFor({ timeout: 15000 });
 			await page.waitForTimeout(1500);
+			await page.mouse.move(0, 0);
 			await dialogue.screenshot({ path: file(index, name, 'form') });
-			await page.keyboard.press('Escape');
+			await dialogue.locator('.btn-overlay-close').click();
 			await dialogue.waitFor({ state: 'detached', timeout: 10000 });
 		}
 		catch (error) {
