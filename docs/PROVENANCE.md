@@ -60,4 +60,4 @@ The release bundles Apache ECharts 6.1.0. It is obtained from the official npm p
 
 ## Licensing
 
-ZabbixWidgets is an independently authored implementation and will be distributed under the MIT licence once the copyright holder is confirmed. It is **not** a relicensing of Echarts-Zabbix. Third-party dependencies keep their own licences.
+ZabbixWidgets is an independently authored implementation and is distributed under the MIT licence (see LICENSE, copyright Simon Jackson). It is **not** a relicensing of Echarts-Zabbix. Third-party dependencies keep their own licences.

@@ -4,7 +4,7 @@
 	"type": "widget",
 	"name": "ZabbixWidgets Extended Charts",
 	"namespace": "ZabbixWidgetsCharts",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"author": "ZabbixWidgets contributors",
 	"url": "https://github.com/sjackson0109/ZabbixWidgets",
 	"description": "Thirteen Apache ECharts visualisations with explicit data contracts.",
