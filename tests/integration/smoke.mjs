@@ -233,7 +233,7 @@ const usrgrpid = usrgrpFound.length
 	? usrgrpFound[0].usrgrpid
 	: (await api('usergroup.create', { name: 'ZW viewers', hostgroup_rights: [{ id: groupid, permission: 2 }] })).usrgrpids[0];
 // A throwaway password made up for each run, for a container that lives only as long as the run.
-const viewer = { username: 'zw-viewer', password: `Zw#${randomBytes(18).toString('base64url')}` };
+const viewer = { username: 'zw-viewer', password: randomBytes(18).toString('base64url') };
 const viewerFound = await api('user.get', { filter: { username: viewer.username } });
 const viewerId = viewerFound.length
 	? (await api('user.update', { userid: viewerFound[0].userid, passwd: viewer.password })).userids[0]
