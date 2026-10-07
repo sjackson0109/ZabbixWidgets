@@ -9,6 +9,6 @@ window.widget_zabbixwidgets_charts_form = new class {
 
 	init() {
 		// The behaviour lives in the module bundle so it is linted and tested with the rest of the code.
-		window.ZabbixWidgetsCharts.initEditForm(document.getElementById('widget-dialogue-form'));
+		window.ZabbixWidgetsCharts.initEditForm();
 	}
 };

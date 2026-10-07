@@ -162,9 +162,11 @@ try {
 	check(await column.locator('.zw-charts-canvas canvas').count() > 0, 'Column widget draws a canvas');
 	check(await column.locator('.zw-charts-errors').count() === 0, 'Column widget shows no errors');
 
+	// The message may come from the module's own validation (.zw-charts-errors) or from Zabbix
+	// showing WidgetForm::validate() errors in place of the widget; either explains the problem.
 	const bubble = widget('ZW bubble');
-	const bubbleText = await bubble.locator('.zw-charts-errors').textContent().catch(() => '');
-	check(/requires/i.test(bubbleText ?? ''), `Bubble widget explains missing mappings: "${bubbleText}"`);
+	const bubbleText = (await bubble.locator('.dashboard-grid-widget-contents, .dashboard-grid-widget-container').first().innerText().catch(() => '')).trim();
+	check(/requires/i.test(bubbleText), `Bubble widget explains missing mappings: "${bubbleText.slice(0, 200)}"`);
 
 	}
 
@@ -175,8 +177,11 @@ try {
 	await page.waitForTimeout(1000);
 	await column.hover();
 	await column.locator('.js-widget-edit, button[title="Edit"]').first().click();
-	const form = page.locator('#widget-dialogue-form');
-	await form.waitFor({ timeout: 15000 });
+	const dialogue = page.locator('.overlay-dialogue').last();
+	await dialogue.waitFor({ timeout: 15000 });
+	await page.waitForTimeout(1500);
+	console.log(`dialogue form id: ${await dialogue.locator('form').first().getAttribute('id').catch(() => null)}`);
+	const form = dialogue.locator('form').first();
 	await page.waitForTimeout(1000);
 	await page.screenshot({ path: `${OUT}/edit-form-${version}.png` });
 	await writeFile(`${OUT}/edit-form-${version}.html`, await form.innerHTML());
@@ -187,6 +192,8 @@ try {
 catch (error) {
 	failures.push(`Unexpected: ${error.message}`);
 	console.error(error);
+	const dialogueHtml = await page.locator('.overlay-dialogue').last().innerHTML({ timeout: 2000 }).catch(() => '(no dialogue)');
+	console.log(`--- dialogue HTML (first 4000 chars) ---\n${dialogueHtml.slice(0, 4000)}`);
 	await page.screenshot({ path: `${OUT}/failure-${version}.png`, fullPage: true }).catch(() => {});
 	await writeFile(`${OUT}/failure-${version}.html`, await page.content().catch(() => '')).catch(() => {});
 }
