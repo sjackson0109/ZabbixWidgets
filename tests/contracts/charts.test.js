@@ -61,6 +61,10 @@ describe('C02 stacked bar', () => {
 		expect(result.errors[0].message).toBe('These series cannot be combined because they use incompatible units: "%" and "B/s".');
 	});
 
+	it('requires at least two series', () => {
+		expect(codes(check('stacked_bar', { series: [item({ value: '5' })] }))).toEqual(['too_few_series']);
+	});
+
 	it('allows negative values', () => {
 		expect(check('stacked_bar', { series: [item({ value: '-1' }), item({ value: '2' })] }).ok).toBe(true);
 	});
@@ -88,6 +92,12 @@ describe('C04 bullet', () => {
 	it('rejects a non-numeric constant', () => {
 		expect(codes(check('bullet', { config: { target_source: 'constant', target_constant: 'high' }, series: [item({ role: 'actual' })] })))
 			.toContain('missing_target');
+	});
+
+	it('requires target items only when the target comes from items', () => {
+		expect(codes(check('bullet', { config: { target_source: 'item' }, series: [item({ role: 'actual' })] }))).toEqual(['missing_role']);
+		expect(check('bullet', { config: { target_source: 'constant', target_constant: '5' }, series: [item({ role: 'actual' })] }).ok)
+			.toBe(true);
 	});
 
 	it('pairs target items by host and reports missing targets', () => {

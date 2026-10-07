@@ -5,8 +5,7 @@ name: Zabbix integration
 on:
   pull_request:
   push:
-    # Feature branches too, so screenshots can be reviewed before a pull request.
-    branches: [main, 'claude/**']
+    branches: [main]
   workflow_dispatch:
 
 permissions:

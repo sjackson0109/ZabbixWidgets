@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateCondition, getChart, listCharts, requiresHistory, visibleControls } from '../../src/registry/index.js';
+import { evaluateCondition, getChart, listCharts, requiredControls, requiresHistory, visibleControls } from '../../src/registry/index.js';
 import { RULES } from '../../src/validation/index.js';
 
 const EXPECTED_IDS = [
@@ -74,6 +74,19 @@ describe('visibleControls', () => {
 	it('shows time controls for a heat map only on a time axis', () => {
 		expect(visibleControls('heatmap', { heat_x: 'host' })).not.toContain('time_period');
 		expect(visibleControls('heatmap', { heat_x: 'time' })).toEqual(expect.arrayContaining(['time_period', 'bucket']));
+	});
+});
+
+describe('requiredControls', () => {
+	it('requires a setting only while it is shown', () => {
+		expect(requiredControls('bullet', { target_source: 'macro' })).toEqual(['target_macro']);
+		expect(requiredControls('bullet', { target_source: 'item', pair_by: 'tag' })).toEqual(['pair_tag']);
+		expect(requiredControls('relationship', {})).toEqual(['source_tag', 'target_tag']);
+		expect(requiredControls('column', {})).toEqual([]);
+	});
+
+	it('handles values containing "="', () => {
+		expect(evaluateCondition('when:mode=a=b', { mode: 'a=b' })).toBe(true);
 	});
 });
 
