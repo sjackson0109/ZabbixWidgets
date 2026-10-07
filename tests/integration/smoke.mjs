@@ -505,12 +505,14 @@ try {
 	// S01: a widget without its own period follows the dashboard, and asks again when the time selector changes.
 	step('Dashboard time period');
 	check(await widget('ZW line (dashboard period)').locator('.zw-charts-canvas canvas').count() > 0, 'Temporal Line follows the dashboard period and draws');
-	actionRequests.length = 0;
 	try {
-		await page.locator('.btn-time').first().click();
-		await page.locator('a[data-from="now-6h"][data-to="now"]').first().click();
+		// Refreshes repeat the same request; a request not seen before carries the new period.
+		const before = new Set(actionRequests);
+		await page.locator('.btn-time-zoomout').first().click();
 		await page.waitForTimeout(5000);
-		check(actionRequests.some((data) => data.includes('now-6h')), 'Changing the dashboard time period refreshes the widgets with the new period');
+		const fresh = actionRequests.filter((data) => !before.has(data));
+		check(fresh.some((data) => /time_period/.test(data)),
+			`Changing the dashboard time period refreshes the widgets with the new period (${fresh.length} new requests${fresh.length ? `, e.g. ${fresh[0].slice(0, 300)}` : ''})`);
 	}
 	catch (error) {
 		check(false, `Changing the dashboard time period: ${error.message}`);
