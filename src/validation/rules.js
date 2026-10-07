@@ -12,6 +12,11 @@ import { tagValue, toNumber } from '../data/normalise.js';
 import { activeRoles, isRoleRequired } from '../registry/index.js';
 import { buildTable } from '../data/table.js';
 import { parseDefinitions } from '../data/patterns.js';
+import { isAdditive } from '../data/groups.js';
+import { resolveScale, sharedScale } from '../data/thresholds.js';
+import { buildLevelTree, parseLevels } from '../data/levels.js';
+import { funnelStages } from '../data/funnel.js';
+import { pairColours } from '../renderers/treemap.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -377,6 +382,127 @@ export const RULES = {
 		if (table.unmatched.length > 0) {
 			problems.push((table.rows.length === 0 && table.unresolved.length === 0 ? error : warning)('unmatched_columns',
 				`These items match no column pattern and are not shown: ${listNames(table.unmatched.map(seriesLabel))}.`));
+		}
+		return problems;
+	},
+
+	additive_groups(ctx) {
+		if (ctx.config.entity_by !== 'host') {
+			return [];
+		}
+		const series = roleSeries(ctx).filter((entry) => typeof entry.value === 'number');
+		const perHost = new Map();
+		for (const entry of series) {
+			perHost.set(entry.hostid, [...(perHost.get(entry.hostid) ?? []), entry]);
+		}
+		const summed = [...perHost.values()].filter((items) => items.length > 1);
+		const units = [...new Set(summed.flat().map((entry) => displayUnits(entry.units)).filter((unit) => !isAdditive(unit)))];
+		return summed.length > 0 && units.length > 0 ? [error('non_additive',
+			`Values in ${listNames(units.map((unit) => `"${unit}"`))} cannot be added up into host totals. Show each item instead, or select one item per host.`)] : [];
+	},
+
+	gauge_scale(ctx) {
+		const hosts = new Map(ctx.payload.hosts.map((host) => [host.hostid, host]));
+		const problems = [];
+		const seen = new Set();
+		for (const entry of roleSeries(ctx)) {
+			const host = hosts.get(entry.hostid) ?? null;
+			const scale = resolveScale(ctx.config, host);
+			const messages = [...scale.errors];
+			// Settings that did not resolve are already reported; the scale itself can only be checked once they do.
+			if (messages.length === 0 && (scale.min === null || scale.max === null)) {
+				messages.push('set both a minimum and a maximum (numbers or user macros)');
+			}
+			else if (messages.length === 0 && scale.min >= scale.max) {
+				messages.push('the minimum must be lower than the maximum');
+			}
+			for (const message of messages) {
+				const text = `${ctx.chart.name}: ${message}.`;
+				if (!seen.has(text)) {
+					seen.add(text);
+					problems.push(error('invalid_scale', text));
+				}
+			}
+		}
+		return problems;
+	},
+
+	shared_thresholds(ctx) {
+		const hostids = new Set(roleSeries(ctx).map((entry) => entry.hostid));
+		const { errors } = sharedScale({ thresholds: ctx.config.thresholds, target_value: ctx.config.target_value,
+			y_min: ctx.config.y_min, y_max: ctx.config.y_max }, ctx.payload.hosts.filter((host) => hostids.has(host.hostid)));
+		return errors.map((message) => error('invalid_thresholds', `${message.charAt(0).toUpperCase()}${message.slice(1)}.`));
+	},
+
+	size_units(ctx) {
+		return RULES.same_units({ ...ctx, payload: { ...ctx.payload, series: ctx.payload.series.filter((entry) => entry.role === 'size') } });
+	},
+
+	hierarchy_levels(ctx) {
+		const { levels, error: problem } = parseLevels(ctx.config.levels);
+		if (problem !== null) {
+			return [error('invalid_levels', problem)];
+		}
+		if (levels.some((level) => level.type === 'path') && String(ctx.config.path_delimiter ?? '') === '') {
+			return [error('invalid_levels', 'The "path" level needs a path delimiter to split item names.')];
+		}
+		const sized = roleSeries(ctx, [ctx.chart.roles.size ? 'size' : 'value']);
+		const { duplicated } = buildLevelTree(sized, ctx.payload.hosts, levels, { delimiter: String(ctx.config.path_delimiter ?? '') });
+		return duplicated.length === 0 ? [] : [warning('duplicated_leaves',
+			`These items appear in more than one place (for example, hosts in several host groups), so totals above them count them more than once: ${listNames(duplicated.map(seriesLabel))}.`)];
+	},
+
+	positive_sizes(ctx) {
+		const sized = roleSeries(ctx, [ctx.chart.roles.size ? 'size' : 'value']).filter((entry) => typeof entry.value === 'number');
+		const negative = sized.filter((entry) => entry.value < 0);
+		const zero = sized.filter((entry) => entry.value === 0);
+		const problems = [];
+		if (negative.length > 0) {
+			problems.push(error('negative_values', `${ctx.chart.name} areas cannot be negative: ${listNames(negative.map(seriesLabel))}.`));
+		}
+		if (zero.length > 0) {
+			problems.push((zero.length === sized.length ? error : warning)('zero_values',
+				`These items are zero and take no space: ${listNames(zero.map(seriesLabel))}.`));
+		}
+		return problems;
+	},
+
+	colour_pairs(ctx) {
+		const { missing, ambiguous, used } = pairColours(ctx.payload);
+		if (!used) {
+			return [];
+		}
+		const by = ctx.config.pair_by === 'tag' ? `host and "${ctx.config.pair_tag}" tag` : 'host';
+		const problems = [];
+		if (ambiguous.length > 0) {
+			problems.push(error('ambiguous_colour',
+				`More than one colour item matches the same ${by} for ${listNames(ambiguous.map(seriesLabel))}. Narrow the colour item pattern.`));
+		}
+		if (missing.length > 0) {
+			problems.push(warning('missing_colour', `No colour item for ${listNames(missing.map(seriesLabel))}; shown in a neutral colour.`));
+		}
+		return problems;
+	},
+
+	funnel_stages(ctx) {
+		const { missing, ambiguous, unused, errors: lines, defined, stages } = funnelStages(roleSeries(ctx), ctx.config.stages);
+		const problems = lines.map((line) => error('invalid_stages', `Line ${line.line} of the stage list is not in the form "Stage = item name pattern".`));
+		if (defined < 2 && lines.length === 0) {
+			problems.push(error('invalid_stages', 'Funnel requires at least two stages, one per line: "Stage = item name pattern".'));
+		}
+		if (missing.length > 0) {
+			problems.push(error('missing_stage', `No item matches the stage ${listNames(missing.map((label) => `"${label}"`))}.`));
+		}
+		if (ambiguous.length > 0) {
+			problems.push(error('ambiguous_stage',
+				`Each stage needs exactly one item, but ${listNames(ambiguous.map((stage) => `"${stage.label}" matches ${stage.items.length}`))}. Narrow the stage pattern or select one host.`));
+		}
+		const withoutValue = stages.filter((stage) => typeof stage.entry.value !== 'number');
+		if (withoutValue.length > 0) {
+			problems.push(error('missing_stage', `No recent value for the stage ${listNames(withoutValue.map((stage) => `"${stage.label}"`))}.`));
+		}
+		if (unused.length > 0) {
+			problems.push(warning('unused_items', `These items match no stage and are not shown: ${listNames(unused.map(seriesLabel))}.`));
 		}
 		return problems;
 	},

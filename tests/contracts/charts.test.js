@@ -340,6 +340,100 @@ describe('C14 LLD data table', () => {
 	});
 });
 
+describe('C15 pie', () => {
+	it('accepts non-negative values with the same units', () => {
+		expect(check('pie', { series: [item({ value: '1' }), item({ value: '0' })] }).ok).toBe(true);
+	});
+
+	it('rejects negative values and mixed units', () => {
+		expect(codes(check('pie', { series: [item({ value: '-1' })] }))).toContain('negative_values');
+		expect(codes(check('pie', { series: [item({ units: 'B' }), item({ units: '%' })] }))).toContain('mixed_units');
+	});
+
+	it('adds up host totals only for additive units', () => {
+		const series = (units) => [item({ hostid: '1', units, value: '1' }), item({ hostid: '1', units, value: '2' })];
+		expect(codes(check('pie', { config: { entity_by: 'host' }, series: series('%') }))).toContain('non_additive');
+		expect(check('pie', { config: { entity_by: 'host' }, series: series('B') }).ok).toBe(true);
+		expect(check('pie', { config: { entity_by: 'item' }, series: series('%') }).ok).toBe(true);
+	});
+});
+
+describe('C16 level gauge', () => {
+	it('requires an explicit minimum and maximum', () => {
+		expect(codes(check('level_gauge', { series: [item()] }))).toContain('invalid_scale');
+		expect(codes(check('level_gauge', { config: { scale_min: '10', scale_max: '5' }, series: [item()] }))).toContain('invalid_scale');
+		expect(check('level_gauge', { config: { scale_min: '0', scale_max: '100' }, series: [item()] }).ok).toBe(true);
+	});
+
+	it('resolves macros per host and reports hosts without them', () => {
+		const config = { scale_min: '0', scale_max: '{$MAX}' };
+		const hosts = [host({ hostid: '1', macros: { '{$MAX}': '10' } }), host({ hostid: '2', name: 'Host B' })];
+		const result = check('level_gauge', { config, hosts, series: [item({ hostid: '1' }), item({ hostid: '2', host: 'Host B' })] });
+		expect(result.errors.map((problem) => problem.message)).toEqual(['Vertical Level Gauge: Maximum: {$MAX} is not defined as a number on Host B.']);
+	});
+
+	it('rejects thresholds that do not ascend', () => {
+		expect(codes(check('level_gauge', { config: { scale_min: '0', scale_max: '100', thresholds: '80, 50' }, series: [item()] }))).toContain('invalid_scale');
+	});
+});
+
+describe('C17 ranking bar', () => {
+	it('accepts plain values and rejects mixed units', () => {
+		expect(check('ranking_bar', { series: [item(), item({ hostid: '2' })] }).ok).toBe(true);
+		expect(codes(check('ranking_bar', { series: [item({ units: '%' }), item({ units: 'ms' })] }))).toContain('mixed_units');
+	});
+
+	it('needs thresholds that are the same for every host', () => {
+		const hosts = [host({ hostid: '1', macros: { '{$T}': '1' } }), host({ hostid: '2', macros: { '{$T}': '2' } })];
+		const series = [item({ hostid: '1' }), item({ hostid: '2' })];
+		expect(codes(check('ranking_bar', { config: { thresholds: '{$T}' }, hosts, series }))).toContain('invalid_thresholds');
+		expect(codes(check('ranking_bar', { config: { thresholds: 'high' }, hosts, series }))).toContain('invalid_thresholds');
+	});
+});
+
+describe('C18 treemap and C19 sunburst', () => {
+	const hosts = [host({ hostid: '1', groups: ['A', 'B'] })];
+
+	it.each(['treemap', 'sunburst'])('%s checks levels, sizes and duplicates', (chartId) => {
+		const role = chartId === 'treemap' ? 'size' : 'value';
+		expect(check(chartId, { config: { levels: 'host' }, hosts, series: [item({ role })] }).ok).toBe(true);
+		expect(codes(check(chartId, { config: { levels: 'rack' }, hosts, series: [item({ role })] }))).toEqual(['invalid_levels']);
+		expect(codes(check(chartId, { config: { levels: 'host, path' }, hosts, series: [item({ role })] }))).toEqual(['invalid_levels']);
+		expect(codes(check(chartId, { config: { levels: 'host' }, hosts, series: [item({ role, value: '-1' })] }))).toContain('negative_values');
+		expect(codes(check(chartId, { config: { levels: 'host' }, hosts, series: [item({ role, value: '0' })] }))).toContain('zero_values');
+		const duplicated = check(chartId, { config: { levels: 'group' }, hosts, series: [item({ role })] });
+		expect(duplicated.ok).toBe(true);
+		expect(duplicated.warnings.map((problem) => problem.code)).toContain('duplicated_leaves');
+	});
+
+	it('rejects ambiguous colour items and allows different colour units', () => {
+		const series = [item({ role: 'size', units: 'B' }), item({ role: 'colour', units: '%' })];
+		expect(check('treemap', { config: { levels: 'host', pair_by: 'host' }, hosts, series }).ok).toBe(true);
+		expect(codes(check('treemap', { config: { levels: 'host', pair_by: 'host' }, hosts, series: [...series, item({ role: 'colour' })] })))
+			.toContain('ambiguous_colour');
+	});
+});
+
+describe('C20 funnel', () => {
+	const series = [item({ name: 'Visits', value: '9' }), item({ name: 'Orders', value: '3' })];
+
+	it('accepts explicit stages that each match one item', () => {
+		expect(check('funnel', { config: { stages: 'Visits = Visits\nOrders = Orders' }, series }).ok).toBe(true);
+	});
+
+	it('rejects missing, ambiguous and too few stages', () => {
+		expect(codes(check('funnel', { config: { stages: 'Visits = Visits' }, series }))).toContain('invalid_stages');
+		expect(codes(check('funnel', { config: { stages: 'Visits = Visits\nCarts = Carts' }, series }))).toContain('missing_stage');
+		expect(codes(check('funnel', { config: { stages: 'All = *\nOrders = Orders' }, series }))).toContain('ambiguous_stage');
+		expect(codes(check('funnel', { config: { stages: '' }, series }))).toContain('invalid_stages');
+	});
+
+	it('reports items that belong to no stage', () => {
+		const result = check('funnel', { config: { stages: 'Visits = Visits\nOrders = Orders' }, series: [...series, item({ name: 'Other' })] });
+		expect(result.warnings.map((problem) => problem.code)).toEqual(['unused_items']);
+	});
+});
+
 describe('server errors', () => {
 	it('are shown before any data rule runs', () => {
 		const result = check('column', { series: [item()], errors: ['Too many items matched; showing the first 500.'] });

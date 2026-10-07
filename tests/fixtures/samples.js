@@ -123,6 +123,43 @@ export const SAMPLES = {
 			{ name: 'Average', color: '#FFA059' }, { name: 'High', color: '#E97659' }, { name: 'Disaster', color: '#E45959' }
 		]
 	},
+	pie: {
+		config: { ...common, entity_by: 'item', pie_sort: 'desc', label_position: 'outside', show_percent: true, show_value: true },
+		series: [raw({ name: 'Used', units: 'B', value: '600' }), raw({ name: 'Free', units: 'B', value: '300' }), raw({ name: 'Cached', units: 'B', value: '100' })]
+	},
+	level_gauge: {
+		config: { ...common, scale_min: '0', scale_max: '{$TANK.MAX}', target_value: '70', thresholds: '60, 85', threshold_order: 'higher_worse', gauge_display: 'native', show_value: true },
+		series: [raw({ name: 'Tank level', units: 'L', value: '45' }), raw({ hostid: '2', host: 'web02', name: 'Tank level', units: 'L', value: '130' }), raw({ hostid: '3', host: 'core01', name: 'Tank level', units: 'L', value: '88' })],
+		hosts: hosts.map((host) => ({ ...host, macros: { '{$TANK.MAX}': '120' } }))
+	},
+	ranking_bar: {
+		config: { ...common, entity_by: 'item', rank_order: 'desc', rank_limit: 'top', rank_count: 3, show_value: true, show_track: true, thresholds: '50, 80' },
+		series: ['web01', 'web02', 'core01', 'db01'].map((host, index) => raw({ hostid: String(index + 1), host, value: String([42, 91, 12, 67][index]), key: 'cpu' })),
+		hosts
+	},
+	treemap: {
+		config: { ...common, levels: 'group, host', path_delimiter: '', max_depth: 0, pair_by: 'host' },
+		series: [
+			raw({ role: 'size', name: 'Disk /', units: 'B', value: '500000' }), raw({ role: 'size', name: 'Disk /var', units: 'B', value: '200000' }),
+			raw({ role: 'size', hostid: '2', host: 'web02', name: 'Disk /', units: 'B', value: '300000' }),
+			raw({ role: 'size', hostid: '3', host: 'core01', name: 'Disk /', units: 'B', value: '100000' }),
+			raw({ role: 'colour', name: 'CPU', value: '20' }), raw({ role: 'colour', hostid: '2', host: 'web02', name: 'CPU', value: '80' })
+		],
+		hosts
+	},
+	sunburst: {
+		config: { ...common, levels: 'group, host, path', path_delimiter: '/', max_depth: 0 },
+		series: [
+			raw({ name: 'disk/sda/reads', units: 'B', value: '50' }), raw({ name: 'disk/sda/writes', units: 'B', value: '30' }),
+			raw({ name: 'disk/sdb/reads', units: 'B', value: '20' }), raw({ hostid: '2', host: 'web02', name: 'disk/sda/reads', units: 'B', value: '40' }),
+			raw({ hostid: '3', host: 'core01', name: 'disk/sda/reads', units: 'B', value: '10' })
+		],
+		hosts
+	},
+	funnel: {
+		config: { ...common, stages: 'Requests = Web requests\nAuthenticated = Web logins\nOrders = Web orders', funnel_order: 'listed', pct_first: true, pct_previous: true, show_value: true },
+		series: [raw({ name: 'Web requests', units: '', value: '1000' }), raw({ name: 'Web logins', units: '', value: '420' }), raw({ name: 'Web orders', units: '', value: '63' })]
+	},
 	calendar_heatmap: {
 		config: { ...common, aggregation: 'max' },
 		series: [raw({ history: hourly(50, 7) })],

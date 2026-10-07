@@ -5,7 +5,7 @@ import { RULES } from '../../src/validation/index.js';
 const EXPECTED_IDS = [
 	'column', 'stacked_bar', 'doughnut', 'bullet', 'radar', 'heatmap', 'candlestick',
 	'bubble', 'gantt', 'tree', 'network', 'relationship', 'calendar_heatmap',
-	'lld_table'
+	'lld_table', 'pie', 'level_gauge', 'ranking_bar', 'treemap', 'sunburst', 'funnel'
 ];
 
 const REQUIRED_KEYS = ['id', 'code', 'name', 'renderer', 'roles', 'data', 'history', 'time_period', 'min_series', 'controls', 'rules'];

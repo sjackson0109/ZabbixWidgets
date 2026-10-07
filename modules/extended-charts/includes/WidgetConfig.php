@@ -16,12 +16,15 @@ class WidgetConfig {
 	private const TEXT_FIELDS = [
 		'target_macro', 'target_constant', 'ranges', 'pair_tag', 'radar_max', 'bucket', 'colour_min', 'colour_max',
 		'tree_tags', 'tree_delimiter', 'edge_list', 'edge_tag', 'source_tag', 'target_tag', 'row_tag', 'row_regex', 'row_heading',
-		'table_columns'
+		'table_columns', 'scale_min', 'scale_max', 'target_value', 'thresholds', 'levels', 'path_delimiter', 'stages'
 	];
 
 	private const FLAG_FIELDS = ['show_percent', 'hide_zero', 'show_legend', 'show_host', 'show_item_name', 'show_last_update',
-		'show_change', 'show_problems', 'use_valuemap', 'table_dense', 'table_striped'
+		'show_change', 'show_problems', 'use_valuemap', 'table_dense', 'table_striped', 'show_value', 'gauge_segmented', 'show_track',
+		'pct_first', 'pct_previous'
 	];
+
+	private const INTEGER_FIELDS = ['rank_count' => 10, 'max_depth' => 0];
 
 	public static function fromFieldValues(array $values): array {
 		$config = [];
@@ -36,6 +39,10 @@ class WidgetConfig {
 
 		foreach (self::FLAG_FIELDS as $field) {
 			$config[$field] = (bool) ($values[$field] ?? false);
+		}
+
+		foreach (self::INTEGER_FIELDS as $field => $default) {
+			$config[$field] = (int) ($values[$field] ?? $default);
 		}
 
 		$config['decimals'] = (int) ($values['decimals'] ?? 2);

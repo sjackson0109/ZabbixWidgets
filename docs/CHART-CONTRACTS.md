@@ -218,3 +218,99 @@ Every chart also needs items for each required role, no more than `Max items` pe
 - **Rules:**
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `table_rows`: Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern's "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.
+
+## C15 Pie (`pie`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `entity_by`, `pie_sort`, `label_position`, `show_percent`, `show_value`, `hide_zero`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `non_negative`: Values must not be negative.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `additive_groups`: Host totals add up a host's items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.
+
+## C16 Vertical Level Gauge (`level_gauge`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `scale_min`, `scale_max`, `target_value`, `thresholds`, `threshold_order`, `gauge_display`, `gauge_segmented`, `show_value`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `gauge_scale`: Minimum and maximum are set (numbers or user macros resolved per host) with minimum below maximum; target and thresholds, when set, are numbers or macros, thresholds ascending. Nothing is derived from the data.
+
+## C17 Horizontal Ranking Bar (`ranking_bar`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `entity_by`, `rank_order`, `rank_limit`, `rank_count`, `show_value`, `show_track`, `thresholds`, `threshold_order`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `additive_groups`: Host totals add up a host's items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.
+  - `shared_thresholds`: Thresholds and other shared settings are numbers or macros that resolve to the same value on every selected host.
+
+## C18 Treemap (`treemap`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| size | `items` | yes | yes |  |
+| colour | `colour_items` | no | yes |  |
+
+- **Data fetched:** latest, hosts, groups, tags
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `colour_items`, `levels`, `path_delimiter`, `max_depth`, `pair_by`, `pair_tag`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `size_units`: All sized items share units.
+  - `hierarchy_levels`: Levels are group, host, tag:<name>, hosttag:<name> or path (last, with a delimiter). Items that appear more than once, such as hosts in several groups, are reported.
+  - `positive_sizes`: Sizes are positive: negative values are rejected, zero values take no space and are reported.
+  - `colour_pairs`: Each sized item has at most one colour item with the same host (or host and tag value); sized items without one are drawn neutral and reported.
+
+## C19 Sunburst (`sunburst`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest, hosts, groups, tags
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `levels`, `path_delimiter`, `max_depth`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `hierarchy_levels`: Levels are group, host, tag:<name>, hosttag:<name> or path (last, with a delimiter). Items that appear more than once, such as hosts in several groups, are reported.
+  - `positive_sizes`: Sizes are positive: negative values are rejected, zero values take no space and are reported.
+
+## C20 Funnel (`funnel`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `stages`, `funnel_order`, `pct_first`, `pct_previous`, `show_value`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `non_negative`: Values must not be negative.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `funnel_stages`: At least two stages, one per line ("Stage = item name pattern"), each matching exactly one item with a value. Order is as listed unless ordered by value.

@@ -11,7 +11,13 @@ import column from './column.js';
 import doughnut from './doughnut.js';
 import gantt from './gantt.js';
 import heatmap from './heatmap.js';
+import funnel from './funnel.js';
+import levelGauge from './level_gauge.js';
 import lldTable from './lld_table.js';
+import pie from './pie.js';
+import rankingBar from './ranking_bar.js';
+import sunburst from './sunburst.js';
+import treemap from './treemap.js';
 import network from './network.js';
 import radar from './radar.js';
 import relationship from './relationship.js';
@@ -20,7 +26,7 @@ import tree from './tree.js';
 
 const RENDERERS = new Map([
 	column, stackedBar, doughnut, bullet, radar, heatmap, candlestick, bubble, gantt, tree, network, relationship, calendarHeatmap,
-	lldTable
+	lldTable, pie, levelGauge, rankingBar, treemap, sunburst, funnel
 ].map((renderer) => [renderer.id, renderer]));
 
 export function getRenderer(id) {

@@ -233,7 +233,16 @@ const chartWidgets = [
 		...hostFields, ...patterns('items', 'ZWT Interface*'), int('row_identity', 1), str('row_heading', 'Interface'),
 		str('table_columns', 'Received = ZWT Interface *: Bits received\nStatus = ZWT Interface *: Operational status'),
 		int('show_change', 1), int('show_problems', 1)
-	]]
+	]],
+	['Pie', 15, [...hostFields, ...patterns('items', 'ZW Memory*'), int('pie_sort', 1)]],
+	['Level Gauge', 16, [
+		...hostFields, ...patterns('items', 'ZW Disk*'), str('scale_min', '0'), str('scale_max', '100'), str('thresholds', '40, 50'),
+		str('target_value', '{$ZW.TARGET}')
+	]],
+	['Ranking Bar', 17, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*'), int('rank_limit', 1), int('rank_count', 4), str('thresholds', '30, 60')]],
+	['Treemap', 18, [...hostFields, ...patterns('items', 'ZW Sessions*'), ...patterns('colour_items', 'ZW CPU*'), str('levels', 'group, host')]],
+	['Sunburst', 19, [...hostFields, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('levels', 'group, host')]],
+	['Funnel', 20, [...firstHost, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('stages', 'Sessions = ZW Sessions\nLoad = ZW Load average')]]
 ];
 const { dashboardids: [chartsDashboardid] } = await api('dashboard.create', {
 	name: `ZW all charts ${now}`,

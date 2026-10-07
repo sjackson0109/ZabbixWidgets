@@ -16,7 +16,15 @@
 		"tree_source": ["host_group", "tags", "item_path"],
 		"edge_source": ["list", "tag"],
 		"row_identity": ["item", "key", "name", "tag", "regex"],
-		"table_page_size": ["10", "25", "50", "100"]
+		"table_page_size": ["10", "25", "50", "100"],
+		"pie_sort": ["source", "desc", "asc"],
+		"entity_by": ["item", "host"],
+		"label_position": ["outside", "inside", "none"],
+		"threshold_order": ["higher_worse", "lower_worse"],
+		"gauge_display": ["native", "percent"],
+		"rank_order": ["desc", "asc"],
+		"rank_limit": ["all", "top", "bottom"],
+		"funnel_order": ["listed", "desc", "asc"]
 	},
 	"item_fields": {
 		"items": "Items",
@@ -31,7 +39,8 @@
 		"start_items": "Start items",
 		"end_items": "End items",
 		"duration_items": "Duration items",
-		"progress_items": "Progress items"
+		"progress_items": "Progress items",
+		"colour_items": "Colour items"
 	},
 	"control_conditions": {
 		"target_macro": "when:target_source=macro",
@@ -44,11 +53,12 @@
 		"edge_tag": "when:edge_source=tag",
 		"row_tag": "when:row_identity=tag",
 		"row_regex": "when:row_identity=regex",
-		"show_item_name": "when:row_identity=item"
+		"show_item_name": "when:row_identity=item",
+		"rank_count": "when:rank_limit=top|bottom"
 	},
 	"required_controls": [
 		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
-		"row_tag", "row_regex"
+		"row_tag", "row_regex", "scale_min", "scale_max", "levels", "stages"
 	],
 	"charts": [
 		{
@@ -398,6 +408,149 @@
 				"show_legend": "none"
 			},
 			"rules": ["has_values", "table_rows"]
+		},
+		{
+			"id": "pie",
+			"code": "C15",
+			"form_value": 15,
+			"name": "Pie",
+			"renderer": "pie",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "entity_by", "pie_sort", "label_position", "show_percent", "show_value", "hide_zero"],
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "additive_groups"]
+		},
+		{
+			"id": "level_gauge",
+			"code": "C16",
+			"form_value": 16,
+			"name": "Vertical Level Gauge",
+			"renderer": "level_gauge",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "macros"],
+			"macro_fields": ["scale_min", "scale_max", "target_value", "thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": [
+				"items", "scale_min", "scale_max", "target_value", "thresholds", "threshold_order", "gauge_display", "gauge_segmented", "show_value"
+			],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "gauge_scale"]
+		},
+		{
+			"id": "ranking_bar",
+			"code": "C17",
+			"form_value": 17,
+			"name": "Horizontal Ranking Bar",
+			"renderer": "ranking_bar",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "macros"],
+			"macro_fields": ["thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": [
+				"items", "entity_by", "rank_order", "rank_limit", "rank_count", "show_value", "show_track", "thresholds", "threshold_order"
+			],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "same_units", "additive_groups", "shared_thresholds"]
+		},
+		{
+			"id": "treemap",
+			"code": "C18",
+			"form_value": 18,
+			"name": "Treemap",
+			"renderer": "treemap",
+			"roles": {
+				"size": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				},
+				"colour": {
+					"field": "colour_items",
+					"required": false,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "hosts", "groups", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "colour_items", "levels", "path_delimiter", "max_depth", "pair_by", "pair_tag"],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "size_units", "hierarchy_levels", "positive_sizes", "colour_pairs"]
+		},
+		{
+			"id": "sunburst",
+			"code": "C19",
+			"form_value": 19,
+			"name": "Sunburst",
+			"renderer": "sunburst",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest", "hosts", "groups", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "levels", "path_delimiter", "max_depth"],
+			"control_conditions": {
+				"show_legend": "none"
+			},
+			"rules": ["numeric_only", "has_values", "same_units", "hierarchy_levels", "positive_sizes"]
+		},
+		{
+			"id": "funnel",
+			"code": "C20",
+			"form_value": 20,
+			"name": "Funnel",
+			"renderer": "funnel",
+			"roles": {
+				"value": {
+					"field": "items",
+					"required": true,
+					"numeric": true
+				}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "stages", "funnel_order", "pct_first", "pct_previous", "show_value"],
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "funnel_stages"]
 		}
 	]
 }

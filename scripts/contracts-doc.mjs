@@ -30,6 +30,14 @@ const RULE_TEXT = {
 	relationship_tags: 'Every item carries both the source and the target tag; flows from an endpoint to itself are reported and not drawn.',
 	bullet_ranges: 'Qualitative ranges, when set, are ascending numbers.',
 	heat_axes: 'X and Y are different dimensions; a time axis has a valid bucket size and yields at most 1000 buckets.',
+	additive_groups: 'Host totals add up a host\'s items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.',
+	gauge_scale: 'Minimum and maximum are set (numbers or user macros resolved per host) with minimum below maximum; target and thresholds, when set, are numbers or macros, thresholds ascending. Nothing is derived from the data.',
+	shared_thresholds: 'Thresholds and other shared settings are numbers or macros that resolve to the same value on every selected host.',
+	size_units: 'All sized items share units.',
+	hierarchy_levels: 'Levels are group, host, tag:<name>, hosttag:<name> or path (last, with a delimiter). Items that appear more than once, such as hosts in several groups, are reported.',
+	positive_sizes: 'Sizes are positive: negative values are rejected, zero values take no space and are reported.',
+	colour_pairs: 'Each sized item has at most one colour item with the same host (or host and tag value); sized items without one are drawn neutral and reported.',
+	funnel_stages: 'At least two stages, one per line ("Stage = item name pattern"), each matching exactly one item with a value. Order is as listed unless ordered by value.',
 	table_rows: 'Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern\'s "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.'
 };
 
