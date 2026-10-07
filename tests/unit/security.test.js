@@ -57,4 +57,18 @@ describe('security', () => {
 		}
 		expect(found).toEqual([]);
 	});
+
+	it('keeps no passwords in the integration setup', async () => {
+		const compose = await readFile(path.join(root, 'tests/integration/docker-compose.yml'), 'utf8');
+		const passwords = compose.match(/PASSWORD:.*/g) ?? [];
+		expect(passwords.length).toBeGreaterThan(0);
+		expect(passwords.filter((line) => !line.includes('${ZW_DB_PASSWORD:?'))).toEqual([]);
+
+		// The image's first-login password is the one literal, used once and then replaced.
+		const smoke = await readFile(path.join(root, 'tests/integration/smoke.mjs'), 'utf8');
+		expect(smoke.match(/'zabbix'/g)).toEqual(["'zabbix'"]);
+		expect(smoke).toMatch(/const IMAGE_ADMIN_PASSWORD = 'zabbix';/);
+		expect(smoke).not.toMatch(/(password|passwd)\s*:\s*['"`]/);
+		expect(smoke).not.toMatch(/#password',\s*['"`]/);
+	});
 });

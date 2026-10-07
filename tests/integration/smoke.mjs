@@ -60,7 +60,21 @@ function step(message) {
 
 const version = await waitForApi();
 step(`Zabbix ${version}`);
-token = await api('user.login', { username: 'Admin', password: 'zabbix' });
+
+// The images create Admin with Zabbix's documented first-login password. The
+// test signs in with it once and replaces it with this run's own password
+// (ZW_ADMIN_PASSWORD, or one made up now), which every later login uses.
+const IMAGE_ADMIN_PASSWORD = 'zabbix';
+const adminPassword = process.env.ZW_ADMIN_PASSWORD || randomBytes(24).toString('hex');
+token = process.env.ZW_ADMIN_PASSWORD
+	? await api('user.login', { username: 'Admin', password: adminPassword }).catch(() => null)
+	: null;
+if (token === null) {
+	token = await api('user.login', { username: 'Admin', password: IMAGE_ADMIN_PASSWORD });
+	const [admin] = await api('user.get', { output: ['userid'], filter: { username: 'Admin' } });
+	await api('user.update', { userid: admin.userid, current_passwd: IMAGE_ADMIN_PASSWORD, passwd: adminPassword });
+	token = await api('user.login', { username: 'Admin', password: adminPassword });
+}
 
 step('Register modules');
 const modules = [{ id: 'zabbixwidgets_charts', relative_path: 'modules/zabbixwidgets_charts' }];
@@ -479,7 +493,7 @@ const check = (condition, message) => {
 try {
 	await page.goto(`${BASE}/index.php`);
 	await page.fill('#name', 'Admin');
-	await page.fill('#password', 'zabbix');
+	await page.fill('#password', adminPassword);
 	await page.click('#enter');
 	await page.waitForLoadState('networkidle');
 
