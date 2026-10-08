@@ -17,7 +17,8 @@
     "docs:contracts": "node scripts/contracts-doc.mjs",
     "licences": "node scripts/licence-inventory.mjs",
     "package": "node scripts/package.mjs",
-    "check": "npm run lint && npm run lint:php && npm test && npm run build && npm run test:browser && npm run docs:contracts -- --check && npm run licences"
+    "release:check": "node scripts/release-check.mjs",
+    "check": "npm run lint && npm run lint:php && npm test && npm run build && npm run test:browser && npm run docs:contracts -- --check && npm run licences && npm run release:check"
   },
   "dependencies": {
     "echarts": "6.1.0"
