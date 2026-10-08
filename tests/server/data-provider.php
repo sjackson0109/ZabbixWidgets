@@ -134,6 +134,9 @@ foreach ($input as $case) {
 	elseif ($case['call'] === 'macro_names') {
 		$results[] = call($provider, 'macroNames');
 	}
+	elseif ($case['call'] === 'form_options') {
+		$results[] = ChartRegistry::formOptions($case['selected']);
+	}
 	elseif ($case['call'] === 'delay') {
 		$results[] = array_map([DataProvider::class, 'delaySeconds'], $case['delays']);
 	}

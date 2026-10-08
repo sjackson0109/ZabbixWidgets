@@ -1,21 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateCondition, getChart, listCharts, requiredControls, requiresHistory, visibleControls } from '../../src/registry/index.js';
+import {
+	chartByFormValue, evaluateCondition, getChart, listCharts, listRetired, requiredControls, requiresHistory, retiredByFormValue, visibleControls
+} from '../../src/registry/index.js';
 import { RULES } from '../../src/validation/index.js';
 
 const EXPECTED_IDS = [
 	'column', 'stacked_bar', 'doughnut', 'bullet', 'radar', 'heatmap', 'candlestick',
 	'bubble', 'gantt', 'tree', 'network', 'relationship', 'calendar_heatmap',
 	'lld_table', 'pie', 'level_gauge', 'ranking_bar', 'treemap', 'sunburst', 'funnel',
-	'line', 'area', 'status_matrix', 'state_timeline', 'sparkline_grid', 'threshold_band',
-	'switch_ports'
+	'line', 'area', 'status_matrix', 'state_timeline', 'sparkline_grid', 'threshold_band'
 ];
 
 const REQUIRED_KEYS = ['id', 'code', 'name', 'renderer', 'roles', 'data', 'history', 'time_period', 'min_series', 'controls', 'rules'];
 
 describe('chart registry', () => {
-	it('defines every chart in order, with semantic ids and sequential codes', () => {
+	it('defines every chart in order, with semantic ids and codes that match their form values', () => {
 		expect(listCharts().map((chart) => chart.id)).toEqual(EXPECTED_IDS);
-		expect(listCharts().map((chart) => chart.code)).toEqual(EXPECTED_IDS.map((_, index) => `C${String(index + 1).padStart(2, '0')}`));
+		expect(listCharts().map((chart) => chart.code)).toEqual(listCharts().map((chart) => `C${String(chart.form_value).padStart(2, '0')}`));
 	});
 
 	it.each(EXPECTED_IDS)('%s has a complete definition', (id) => {
@@ -94,8 +95,18 @@ describe('requiredControls', () => {
 });
 
 describe('stored values', () => {
-	it('gives every chart a unique, stable form value', () => {
-		const values = listCharts().map((chart) => chart.form_value);
+	it('numbers charts from 1 without gaps, counting removed charts', () => {
+		const values = [...listCharts(), ...listRetired()].map((chart) => chart.form_value).sort((a, b) => a - b);
 		expect(values).toEqual(values.map((_, index) => index + 1));
+	});
+
+	it('keeps removed charts out of the chart list', () => {
+		expect(listRetired().map((chart) => chart.id)).toEqual(['switch_ports']);
+		for (const chart of listRetired()) {
+			expect(getChart(chart.id)).toBeNull();
+			expect(chartByFormValue(chart.form_value)).toBeNull();
+			expect(retiredByFormValue(chart.form_value)).toEqual(chart);
+		}
+		expect(retiredByFormValue(1)).toBeNull();
 	});
 });

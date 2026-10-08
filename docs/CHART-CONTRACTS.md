@@ -402,35 +402,8 @@ Every chart also needs items for each required role, no more than `Max items` pe
   - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
   - `has_thresholds`: At least one threshold is set. Bands come only from configured thresholds, never from the data.
 
-## C27 Switch Port Panel (`switch_ports`)
+## Removed charts
 
-| Role | Form field | Required | Numeric | Max items |
-|---|---|---|---|---|
-| oper | `port_oper_items` | no | no |  |
-| admin | `port_admin_items` | no | no |  |
-| speed | `port_speed_items` | no | no |  |
-| cfg_speed | `port_cfg_speed_items` | no | no |  |
-| util | `port_util_items` | no | yes |  |
-| util_in | `port_util_in_items` | no | yes |  |
-| util_out | `port_util_out_items` | no | yes |  |
-| traffic_in | `port_traffic_in_items` | no | yes |  |
-| traffic_out | `port_traffic_out_items` | no | yes |  |
-| errors_in | `port_errors_in_items` | no | yes |  |
-| errors_out | `port_errors_out_items` | no | yes |  |
-| discards | `port_discard_items` | no | yes |  |
-| duplex | `port_duplex_items` | no | no |  |
-| poe_state | `port_poe_state_items` | no | no |  |
-| poe_power | `port_poe_power_items` | no | yes |  |
-| vlan | `port_vlan_items` | no | no |  |
-| pvid | `port_pvid_items` | no | no |  |
-| alias | `port_alias_items` | no | no |  |
-| description | `port_description_items` | no | no |  |
-| mtu | `port_mtu_items` | no | yes |  |
-| last_change | `port_last_change_items` | no | no |  |
+These chart types were removed. Their form values stay reserved and are never reused; a widget saved with one says the chart was removed.
 
-- **Data fetched:** latest, valuemaps, problems, macros
-- **History:** `none`; **time period:** `false`; **min_series:** 0
-- **Controls:** `port_identity`, `port_tag`, `port_regex_target`, `port_regex`, `port_id_group`, `port_member_group`, `port_number_group`, `port_roles_shown`, `port_oper_items`, `port_admin_items`, `port_speed_items`, `port_cfg_speed_items`, `port_util_items`, `port_util_in_items`, `port_util_out_items`, `port_traffic_in_items`, `port_traffic_out_items`, `port_errors_in_items`, `port_errors_out_items`, `port_discard_items`, `port_duplex_items`, `port_poe_state_items`, `port_poe_power_items`, `port_vlan_items`, `port_pvid_items`, `port_alias_items`, `port_description_items`, `port_mtu_items`, `port_last_change_items`, `port_layout`, `port_columns`, `port_grouping`, `port_groups`, `port_group_tag`, `port_type`, `port_type_rules`, `port_type_tag`, `port_fill`, `port_border`, `port_marker`, `speed_colours`, `state_colours`, `admin_down`, `port_metric`, `thresholds`, `threshold_order`, `port_fixed_colour`, `port_label`, `port_label_regex`, `port_abbreviate`, `port_sublabel`, `port_util_bar`, `stale_after`, `port_click`
-- **Rules:**
-  - `port_mapping`: Each role item belongs to the port named by its item tag, its first key parameter or a capture group of the port expression; the role items of one identity on one host make one port. Two items for one port and role, or one item in two roles, are errors naming the port, role and items. Items without an identity are reported. A physical port number comes only from an identity that is a whole number or from the port number capture group.
-  - `port_settings`: Interface type and port group lines read "Name = ports", where ports are numbers, ranges, wildcards or /regular expressions/. Speed colours read "1G = #rrggbb" (plus "other" and "unknown"); status colours read "value = #rrggbb". Fixed colour, label expression and stale limit must be valid; colouring by thresholds needs thresholds that resolve for every host.
+- C27 Switch Port Panel (`switch_ports`), form value 27

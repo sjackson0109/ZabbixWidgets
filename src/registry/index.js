@@ -34,6 +34,17 @@ export function chartByFormValue(formValue) {
 	return listCharts().find((chart) => chart.form_value === formValue) ?? null;
 }
 
+const retired = Object.freeze((definitions.retired ?? []).map((chart) => Object.freeze({ ...chart })));
+
+/** Removed charts. Their form values stay reserved and are never reused. */
+export function listRetired() {
+	return [...retired];
+}
+
+export function retiredByFormValue(formValue) {
+	return retired.find((chart) => chart.form_value === formValue) ?? null;
+}
+
 /**
  * Evaluates a registry condition.
  *

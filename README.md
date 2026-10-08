@@ -2,7 +2,7 @@
 
 Independent Zabbix dashboard widgets built on Apache ECharts.
 
-ZabbixWidgets adds one dashboard widget, **Extended Charts**, that offers 27 chart types drawn from your existing Zabbix items. Pick a chart type in the widget's edit form and only the settings that chart uses are shown. Every chart has an explicit data contract: when the data does not fit, the widget says what is missing instead of drawing a misleading picture.
+ZabbixWidgets adds one dashboard widget, **Extended Charts**, that offers 26 chart types drawn from your existing Zabbix items. Pick a chart type in the widget's edit form and only the settings that chart uses are shown. Every chart has an explicit data contract: when the data does not fit, the widget says what is missing instead of drawing a misleading picture.
 
 Tested against Zabbix 7.0, 7.2 and 7.4.
 
@@ -61,13 +61,8 @@ Each image is the module's own bundle drawing that chart's sample payload in Chr
 <tr>
 <td align="center"><img src="docs/screenshots/sparkline_grid.png" alt="Sparkline Grid"><br><b>C25 Sparkline Grid</b><br><sub>A tile per item with its latest value, change and recent trend.</sub></td>
 <td align="center"><img src="docs/screenshots/threshold_band.png" alt="Threshold Band"><br><b>C26 Threshold Band</b><br><sub>History drawn over threshold bands, with an optional target line.</sub></td>
-<td align="center"><img src="docs/screenshots/switch_ports.png" alt="Switch Port Panel"><br><b>C27 Switch Port Panel</b><br><sub>Interface items laid out as a switch front panel.</sub></td>
 </tr>
 </table>
-
-The Switch Port Panel in the dark theme, on a wider widget:
-
-<p align="center"><img src="docs/screenshots/switch_ports-dark.png" alt="Switch Port Panel in the dark theme"></p>
 
 Screenshots of the edit form and of each chart on a live Zabbix dashboard are taken by the `Zabbix integration` workflow on every run and attached to the run as artifacts (under `showcase/`).
 
@@ -103,7 +98,6 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 | C24 | State Timeline | History and value maps |
 | C25 | Sparkline Grid | Latest values and history |
 | C26 | Threshold Band | History and user macros |
-| C27 | Switch Port Panel | Latest values, value maps, problems and user macros |
 
 [Chart contracts](docs/CHART-CONTRACTS.md) lists every role, setting and rule per chart.
 
@@ -114,7 +108,7 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 - Items with no recent value are shown as "no data", never as zero.
 - Time series use real samples only. Lines break at gaps (2.5 update intervals by default, or a maximum you set) instead of joining across them.
 - Long periods are read from hourly trends, short ones from history.
-- Ambiguous mappings, such as two items for one switch port, are reported, never guessed.
+- Ambiguous mappings, such as two items for one table cell, are reported, never guessed.
 
 ### Zabbix integration
 
@@ -123,7 +117,6 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 - Light and dark Zabbix themes.
 - Thresholds, targets and scale limits accept numbers or user macros, resolved per host through nested templates in Zabbix's order.
 - Value mappings, previous values, and triggers in the problem state with Zabbix's severity names and colours, where a chart uses them.
-- Optional links from the Switch Port Panel to Latest data, item history or Problems.
 - Data is read as the signed-in user, so users see only hosts they may read, within fixed limits on hosts, items and history values.
 
 ### Interaction
@@ -131,14 +124,6 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 - Crosshair tooltip on time series, with each series' nearest sample.
 - Zoom and pan on time series, drill-down on the treemap, sorting and filtering in the LLD table.
 - Legend selection, zoom and table sorting survive refreshes.
-- Keyboard navigation and ARIA labels on the Switch Port Panel.
-
-### Switch Port Panel
-
-- Port identity from an item tag (`interface` by default), a key parameter or a regular expression with identity, stack member and port number captures.
-- Odd-over-even two-row, single-row, automatic, grouped and stacked layouts, with port 1 top left.
-- Colour by interface type, speed, status, threshold, problem severity or a fixed colour, with admin-down and problem markers, utilisation bars and stale-value detection.
-- Built only from existing interface items: no switch discovery, SNMP polling, LLDP/CDP, VLAN or MAC-address discovery.
 
 ### Runs beside other modules
 
@@ -248,8 +233,6 @@ To refresh the gallery images:
 npm run build
 SCREENSHOT_DIR=docs/screenshots npm run test:browser
 ```
-
-The browser test also writes `switch_ports-small.png` and `switch_ports-wide.png`, which the gallery does not use.
 
 ## Licence
 

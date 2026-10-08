@@ -29,12 +29,10 @@ import statusMatrix from './status_matrix.js';
 import stateTimeline from './state_timeline.js';
 import sparklineGrid from './sparkline_grid.js';
 import thresholdBand from './threshold_band.js';
-import switchPorts from './switch_ports.js';
 
 const RENDERERS = new Map([
 	column, stackedBar, doughnut, bullet, radar, heatmap, candlestick, bubble, gantt, tree, network, relationship, calendarHeatmap,
-	lldTable, pie, levelGauge, rankingBar, treemap, sunburst, funnel, line, area, statusMatrix, stateTimeline, sparklineGrid, thresholdBand,
-	switchPorts
+	lldTable, pie, levelGauge, rankingBar, treemap, sunburst, funnel, line, area, statusMatrix, stateTimeline, sparklineGrid, thresholdBand
 ].map((renderer) => [renderer.id, renderer]));
 
 export function getRenderer(id) {

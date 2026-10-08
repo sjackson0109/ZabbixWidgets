@@ -106,7 +106,7 @@ for (const chart of Object.keys(SAMPLES)) {
 		if (html !== null) {
 			// HTML renderers: count the area covered by drawn elements instead of canvas pixels.
 			const box = html.getBoundingClientRect();
-			const cells = [...html.querySelectorAll('td, th, .zw-cell, .zw-port, svg')];
+			const cells = [...html.querySelectorAll('td, th, .zw-cell, svg')];
 			return { painted: cells.length > 0 && box.width * box.height > 0 ? 1 : 0, messages, html: true };
 		}
 		if (canvas === null) {
@@ -128,39 +128,6 @@ for (const chart of Object.keys(SAMPLES)) {
 	charts.push([chart, outcome]);
 }
 
-// C27: the physical arrangement holds at every size, in both themes, and the tooltip stays on screen.
-const portSizes = [['small', 320, 160, '#fff'], ['dark', 900, 300, '#2b2b2b'], ['wide', 1200, 300, '#fff']];
-const ports = [];
-for (const [name, width, height, background] of portSizes) {
-	const outcome = await page.evaluate(async ({ body, payload, name, width, height, background }) => {
-		const target = document.createElement('div');
-		target.id = `ports-${name}`;
-		target.style.cssText = `width:${width}px;height:${height}px;background:${background}`;
-		document.body.append(target);
-		const widget = new window.WidgetZabbixWidgetsCharts(target);
-		widget.processUpdateResponse({ body, zw_payload: payload });
-		await new Promise((resolve) => setTimeout(resolve, 300));
-		const box = (identity) => [...target.querySelectorAll('[data-zw-port]')]
-			.find((node) => decodeURIComponent(node.dataset.zwPort).endsWith(`\u0000${identity}`)).getBoundingClientRect();
-		const [one, two, three] = ['Gi1/0/1', 'Gi1/0/2', 'Gi1/0/3'].map(box);
-		const tile = [...target.querySelectorAll('[data-zw-port]')].pop();
-		tile.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-		const tip = target.querySelector('.zw-port-tip').getBoundingClientRect();
-		const view = { width: window.innerWidth, height: window.innerHeight };
-		if (name !== 'wide') {
-			target.querySelector('.zw-ports').dispatchEvent(new MouseEvent('mouseleave'));
-		}
-		return {
-			arranged: Math.abs(one.left - two.left) < 1 && two.top > one.bottom - 1 && three.left > one.right - 1 && Math.abs(three.top - one.top) < 1,
-			tipInside: tip.width > 0 && tip.left >= 0 && tip.top >= 0 && tip.right <= view.width && tip.bottom <= view.height
-		};
-	}, { body, payload: sample('switch_ports'), name, width, height, background });
-	if (process.env.SCREENSHOT_DIR) {
-		await page.locator(`#ports-${name}`).screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `switch_ports-${name}.png`) });
-	}
-	ports.push([name, outcome]);
-}
-
 await browser.close();
 
 const checks = [
@@ -172,10 +139,6 @@ const checks = [
 	[result.foreignEchartsIntact, 'An existing window.echarts is left untouched'],
 	...charts.map(([chart, outcome]) => [outcome.painted > 0.005,
 		`${chart} draws its sample (${outcome.html ? 'HTML' : `${(outcome.painted * 100).toFixed(1)}% of pixels`})${outcome.messages ? `: ${outcome.messages}` : ''}`]),
-	...ports.flatMap(([name, outcome]) => [
-		[outcome.arranged, `switch_ports (${name}): port 1 top-left, 2 beneath it, 3 to its right`],
-		[outcome.tipInside, `switch_ports (${name}): tooltip stays inside the window`]
-	]),
 	[errors.length === 0, `No page errors ${errors.join(' | ')}`]
 ];
 
