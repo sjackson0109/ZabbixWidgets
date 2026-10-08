@@ -42,6 +42,7 @@ export class ChartController {
 		this.instance = null;
 		this.state = { chart: null };
 		this.lastPayload = null;
+		this.currentPayload = null;
 		this.resize = debounce(() => {
 			this.instance?.resize();
 			// Charts laid out for the widget's shape (several gauges in a grid) are laid out again.
@@ -54,6 +55,7 @@ export class ChartController {
 	}
 
 	render(rawPayload) {
+		this.currentPayload = rawPayload;
 		const payload = normalisePayload(rawPayload ?? {});
 		const chart = getChart(payload.chart);
 
@@ -83,6 +85,12 @@ export class ChartController {
 			showLegend: payload.config.show_legend !== false,
 			decimals: Number.isInteger(payload.config.decimals) ? payload.config.decimals : 2,
 			timeZone: payload.config.time_zone || undefined,
+			// Renderers that load something first (a floor plan's outline) ask to be drawn again once it is ready.
+			redraw: () => {
+				if (this.currentPayload === rawPayload) {
+					this.render(rawPayload);
+				}
+			},
 			aspect: this.canvas.clientWidth > 0 && this.canvas.clientHeight > 0 ? this.canvas.clientWidth / this.canvas.clientHeight : undefined,
 			state: this.state
 		};
@@ -147,6 +155,7 @@ export class ChartController {
 	}
 
 	dispose() {
+		this.currentPayload = null;
 		this.resize.cancel();
 		this.observer?.disconnect();
 		this.disposeInstance();

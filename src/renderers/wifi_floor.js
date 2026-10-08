@@ -23,13 +23,18 @@
  *   reported it. Rogue APs themselves are never placed: their position is
  *   not known.
  *
+ * - Coverage gaps and channel overlap are shaded on a grid over the plan.
+ *   Fully transparent parts of the floor plan image count as outside the
+ *   building and are not shaded, so a plan cut out to the building's outline
+ *   shows gaps only indoors.
+ *
  * Zoom and pan are kept across refreshes.
  */
 import { echarts } from '../echarts.js';
 import { baseOption, formatClock } from './common.js';
 import { captureGeoState } from './geomap.js';
 import { BANDS, BAND_LABELS, sharedChannels, wirelessModel } from '../data/wireless.js';
-import { LEVEL_STEP, contours, coverageGrid, coverageSettings } from '../data/coverage.js';
+import { LEVEL_STEP, contours, coverageGrid, coverageSettings, gridShape } from '../data/coverage.js';
 import { bandColours, bandIndex, resolveScale } from '../data/thresholds.js';
 import { formatValue } from '../data/units.js';
 import { escapeHtml } from '../utils/escape.js';
@@ -68,6 +73,73 @@ export function registerFloor(floor) {
 		registered.add(name);
 	}
 	return name;
+}
+
+const masks = new Map();
+
+/**
+ * Which coverage grid cells are inside the building, read from the floor
+ * plan's transparency: a cell is outside when every pixel under it is fully
+ * transparent. Returns a function (column, row) -> boolean, or null when the
+ * plan has no transparent areas or is not loaded yet. The first call for a
+ * plan starts loading it and calls `onReady` once the outline is known.
+ */
+export function floorMask(floor, columns, rows, onReady) {
+	if (typeof document === 'undefined' || typeof Image === 'undefined') {
+		return null;
+	}
+	const key = `${floor.url}|${columns}x${rows}`;
+	const known = masks.get(key);
+	if (known !== undefined) {
+		if (known.pending) {
+			known.waiting.add(onReady);
+			return null;
+		}
+		return known.inside;
+	}
+	const entry = { pending: true, inside: null, waiting: new Set([onReady]) };
+	masks.set(key, entry);
+	const image = new Image();
+	const finish = (inside) => {
+		entry.pending = false;
+		entry.inside = inside;
+		const waiting = [...entry.waiting];
+		entry.waiting.clear();
+		if (inside !== null) {
+			waiting.forEach((callback) => callback());
+		}
+	};
+	image.onload = () => {
+		try {
+			// Drawn at up to 2048 pixels across, then each cell is checked for any drawn pixel under it.
+			const ratio = Math.min(1, 2048 / image.naturalWidth);
+			const width = Math.max(columns, Math.round(image.naturalWidth * ratio));
+			const height = Math.max(rows, Math.round(image.naturalHeight * ratio));
+			const canvas = document.createElement('canvas');
+			canvas.width = width;
+			canvas.height = height;
+			const drawing = canvas.getContext('2d');
+			drawing.drawImage(image, 0, 0, width, height);
+			const { data } = drawing.getImageData(0, 0, width, height);
+			const cells = new Uint8Array(columns * rows);
+			for (let y = 0; y < height; y++) {
+				const row = Math.min(rows - 1, Math.floor((y * rows) / height));
+				for (let x = 0; x < width; x++) {
+					if (data[(y * width + x) * 4 + 3] > 0) {
+						cells[row * columns + Math.min(columns - 1, Math.floor((x * columns) / width))] = 1;
+					}
+				}
+			}
+			const outside = cells.reduce((count, cell) => count + 1 - cell, 0);
+			finish(outside === 0 ? null : (column, row) => cells[row * columns + column] === 1);
+		}
+		catch {
+			finish(null);
+		}
+	};
+	image.onerror = () => finish(null);
+	image.src = floor.url;
+	return null;
 }
 
 /** SNR colour for one radio on one host, or null without a value. */
@@ -245,7 +317,9 @@ export function buildWifiFloorOption(payload, context) {
 			const [x, y] = point(ap);
 			return { ap, radio, x: x * metres, y: y * metres };
 		}));
-		const grid = coverageGrid(sources, coverage, coverage.width, floor.height * metres);
+		const shape = gridShape(coverage.width, floor.height * metres);
+		const inside = floorMask(floor, shape.columns, shape.rows, () => context.redraw?.());
+		const grid = coverageGrid(sources, coverage, coverage.width, floor.height * metres, inside);
 		const cellPx = grid.size * scale;
 		const cell = (id, cells, colour, z, describe) => ({
 			type: 'custom',

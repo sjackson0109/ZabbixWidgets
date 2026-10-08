@@ -4,7 +4,7 @@ import { getChart } from '../../src/registry/index.js';
 import { validate } from '../../src/validation/index.js';
 import { normaliseFloor } from '../../src/data/normalise.js';
 import { apPositions, parseBand, parseWidth, wirelessModel } from '../../src/data/wireless.js';
-import { channelFrequency, contours, coverageGrid, coverageSettings, LEVELS, LEVEL_STEP, pathLoss, rangeTo, spectrum, spectrumOverlap } from '../../src/data/coverage.js';
+import { channelFrequency, contours, coverageGrid, coverageSettings, gridShape, LEVELS, LEVEL_STEP, pathLoss, rangeTo, spectrum, spectrumOverlap } from '../../src/data/coverage.js';
 import { host, item, payload } from '../fixtures/payload.js';
 
 const FLOOR = { name: 'Floor 2', width: 400, height: 200, url: 'imgstore.php?iconid=12' };
@@ -270,6 +270,18 @@ describe('C34 channel overlap and coverage gaps', () => {
 		expect(grid.clashes.every(({ column, row }) => within(column, row, 10) && within(column, row, 30))).toBe(true);
 		const apart = coverageGrid([sources[0], { ...sources[1], radio: { ...r('2.4', '11'), txPower: 15 } }], settings, 200, 20);
 		expect(apart.clashes).toEqual([]);
+	});
+
+	it('leaves cells outside the building unshaded', () => {
+		const lone = [{ ap: { name: 'a' }, radio: { ...r('5', '36'), txPower: 15 }, x: 5, y: 5 }];
+		const all = coverageGrid(lone, settings, 200, 20);
+		const shape = gridShape(200, 20);
+		expect([shape.columns, shape.rows]).toEqual([all.columns, all.rows]);
+		// Only the left half of the plan is indoors.
+		const half = coverageGrid(lone, settings, 200, 20, (column) => column < shape.columns / 2);
+		expect(half.gaps.length).toBeGreaterThan(0);
+		expect(half.gaps.length).toBeLessThan(all.gaps.length);
+		expect(half.gaps.every(({ column }) => column < shape.columns / 2)).toBe(true);
 	});
 
 	it('estimates nothing without a transmit power', () => {

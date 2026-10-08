@@ -158,6 +158,13 @@ export function spectrumOverlap(a, b) {
 	return first !== null && second !== null && first[0] < second[1] && second[0] < first[1];
 }
 
+/** The coverage grid's shape over a plan: { columns, rows, size } with size in metres. */
+export function gridShape(planWidth, planHeight) {
+	const columns = GRID_COLUMNS;
+	const size = planWidth / columns;
+	return { columns, rows: Math.max(1, Math.round(planHeight / size)), size };
+}
+
 /**
  * The estimated signal across the floor plan, on a grid of cells.
  *
@@ -166,11 +173,12 @@ export function spectrumOverlap(a, b) {
  * cell size in metres, gaps lists cells no radio reaches at the edge level,
  * and clashes lists cells where two radios on overlapping spectrum both
  * reach it: [{ column, row, radios: [{ ap, radio, level }] }].
+ *
+ * `inside(column, row)`, when given, says which cells are inside the
+ * building; cells outside it are neither gaps nor clashes.
  */
-export function coverageGrid(sources, settings, planWidth, planHeight) {
-	const columns = GRID_COLUMNS;
-	const size = planWidth / columns;
-	const rows = Math.max(1, Math.round(planHeight / size));
+export function coverageGrid(sources, settings, planWidth, planHeight, inside = null) {
+	const { columns, rows, size } = gridShape(planWidth, planHeight);
 	const powered = sources
 		.map((source) => ({ ...source, power: source.radio.txPower ?? settings.power }))
 		.filter((source) => source.power !== null && source.power !== undefined)
@@ -187,6 +195,9 @@ export function coverageGrid(sources, settings, planWidth, planHeight) {
 	}
 	for (let row = 0; row < rows; row++) {
 		for (let column = 0; column < columns; column++) {
+			if (inside !== null && !inside(column, row)) {
+				continue;
+			}
 			const cx = (column + 0.5) * size;
 			const cy = (row + 0.5) * size;
 			const heard = [];
