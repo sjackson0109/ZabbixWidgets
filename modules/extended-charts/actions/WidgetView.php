@@ -18,7 +18,11 @@ class WidgetView extends CControllerDashboardWidgetView {
 		$chart = ChartRegistry::byFormValue((int) $this->fields_values['chart_type']);
 
 		if ($chart === null) {
-			$payload = ['chart' => null, 'errors' => [_('Select a chart type.')]];
+			$retired = ChartRegistry::retiredByFormValue((int) $this->fields_values['chart_type']);
+			$payload = ['chart' => null, 'errors' => [$retired === null
+				? _('Select a chart type.')
+				: _s('The %1$s chart has been removed. Choose another chart type.', $retired['name'])
+			]];
 		}
 		else {
 			$config = WidgetConfig::fromFieldValues($this->fields_values);

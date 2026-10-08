@@ -140,6 +140,9 @@ foreach ($input as $case) {
 	elseif ($case['call'] === 'macro_names') {
 		$results[] = call($provider, 'macroNames');
 	}
+	elseif ($case['call'] === 'form_options') {
+		$results[] = ChartRegistry::formOptions($case['selected']);
+	}
 	elseif ($case['call'] === 'order') {
 		$results[] = array_map(static function (array $row): string {
 			return $row['clock'].'.'.$row['ns'];

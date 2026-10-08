@@ -30,7 +30,9 @@ class WidgetForm extends CWidgetForm {
 
 	public function addFields(): self {
 		$this->addField(
-			(new CWidgetFieldSelect('chart_type', _('Chart type'), ChartRegistry::formOptions()))
+			(new CWidgetFieldSelect('chart_type', _('Chart type'),
+				ChartRegistry::formOptions(array_key_exists('chart_type', $this->values) ? (int) $this->values['chart_type'] : null)
+			))
 				->setDefault(1)
 				->setFlags(CWidgetField::FLAG_LABEL_ASTERISK)
 		);
@@ -173,73 +175,6 @@ class WidgetForm extends CWidgetForm {
 			->addField((new CWidgetFieldIntegerBox('grid_columns', _('Columns (0 = fit)'), 0, 12))->setDefault(0))
 			->addField($this->enumField('tile_sort', _('Order'), [_('Name'), _('Highest first'), _('Lowest first')]))
 			->addField(new CWidgetFieldCheckBox('show_minmax', _('Show minimum and maximum')))
-			->addField($this->enumField('port_identity', _('Port identity from'), [_('Item tag'), _('Key parameter'), _('Regular expression')]))
-			->addField((new CWidgetFieldTextBox('port_tag', _('Port tag')))->setDefault('interface'))
-			->addField($this->enumField('port_regex_target', _('Match expression against'), [_('Item name'), _('Item key')]))
-			->addField(new CWidgetFieldTextBox('port_regex', _('Port expression')))
-			->addField((new CWidgetFieldIntegerBox('port_id_group', _('Identity capture group'), 1, 9))->setDefault(1))
-			->addField((new CWidgetFieldIntegerBox('port_member_group', _('Member capture group (0 = none)'), 0, 9))->setDefault(0))
-			->addField((new CWidgetFieldIntegerBox('port_number_group', _('Port number capture group (0 = none)'), 0, 9))->setDefault(0))
-			->addField($this->enumField('port_roles_shown', _('Port data'), [_('Common'), _('All')]))
-			->addField($this->enumField('port_layout', _('Layout'), [_('Two rows (odd over even)'), _('One row'), _('Automatic')]))
-			->addField((new CWidgetFieldIntegerBox('port_columns', _('Columns per block (0 = all)'), 0, 128))->setDefault(0))
-			->addField($this->enumField('port_grouping', _('Group ports by'), [
-				_('None'), _('Defined groups'), _('Interface type'), _('Name prefix'), _('Item tag')
-			]))
-			->addField(new CWidgetFieldTextArea('port_groups', _('Port groups')))
-			->addField(new CWidgetFieldTextBox('port_group_tag', _('Group tag')))
-			->addField(
-				(new CWidgetFieldSelect('port_type', _('Interface type'), [
-					'RJ45', 'SFP', 'SFP+', 'SFP28', 'QSFP', 'QSFP+', 'QSFP28', 'QSFP56', 'QSFP-DD', _('Fibre'), _('Copper'),
-					_('Generic'), _('Management'), _('Console'), _('Stack'), _('Other')
-				]))->setDefault(0)
-			)
-			->addField(new CWidgetFieldTextArea('port_type_rules', _('Interface types')))
-			->addField(new CWidgetFieldTextBox('port_type_tag', _('Interface type tag')))
-			->addField(
-				(new CWidgetFieldSelect('port_fill', _('Port colour'), [
-					_('Negotiated speed'), _('Configured speed'), _('Operational status'), _('Administrative status'), _('Thresholds'),
-					_('Problem severity'), _('Fixed colour')
-				]))->setDefault(0)
-			)
-			->addField($this->enumField('port_border', _('Border'), [_('Operational status'), _('Administrative status'), _('Problem severity'), _('None')]))
-			->addField(
-				(new CWidgetFieldSelect('port_marker', _('Marker'), [
-					_('Administrative status and problems'), _('Administrative status'), _('Problems'), _('None')
-				]))->setDefault(0)
-			)
-			->addField(new CWidgetFieldTextArea('speed_colours', _('Speed colours')))
-			->addField(new CWidgetFieldTextArea('state_colours', _('Status colours')))
-			->addField((new CWidgetFieldTextBox('admin_down', _('Administratively down values')))->setDefault('down'))
-			->addField(
-				(new CWidgetFieldSelect('port_metric', _('Threshold value'), [
-					_('Utilisation'), _('Highest of in/out utilisation'), _('Inbound utilisation'), _('Outbound utilisation'), _('PoE power'),
-					_('Inbound errors'), _('Outbound errors'), _('Discards'), _('Inbound traffic'), _('Outbound traffic')
-				]))->setDefault(0)
-			)
-			->addField(new CWidgetFieldTextBox('port_fixed_colour', _('Colour')))
-			->addField(
-				(new CWidgetFieldSelect('port_label', _('Label'), [
-					_('Port identity'), _('Alias'), _('Description'), _('Port number'), _('Regular expression'), _('Item name'), _('None')
-				]))->setDefault(0)
-			)
-			->addField(new CWidgetFieldTextBox('port_label_regex', _('Label expression')))
-			->addField((new CWidgetFieldCheckBox('port_abbreviate', _('Abbreviate interface names')))->setDefault(1))
-			->addField(
-				(new CWidgetFieldSelect('port_sublabel', _('Second label'), [
-					_('Speed'), _('Alias'), _('Description'), _('Status'), _('Utilisation'), _('None')
-				]))->setDefault(0)
-			)
-			->addField(
-				(new CWidgetFieldSelect('port_util_bar', _('Utilisation bar'), [
-					_('None'), _('Highest of in/out'), _('Inbound'), _('Outbound'), _('Average of in/out'), _('Utilisation')
-				]))->setDefault(0)
-			)
-			->addField(new CWidgetFieldTextBox('stale_after', _('Stale after')))
-			->addField(
-				(new CWidgetFieldSelect('port_click', _('On click'), [_('Nothing'), _('Latest data'), _('Item history'), _('Problems')]))
-					->setDefault(0)
-			)
 			->addField($this->enumField('dist_view', _('Show'), [_('Boxplot'), _('Histogram')]))
 			->addField((new CWidgetFieldIntegerBox('hist_bins', _('Bins (0 = automatic)'), 0, 200))->setDefault(0))
 			->addField((new CWidgetFieldCheckBox('show_outliers', _('Show outliers')))->setDefault(1))
@@ -275,7 +210,12 @@ class WidgetForm extends CWidgetForm {
 		$chart = ChartRegistry::byFormValue((int) $values['chart_type']);
 
 		if ($chart === null) {
-			return [_('Select a chart type.')];
+			$retired = ChartRegistry::retiredByFormValue((int) $values['chart_type']);
+
+			return [$retired === null
+				? _('Select a chart type.')
+				: _s('The %1$s chart has been removed. Choose another chart type.', $retired['name'])
+			];
 		}
 
 		$config = WidgetConfig::fromFieldValues($values);

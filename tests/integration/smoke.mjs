@@ -193,7 +193,7 @@ for (const [hostIndex, hostid] of hostIds.entries()) {
 
 // A switch shaped like a network template's output: per interface, operational and administrative
 // status, speed, utilisation and alias, each tagged with the interface. It sits in its own host group,
-// which the limited user below cannot read.
+// which the limited user below cannot read, and is only used to check that.
 step('Create switch interface items');
 const [{ groupid: restrictedGroupid }] = await api('hostgroup.get', { filter: { name: ['ZW restricted'] } })
 	.then(async (found) => (found.length ? found : [{ groupid: (await api('hostgroup.create', { name: 'ZW restricted' })).groupids[0] }]));
@@ -302,21 +302,11 @@ const str = (name, value) => ({ type: 1, name, value });
 const patterns = (field, ...values) => values.map((value, index) => str(`${field}.${index}`, value));
 const firstHost = [{ type: 3, name: 'hostids.0', value: hostIds[0] }];
 const lastDay = [str('time_period.from', 'now-1d'), str('time_period.to', 'now')];
-/** The C27 widget on the switch: identity and port number from the item name, access ports and uplinks grouped. */
-function switchPanelFields() {
-	return [
-		{ type: 3, name: 'hostids.0', value: switchHostid },
-		...patterns('port_oper_items', 'ZWS Interface*: Operational status'),
-		...patterns('port_admin_items', 'ZWS Interface*: Administrative status'),
-		...patterns('port_speed_items', 'ZWS Interface*: Speed'),
-		...patterns('port_util_in_items', 'ZWS Interface*: Inbound utilisation'),
-		...patterns('port_util_out_items', 'ZWS Interface*: Outbound utilisation'),
-		...patterns('port_alias_items', 'ZWS Interface*: Alias'),
-		int('port_identity', 2), str('port_regex', '^ZWS Interface ((?:Gi|Te)1/\\d/(\\d+))\\('), int('port_number_group', 2),
-		int('port_grouping', 1), str('port_groups', 'Access = /^Gi/\nUplinks = /^Te/'), str('port_type_rules', 'SFP+ = /^Te/'),
-		int('port_label', 3), int('port_util_bar', 1), int('port_click', 1)
-	];
-}
+/** An LLD table of the switch's interfaces, one row per interface tag. */
+const switchTableFields = [
+	{ type: 3, name: 'hostids.0', value: switchHostid }, ...patterns('items', 'ZWS Interface*'), int('row_identity', 3), str('row_tag', 'interface'),
+	str('table_columns', 'Status = ZWS Interface *: Operational status')
+];
 
 const chartWidgets = [
 	['Column', 1, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*')]],
@@ -355,7 +345,6 @@ const chartWidgets = [
 	['State Timeline', 24, [...firstHost, ...patterns('items', 'ZWT Interface*: Operational status'), str('colour_map', 'up = #1A9850\ndown = #D73027'), ...lastDay]],
 	['Sparkline Grid', 25, [...hostFields, ...patterns('items', 'ZW CPU*'), int('show_change', 1), int('show_minmax', 1), ...lastDay]],
 	['Threshold Band', 26, [...firstHost, ...patterns('items', 'ZW CPU*'), str('thresholds', '40, 50'), str('target_value', '{$ZW.TARGET}'), ...lastDay]],
-	['Switch Port Panel', 27, switchPanelFields()],
 	['Mixed Line and Bar', 28, [...hostFields, ...patterns('bar_items', 'ZW CPU*'), ...patterns('line_items', 'ZW CPU*'), str('bucket', '2h'), int('aggregation', 3), int('line_step', 1), ...lastDay]],
 	['Distribution', 29, [...hostFields, ...patterns('items', 'ZW CPU*'), ...lastDay]],
 	['Histogram', 29, [...hostFields, ...patterns('items', 'ZW CPU*'), int('dist_view', 1), ...lastDay]],
@@ -378,7 +367,7 @@ const { dashboardids: [permissionsDashboardid] } = await api('dashboard.create',
 				type: 'zabbixwidgets_charts', name: 'ZW viewer column', x: 0, y: 0, width: 36, height: 5,
 				fields: [int('chart_type', 1), ...hostFields, { type: 3, name: `hostids.${hostFields.length}`, value: switchHostid }, ...patterns('items', 'ZW CPU*')]
 			},
-			{ type: 'zabbixwidgets_charts', name: 'ZW viewer switch', x: 36, y: 0, width: 36, height: 5, fields: [int('chart_type', 27), ...switchPanelFields()] }
+			{ type: 'zabbixwidgets_charts', name: 'ZW viewer switch', x: 36, y: 0, width: 36, height: 5, fields: [int('chart_type', 14), ...switchTableFields] }
 		]
 	}]
 });
@@ -386,11 +375,18 @@ const { dashboardids: [permissionsDashboardid] } = await api('dashboard.create',
 const { dashboardids: [chartsDashboardid] } = await api('dashboard.create', {
 	name: `ZW all charts ${now}`,
 	pages: [{
-		widgets: chartWidgets.map(([name, chartType, fields], index) => ({
-			// Four to a row keeps every widget within the dashboard's 64 rows.
-			type: 'zabbixwidgets_charts', name: `ZW ${name}`, x: (index % 4) * 18, y: Math.floor(index / 4) * 5, width: 18, height: 5,
-			fields: [int('chart_type', chartType), ...fields]
-		}))
+		widgets: [
+			...chartWidgets.map(([name, chartType, fields], index) => ({
+				// Four to a row keeps every widget within the dashboard's 64 rows.
+				type: 'zabbixwidgets_charts', name: `ZW ${name}`, x: (index % 4) * 18, y: Math.floor(index / 4) * 5, width: 18, height: 5,
+				fields: [int('chart_type', chartType), ...fields]
+			})),
+			// A widget saved while the Switch Port Panel (27) existed: Zabbix must still accept it, and it must say the chart was removed.
+			{
+				type: 'zabbixwidgets_charts', name: 'ZW removed chart', x: 0, y: Math.ceil(chartWidgets.length / 4) * 5, width: 18, height: 5,
+				fields: [int('chart_type', 27), ...firstHost]
+			}
+		]
 	}]
 });
 
@@ -555,28 +551,16 @@ try {
 		const chart = widget(`ZW ${name}`);
 		// ECharts charts draw a canvas; HTML renderers (tables, grids) mark the canvas area with data-zw-view="dom".
 		const drew = (await chart.locator('.zw-charts-canvas canvas').count() > 0
-			|| await chart.locator('.zw-charts-canvas[data-zw-view="dom"] :is(td, .zw-cell, .zw-port)').count() > 0)
+			|| await chart.locator('.zw-charts-canvas[data-zw-view="dom"] :is(td, .zw-cell)').count() > 0)
 			&& await chart.locator('.zw-charts-canvas').isVisible();
 		const text = drew ? '' : (await chart.innerText().catch(() => '')).trim().replace(/\s+/g, ' ');
 		check(drew, `${name} draws from Zabbix data${text ? `: "${text.slice(0, 300)}"` : ''}`);
 	}
 
-	step('Switch Port Panel');
-	const panel = widget('ZW Switch Port Panel');
-	const tiles = panel.locator('.zw-port');
-	check(await tiles.count() === 14, `Switch Port Panel draws 14 ports (${await tiles.count()})`);
-	const tileBox = async (identity) => panel.locator(`[aria-label^="${identity},"]`).boundingBox();
-	const [one, two, three] = await Promise.all(['Gi1/0/1', 'Gi1/0/2', 'Gi1/0/3'].map(tileBox));
-	check(one !== null && two !== null && three !== null && Math.abs(one.x - two.x) < 1 && two.y > one.y && three.x > one.x && Math.abs(three.y - one.y) < 1,
-		'Switch Port Panel puts port 1 top-left, 2 beneath it and 3 to its right');
-	check(/administratively down/.test(await panel.locator('[aria-label^="Gi1/0/6,"]').getAttribute('aria-label') ?? ''),
-		'Switch Port Panel marks the admin-down port in its label');
-	check(await panel.locator('[aria-label^="Gi1/0/1,"]').getAttribute('href').then((href) => /action=latest\.view/.test(href ?? '')),
-		'Switch Port Panel links a port to Latest data');
-	await panel.locator('[aria-label^="Gi1/0/5,"]').hover();
-	const tipText = await panel.locator('.zw-port-tip').innerText().catch(() => '');
-	check(/Operational status\s+down \(2\)/.test(tipText), `Switch Port Panel tooltip shows the mapped status: "${tipText.replace(/\s+/g, ' ').slice(0, 200)}"`);
-	await page.mouse.move(0, 0);
+	step('Removed chart');
+	const removedText = (await widget('ZW removed chart').innerText().catch(() => '')).replace(/\s+/g, ' ');
+	check(/The Switch Port Panel chart has been removed\. Choose another chart type\./.test(removedText),
+		`A widget saved with the removed Switch Port Panel says so: "${removedText.slice(0, 200)}"`);
 
 	step('Showcase: each chart and its edit form');
 	await showcase(page, widget);
@@ -630,8 +614,8 @@ try {
 	check(await viewerWidget('ZW viewer column').locator('.zw-charts-canvas canvas').count() > 0, 'Limited user sees the Column chart for permitted hosts');
 	const hidden = viewerWidget('ZW viewer switch');
 	const hiddenText = await hidden.innerText().catch(() => '');
-	check(await hidden.locator('.zw-port').count() === 0 && !/Gi1\/0|zw-switch/.test(hiddenText),
-		`Limited user sees no switch ports or names: "${hiddenText.replace(/\s+/g, ' ').slice(0, 200)}"`);
+	check(!/Gi1\/0|Te1\/1|zw-switch/.test(hiddenText),
+		`Limited user sees no switch interfaces or names: "${hiddenText.replace(/\s+/g, ' ').slice(0, 200)}"`);
 	const columnText = await viewerWidget('ZW viewer column').innerText().catch(() => '');
 	check(!/zw-switch/.test(columnText), 'Limited user sees no restricted host in the Column chart');
 	await context.close();

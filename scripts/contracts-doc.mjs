@@ -45,9 +45,7 @@ const RULE_TEXT = {
 	has_thresholds: 'At least one threshold is set. Bands come only from configured thresholds, never from the data.',
 	state_settings: 'Value colour lines read "value = #rrggbb"; maximum gap is valid. States last until the next sample, up to the gap threshold; unknown time is shown as no data.',
 	matrix_settings: 'Cells are coloured only by the chosen source: value colours ("value = #rrggbb"), thresholds (numbers or macros per host, numeric items only) or the severity of the item\'s triggers in the problem state. Otherwise cells stay neutral.',
-	table_rows: 'Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern\'s "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.',
-	port_mapping: 'Each role item belongs to the port named by its item tag, its first key parameter or a capture group of the port expression; the role items of one identity on one host make one port. Two items for one port and role, or one item in two roles, are errors naming the port, role and items. Items without an identity are reported. A physical port number comes only from an identity that is a whole number or from the port number capture group.',
-	port_settings: 'Interface type and port group lines read "Name = ports", where ports are numbers, ranges, wildcards or /regular expressions/. Speed colours read "1G = #rrggbb" (plus "other" and "unknown"); status colours read "value = #rrggbb". Fixed colour, label expression and stale limit must be valid; colouring by thresholds needs thresholds that resolve for every host.'
+	table_rows: 'Column lines read "Heading = item name pattern". Each item goes in the first column whose pattern matches its whole name, and in the row of its host and row identity (the item itself, its first key parameter, the text the column pattern\'s "*" matched, an item tag, or the first capture group of a regular expression). Two items in one cell are an error; items without a column or an identity are reported and left out.'
 };
 
 const lines = [
@@ -79,6 +77,16 @@ for (const chart of registry.charts) {
 	lines.push('- **Rules:**');
 	for (const rule of chart.rules) {
 		lines.push(`  - \`${rule}\`: ${RULE_TEXT[rule] ?? 'undocumented rule'}`);
+	}
+	lines.push('');
+}
+
+const retired = registry.retired ?? [];
+if (retired.length > 0) {
+	lines.push('## Removed charts', '');
+	lines.push('These chart types were removed. Their form values stay reserved and are never reused; a widget saved with one says the chart was removed.', '');
+	for (const chart of retired) {
+		lines.push(`- ${chart.code} ${chart.name} (\`${chart.id}\`), form value ${chart.form_value}`);
 	}
 	lines.push('');
 }

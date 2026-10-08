@@ -48,13 +48,35 @@ class ChartRegistry {
 	}
 
 	/**
-	 * Chart type options for the edit form, keyed by stored integer.
+	 * A removed chart by its reserved form value, or null.
 	 */
-	public static function formOptions(): array {
+	public static function retiredByFormValue(int $form_value): ?array {
+		foreach (self::definitions()['retired'] ?? [] as $chart) {
+			if ($chart['form_value'] === $form_value) {
+				return $chart;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Chart type options for the edit form, keyed by stored integer.
+	 *
+	 * A removed chart is listed only for a widget that still uses it, so that
+	 * Zabbix accepts its stored value and the widget can say the chart was removed.
+	 */
+	public static function formOptions(?int $selected = null): array {
 		$options = [];
 
 		foreach (self::charts() as $chart) {
 			$options[$chart['form_value']] = $chart['name'];
+		}
+
+		$retired = $selected === null ? null : self::retiredByFormValue($selected);
+
+		if ($retired !== null) {
+			$options[$retired['form_value']] = _s('%1$s (removed)', $retired['name']);
 		}
 
 		return $options;

@@ -11,7 +11,6 @@ import { getRenderer } from '../../src/renderers/index.js';
 import { validate } from '../../src/validation/index.js';
 import { themeByName } from '../../src/ui/theme.js';
 import { item, payload } from '../fixtures/payload.js';
-import { SWITCH_CONFIG, switchSeries } from '../fixtures/samples.js';
 
 const BUDGET_MS = 1500;
 const NOW = 1700000000;
@@ -77,14 +76,6 @@ describe('performance budgets', () => {
 		}));
 		expect(result.errors).toEqual([]);
 		expect(container.querySelectorAll('svg')).toHaveLength(100);
-		expect(ms).toBeLessThan(BUDGET_MS);
-	});
-
-	it('C27 switch port panel: 128 ports with six roles each', () => {
-		const series = switchSeries({ access: 120, uplinks: 8 });
-		const { ms, result, container } = timed('switch_ports', payload('switch_ports', { config: SWITCH_CONFIG, series }));
-		expect(result.errors).toEqual([]);
-		expect(container.querySelectorAll('.zw-port')).toHaveLength(128);
 		expect(ms).toBeLessThan(BUDGET_MS);
 	});
 });

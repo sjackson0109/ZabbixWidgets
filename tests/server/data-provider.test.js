@@ -170,20 +170,18 @@ describe('limits and settings', () => {
 	});
 });
 
-describe('switch port panel lookups (no per-port calls)', () => {
-	const roles = ['oper', 'admin', 'speed', 'cfg_speed', 'util', 'util_in', 'util_out', 'traffic_in', 'traffic_out', 'errors_in', 'errors_out',
-		'discard', 'duplex', 'poe_state', 'poe_power', 'vlan', 'pvid', 'alias', 'description', 'mtu', 'last_change'];
-	const fields = Object.fromEntries(roles.map((role) => [`port_${role}_items`, [`Interface *: ${role}`]]));
+describe('removed charts', () => {
+	const options = (selected) => run([{ chart: 'column', config: {}, call: 'form_options', selected }])[0];
 
-	it('reads items once per configured role, for 4 or 500 ports alike', () => {
-		for (const items of [4, 500]) {
-			const [result] = run([{ chart: 'switch_ports', config: { port_roles_shown: 'all' }, call: 'item_calls', fields, stub: { items } }]);
-			expect(result).toEqual({ calls: { Item: 21 }, roles: 21 });
+	it('leaves a removed chart out of the chart type list', () => {
+		for (const selected of [null, 1]) {
+			const list = options(selected);
+			expect(Object.keys(list)).not.toContain('27');
+			expect(Object.values(list)).not.toContain('Switch Port Panel');
 		}
 	});
 
-	it('looks up only the common roles unless all port data is shown', () => {
-		const [result] = run([{ chart: 'switch_ports', config: { port_roles_shown: 'core' }, call: 'item_calls', fields, stub: { items: 4 } }]);
-		expect(result).toEqual({ calls: { Item: 6 }, roles: 6 });
+	it('lists a removed chart only for a widget that still uses it, so its stored value stays valid', () => {
+		expect(options(27)['27']).toBe('Switch Port Panel (removed)');
 	});
 });

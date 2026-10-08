@@ -94,37 +94,6 @@ describe('edit form', () => {
 		initEditForm(form);
 		expect(form.querySelector('[name="target_macro"]').placeholder).toBe('{$CPU.TARGET}');
 	});
-	it('shows Switch Port Panel sections only for the chosen identity, roles, grouping and colours', () => {
-		const enums = definitions.enums;
-		const form = buildForm({ chart: 'switch_ports' });
-		initEditForm(form);
-		expect(isShown(form, 'port_tag')).toBe(true);
-		expect(isShown(form, 'port_regex')).toBe(false);
-		expect(isShown(form, 'port_oper_items')).toBe(true);
-		expect(isShown(form, 'port_poe_power_items')).toBe(false);
-		expect(isShown(form, 'port_groups')).toBe(false);
-		expect(isShown(form, 'speed_colours')).toBe(true);
-		expect(isShown(form, 'thresholds')).toBe(false);
-		expect(isShown(form, 'items')).toBe(false);
-
-		const choose = (name, value) => {
-			const radio = form.querySelector(`input[name="${name}"][value="${enums[name].indexOf(value)}"]`);
-			radio.checked = true;
-			radio.dispatchEvent(new Event('change', { bubbles: true }));
-		};
-		choose('port_identity', 'regex');
-		choose('port_roles_shown', 'all');
-		choose('port_grouping', 'definitions');
-		choose('port_fill', 'thresholds');
-		expect(isShown(form, 'port_tag')).toBe(false);
-		expect(isShown(form, 'port_regex')).toBe(true);
-		expect(isShown(form, 'port_number_group')).toBe(true);
-		expect(isShown(form, 'port_poe_power_items')).toBe(true);
-		expect(isShown(form, 'port_groups')).toBe(true);
-		expect(isShown(form, 'thresholds')).toBe(true);
-		expect(isShown(form, 'speed_colours')).toBe(false);
-	});
-
 });
 
 describe('edit form with empty multiselects', () => {
