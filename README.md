@@ -283,7 +283,7 @@ If the widget shows a message instead of a chart, it names what is missing or in
 
 ### Wireless Floor Map
 
-The Wireless Floor Map draws access points that are Zabbix hosts on a floor plan, with one ring per radio. It shows what Zabbix already has: it does not survey, interpolate or estimate coverage.
+The Wireless Floor Map draws access points that are Zabbix hosts on a floor plan, with one ring per radio. Coverage is an estimate from a path loss model, labelled as such; nothing is surveyed or interpolated. What the Zabbix template must provide is described in [Wireless Floor Map: template requirements](docs/WIRELESS-TEMPLATE.md).
 
 1. Upload the floor plan in **Administration > General > Images** as a **Background** image, and enter its name in **Floor plan image**.
 2. Give each access point a position in percent of the image: 0 to 100 across from the left, and 0 to 100 down from the top. Set `{$WIFI.MAP.X}` and `{$WIFI.MAP.Y}` (or the macros you name in the form) on the host itself; a value inherited from a template or set globally is ignored, because it would put every access point on the same spot. Alternatively choose **Positions list** and write one `host name = across, down` per line.
@@ -302,6 +302,7 @@ The band must come from the band item: a value in GHz or MHz, or a value mapping
 ## Documentation
 
 - [Chart contracts](docs/CHART-CONTRACTS.md)
+- [Wireless Floor Map: template requirements](docs/WIRELESS-TEMPLATE.md)
 - [Apache ECharts example coverage](docs/ECHARTS-COVERAGE.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Testing](docs/TESTING.md)
