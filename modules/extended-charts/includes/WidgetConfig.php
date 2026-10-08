@@ -18,13 +18,14 @@ class WidgetConfig {
 		'tree_tags', 'tree_delimiter', 'edge_list', 'edge_tag', 'source_tag', 'target_tag', 'row_tag', 'row_regex', 'row_heading',
 		'table_columns', 'scale_min', 'scale_max', 'target_value', 'thresholds', 'levels', 'path_delimiter', 'stages',
 		'y_min', 'y_max', 'max_gap', 'colour_map', 'node_positions', 'node_category_tag', 'parallel_axes', 'geo_file', 'geo_links',
-		'waterfall_steps', 'floor_image', 'host_tags', 'position_macro_x', 'position_macro_y', 'radio_tag', 'radio_regex', 'snr_thresholds'
+		'waterfall_steps', 'floor_image', 'host_tags', 'position_macro_x', 'position_macro_y', 'radio_tag', 'radio_regex', 'snr_thresholds',
+		'plan_width', 'tx_power_default', 'edge_level', 'path_loss_n'
 	];
 
 	private const FLAG_FIELDS = ['show_percent', 'hide_zero', 'show_legend', 'show_host', 'show_item_name', 'show_last_update',
 		'show_change', 'show_problems', 'use_valuemap', 'table_dense', 'table_striped', 'show_value', 'gauge_segmented', 'show_track',
 		'pct_first', 'pct_previous', 'zero_baseline', 'smooth', 'show_points', 'area_gradient', 'show_minmax', 'show_node_labels', 'show_edge_labels',
-		'show_outliers', 'show_band_24', 'show_band_5', 'show_band_6'
+		'show_outliers', 'show_band_24', 'show_band_5', 'show_band_6', 'show_gaps', 'show_interference'
 	];
 
 	private const INTEGER_FIELDS = ['rank_count' => 10, 'max_depth' => 0, 'area_opacity' => 30, 'grid_columns' => 0, 'inner_radius' => 0,

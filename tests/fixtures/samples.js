@@ -295,19 +295,21 @@ export const SAMPLES = {
 		config: {
 			...common, floor_image: FLOOR_PLAN.name, host_tags: 'floor=2', position_source: 'macros', position_macro_x: '{$WIFI.MAP.X}',
 			position_macro_y: '{$WIFI.MAP.Y}', node_positions: '', radio_by: 'key', radio_tag: '', radio_regex: '', snr_thresholds: '15, 25',
-			rogue_count: 'value', show_band_24: true, show_band_5: true, show_band_6: true, show_node_labels: true
+			rogue_count: 'value', show_band_24: true, show_band_5: true, show_band_6: true, show_node_labels: true,
+			ring_size: 'model', plan_width: '64', tx_power_default: '', edge_level: '-67', path_loss_n: '28, 31, 31'
 		},
 		floor: FLOOR_PLAN,
 		series: [
-			['1', 'ap-lobby', [['1', '2.4', '6', '20', '31'], ['2', '5', '36', '80', '27'], ['3', '6', '37', '160', '22']], '0'],
-			['2', 'ap-east', [['1', '2.4', '11', '20', '12'], ['2', '5', '36', '80', '18']], '2'],
-			['3', 'ap-west', [['1', '2.4', '1', '20', '24'], ['2', '5', '149', '40', null], ['3', '6', '69', '160', '29']], '0']
+			['1', 'ap-lobby', [['1', '2.4', '6', '20', '31', '9'], ['2', '5', '36', '80', '27', '15'], ['3', '6', '37', '160', '22', '15']], '0'],
+			['2', 'ap-east', [['1', '2.4', '11', '20', '12', '9'], ['2', '5', '36', '80', '18', '15']], '2'],
+			['3', 'ap-west', [['1', '2.4', '3', '20', '24', '9'], ['2', '5', '149', '40', null, '15'], ['3', '6', '69', '160', '29', '15']], '0']
 		].flatMap(([hostid, host, radios, rogues]) => [
-			...radios.flatMap(([index, band, channel, width, snr]) => [
+			...radios.flatMap(([index, band, channel, width, snr, power]) => [
 				raw({ role: 'band', hostid, host, name: `Radio ${index} band`, key: `wlan.radio.band[${index}]`, units: 'GHz', value_type: 1, value: band }),
 				raw({ role: 'channel', hostid, host, name: `Radio ${index} channel`, key: `wlan.radio.channel[${index}]`, units: '', value_type: 3, value: channel }),
 				raw({ role: 'width', hostid, host, name: `Radio ${index} channel width`, key: `wlan.radio.width[${index}]`, units: 'MHz', value_type: 3, value: width }),
-				raw({ role: 'snr', hostid, host, name: `Radio ${index} SNR`, key: `wlan.radio.snr[${index}]`, units: 'dB', value: snr })
+				raw({ role: 'snr', hostid, host, name: `Radio ${index} SNR`, key: `wlan.radio.snr[${index}]`, units: 'dB', value: snr }),
+				raw({ role: 'txpower', hostid, host, name: `Radio ${index} transmit power`, key: `wlan.radio.txpower[${index}]`, units: 'dBm', value: power })
 			]),
 			raw({ role: 'rogue', hostid, host, name: 'Rogue APs detected', key: 'wlan.rogue.count', units: '', value_type: 3, value: rogues })
 		]),

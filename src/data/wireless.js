@@ -5,7 +5,7 @@
  *   the user in percent of the image (0 to 100 across, 0 to 100 down), from
  *   the host's own macros or from the widget's positions list. A host without
  *   a valid position is not drawn: no position is ever guessed.
- * - A radio is the set of band, channel, width and SNR items on one host that
+ * - A radio is the set of band, channel, width, SNR and transmit power items on one host that
  *   share an identity (a key parameter, an item tag or a part of the item name).
  * - The band comes only from the band item's value or value mapping. It is
  *   never worked out from the channel number, because 6 GHz channel numbers
@@ -22,6 +22,9 @@ export const BANDS = Object.freeze(['2.4', '5', '6']);
 export const BAND_LABELS = Object.freeze({ '2.4': '2.4 GHz', 5: '5 GHz', 6: '6 GHz' });
 
 const WIDTHS = [20, 40, 80, 160, 320];
+
+/** Item roles that belong to one radio. */
+const RADIO_ROLES = ['band', 'channel', 'width', 'snr', 'txpower'];
 
 /** The text an item shows: its value mapping when it has one, else its value. */
 export function displayText(series) {
@@ -182,7 +185,7 @@ export function wirelessModel(payload) {
 		}
 		const own = series.filter((entry) => entry.hostid === host.hostid);
 		const groups = new Map();
-		for (const entry of own.filter((item) => ['band', 'channel', 'width', 'snr'].includes(item.role))) {
+		for (const entry of own.filter((item) => RADIO_ROLES.includes(item.role))) {
 			const id = identity.error === null ? identityOf(entry, identity.source, { tag: identity.tag, regex: identity.regex }) : null;
 			if (id === null) {
 				problems.unidentified.push(`${host.name}: ${entry.name}`);
@@ -221,6 +224,7 @@ export function wirelessModel(payload) {
 				problems.noSnr.push(label);
 			}
 			const widthEntry = members.width?.[0] ?? null;
+			const powerEntry = members.txpower?.[0] ?? null;
 			radios.push({
 				id,
 				band,
@@ -229,6 +233,8 @@ export function wirelessModel(payload) {
 				widthText: widthEntry === null ? null : displayText(widthEntry),
 				snr,
 				snrUnits: snrEntry?.units || 'dB',
+				// Transmit power in dBm (EIRP) from the radio's own item, or null.
+				txPower: powerEntry !== null && typeof powerEntry.value === 'number' ? powerEntry.value : null,
 				clock: Math.min(...Object.values(members).map(([entry]) => entry.clock ?? Infinity))
 			});
 		}

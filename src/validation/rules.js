@@ -28,6 +28,7 @@ import { pairColours } from '../renderers/treemap.js';
 import { parseGap, unitGroups } from '../data/temporal.js';
 import { parseColourMap } from '../data/states.js';
 import { apPositions, radioIdentity, wirelessModel } from '../data/wireless.js';
+import { contours, coverageSettings } from '../data/coverage.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -706,11 +707,27 @@ export const RULES = {
 			}
 		}
 
+		const modelled = config.ring_size !== 'band';
+		const coverage = modelled ? coverageSettings(config) : null;
+		if (coverage !== null) {
+			problems.push(...coverage.errors.map((message) => error('invalid_coverage', message)));
+		}
+
 		if (problems.some((problem) => problem.level === 'error')) {
 			return problems;
 		}
 
 		const { aps, problems: left } = wirelessModel(payload);
+		if (coverage !== null) {
+			const unpowered = aps.flatMap((ap) => ap.radios.filter((entry) => entry.txPower === null && coverage.power === null).map((entry) => `${ap.name} radio ${entry.id}`));
+			if (unpowered.length > 0) {
+				problems.push(warning('no_tx_power', `These radios have no transmit power value, so no coverage is estimated and only their band ring is drawn: ${listNames(unpowered)}. Map the transmit power items or enter a transmit power.`));
+			}
+			const weak = aps.flatMap((ap) => ap.radios.filter((entry) => (entry.txPower !== null || coverage.power !== null) && contours(entry, coverage).length === 0).map((entry) => `${ap.name} radio ${entry.id}`));
+			if (weak.length > 0) {
+				problems.push(warning('below_edge', `By the model, these radios do not reach the coverage edge of ${coverage.edge} dBm even 1 m away: ${listNames(weak)}.`));
+			}
+		}
 		const how = { key: 'a first key parameter', tag: `the item tag "${identity.tag}"`, regex: 'a match for the radio expression' }[identity.source];
 		if (left.unidentified.length > 0) {
 			problems.push(warning('no_radio_identity', `These items have no ${how}, so their radio is unknown and they are not drawn: ${listNames(left.unidentified)}.`));
@@ -725,7 +742,7 @@ export const RULES = {
 			problems.push(warning('no_channel', `These radios have no channel value: ${listNames(left.noChannel)}.`));
 		}
 		if (left.noSnr.length > 0) {
-			problems.push(warning('no_snr', `These radios have no SNR value and are drawn uncoloured: ${listNames(left.noSnr)}.`));
+			problems.push(warning('no_snr', `These radios have no SNR value and are drawn in grey: ${listNames(left.noSnr)}.`));
 		}
 		const radios = aps.reduce((sum, ap) => sum + ap.radios.length, 0);
 		if (radios === 0) {

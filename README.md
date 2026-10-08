@@ -73,7 +73,7 @@ Each image is the module's own bundle drawing that chart's sample payload in Chr
 <td align="center"><img src="docs/screenshots/waterfall.png" alt="Waterfall chart"><br><b>C33 Waterfall</b><br><sub>Contributions from one level to the next, with totals.</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/screenshots/wifi_floor.png" alt="Wireless Floor Map"><br><b>C34 Wireless Floor Map</b><br><sub>Access points on a floor plan, one ring per radio coloured by SNR.</sub></td>
+<td align="center"><img src="docs/screenshots/wifi_floor.png" alt="Wireless Floor Map"><br><b>C34 Wireless Floor Map</b><br><sub>Access points on a floor plan, with estimated coverage per radio coloured by SNR.</sub></td>
 </tr>
 </table>
 
@@ -288,8 +288,14 @@ The Wireless Floor Map draws access points that are Zabbix hosts on a floor plan
 1. Upload the floor plan in **Administration > General > Images** as a **Background** image, and enter its name in **Floor plan image**.
 2. Give each access point a position in percent of the image: 0 to 100 across from the left, and 0 to 100 down from the top. Set `{$WIFI.MAP.X}` and `{$WIFI.MAP.Y}` (or the macros you name in the form) on the host itself; a value inherited from a template or set globally is ignored, because it would put every access point on the same spot. Alternatively choose **Positions list** and write one `host name = across, down` per line.
 3. Narrow the hosts with host groups, hosts and **Host tags** (for example `floor=2`, or `floor=2, building=HQ`; different tags must all match).
-4. Map the band, channel, channel width, SNR and rogue AP items. Item patterns match anywhere in the item name, so make each one distinct (for example `Radio * band` and `Radio * channel width` rather than `Radio * channel`, which would also match the width items).
+4. Map the band, channel, channel width, SNR, transmit power and rogue AP items. Item patterns match anywhere in the item name, so make each one distinct (for example `Radio * band` and `Radio * channel width` rather than `Radio * channel`, which would also match the width items).
 5. Choose how items are grouped into radios: by the first key parameter (for example `wlan.radio.snr[{#RADIO}]`), by an item tag, or by a regular expression on the item name with a capture group.
+
+**Estimated coverage** (the default ring style) draws nine translucent discs per radio, one for each signal level in 4 dB steps down to the coverage edge (−67 dBm by default). They stack up towards the access point, so the fade follows the signal. Each disc's radius comes from the ITU-R P.1238 indoor path loss model, `L = 20·log10(f MHz) + N·log10(d m) − 28`, using the radio's transmit power item (dBm EIRP) or a power you enter, its channel's centre frequency, and a distance loss coefficient N per band (28, 31 and 31 for 2.4, 5 and 6 GHz by default, the model's office values). Enter the floor plan's real width in metres so metres can be drawn to scale. This is an estimate: walls, floors and furniture are not included, so real coverage is usually smaller, and the chart's key says so. Each band's discs are offset a few pixels (2.4 GHz left, 5 GHz up and right, 6 GHz down and right) so that their centres stay apart. Choose **Band only** for small rings that show the band and nothing else.
+
+From the same model the map can shade **coverage gaps** (dark: no radio reaches the coverage edge) and **channel overlap** (red: two access points on overlapping spectrum both reach it there). Overlap is worked out from each radio's band, channel and channel width: on 5 and 6 GHz a wide channel is its fixed block of 20 MHz channels (80 MHz on channel 44 is 36 to 48), and on 2.4 GHz a 40 MHz channel counts both sides of its primary channel because the item does not say which side is used. So 2.4 GHz channels 1 and 3 overlap at 20 MHz, while 1 and 6 do not. Both layers are estimates on a grid of 96 cells across the plan; switch either off in the widget.
+
+The scale comes from the plan, not the widget: metres are converted with the floor plan width you enter, and the whole plan, with the rings on it, is fitted into the widget at its own aspect ratio. Resizing the widget, or zooming and panning inside it, scales everything together.
 
 The band must come from the band item: a value in GHz or MHz, or a value mapping whose text names the band (for example `5 GHz`). It is never worked out from the channel number. Rogue APs are counted from one item's value, or as the number of matching items when each rogue is its own discovered item; they are shown on the access point that reports them and are never placed on the plan.
 

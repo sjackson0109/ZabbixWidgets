@@ -4,13 +4,15 @@ import { getChart } from '../../src/registry/index.js';
 import { validate } from '../../src/validation/index.js';
 import { normaliseFloor } from '../../src/data/normalise.js';
 import { apPositions, parseBand, parseWidth, wirelessModel } from '../../src/data/wireless.js';
+import { channelFrequency, contours, coverageGrid, coverageSettings, LEVELS, LEVEL_STEP, pathLoss, rangeTo, spectrum, spectrumOverlap } from '../../src/data/coverage.js';
 import { host, item, payload } from '../fixtures/payload.js';
 
 const FLOOR = { name: 'Floor 2', width: 400, height: 200, url: 'imgstore.php?iconid=12' };
 const CONFIG = {
 	floor_image: 'Floor 2', position_source: 'macros', position_macro_x: '{$WIFI.MAP.X}', position_macro_y: '{$WIFI.MAP.Y}', node_positions: '',
 	radio_by: 'key', radio_tag: '', radio_regex: '', snr_thresholds: '15, 25', rogue_count: 'value',
-	show_band_24: true, show_band_5: true, show_band_6: true
+	show_band_24: true, show_band_5: true, show_band_6: true,
+	ring_size: 'model', plan_width: '50', tx_power_default: '15', edge_level: '-67', path_loss_n: '28, 31, 31'
 };
 
 function ap({ hostid = '1', name = 'ap-1', x = '50', y = '50', ...rest } = {}) {
@@ -170,5 +172,109 @@ describe('C34 rogue APs', () => {
 	it('shows no badge without rogue items or values', () => {
 		expect(model({}, []).aps[0].rogues).toBeNull();
 		expect(model({}, [rogue(null)]).aps[0].rogues).toBeNull();
+	});
+});
+
+describe('C34 estimated coverage', () => {
+	const settings = coverageSettings(CONFIG);
+
+	it('uses each channel\'s centre frequency, or the band centre without one', () => {
+		expect([channelFrequency('2.4', '1'), channelFrequency('2.4', '14'), channelFrequency('5', '36'), channelFrequency('6', '37')]).toEqual([2412, 2484, 5180, 6135]);
+		expect([channelFrequency('2.4', null), channelFrequency('5', 'auto'), channelFrequency('6', '999')]).toEqual([2437, 5500, 6475]);
+	});
+
+	it('follows the ITU-R P.1238 indoor path loss', () => {
+		// 20·log10(2437) + 28·log10(10) − 28 = 67.74 + 28 − 28.
+		expect(pathLoss(2437, 10, 28)).toBeCloseTo(67.74, 1);
+		// 18 dBm reaches -67 dBm at the distance where the loss is 85 dB.
+		const range = rangeTo(18, -67, 2437, 28);
+		expect(pathLoss(2437, range, 28)).toBeCloseTo(85, 6);
+		expect(range).toBeGreaterThan(30);
+		expect(range).toBeLessThan(45);
+		expect(rangeTo(-10, -30, 6000, 31)).toBe(0);
+	});
+
+	it('gives 5 and 6 GHz less range than 2.4 GHz at the same power', () => {
+		const at = (band, channel) => contours({ band, channel, txPower: 18 }, settings)[0].radius;
+		expect(at('2.4', '6')).toBeGreaterThan(at('5', '36'));
+		expect(at('5', '36')).toBeGreaterThan(at('6', '37'));
+	});
+
+	it('draws one ring per signal level, outermost first, from the edge up', () => {
+		const rings = contours({ band: '5', channel: '36', txPower: 20 }, settings);
+		expect(rings).toHaveLength(LEVELS);
+		expect(rings.map((ring) => ring.level)).toEqual(Array.from({ length: LEVELS }, (_, index) => -67 + index * LEVEL_STEP));
+		expect(rings.every((ring, index) => index === 0 || ring.radius < rings[index - 1].radius)).toBe(true);
+	});
+
+	it('prefers the radio\'s transmit power item over the entered power, and draws nothing without either', () => {
+		const strong = contours({ band: '5', channel: '36', txPower: 20 }, settings)[0].radius;
+		const entered = contours({ band: '5', channel: '36', txPower: null }, settings)[0].radius;
+		expect(strong).toBeGreaterThan(entered);
+		expect(contours({ band: '5', channel: '36', txPower: null }, { ...settings, power: null })).toEqual([]);
+	});
+
+	it('needs the plan width, edge level and coefficients', () => {
+		expect(errors(check({ config: { plan_width: '' } }))).toContain('invalid_coverage');
+		expect(errors(check({ config: { edge_level: '-10' } }))).toContain('invalid_coverage');
+		expect(errors(check({ config: { path_loss_n: '28, 31' } }))).toContain('invalid_coverage');
+		expect(errors(check({ config: { tx_power_default: '50' } }))).toContain('invalid_coverage');
+		expect(check({ config: { ring_size: 'band', plan_width: '' } }).ok).toBe(true);
+	});
+
+	it('says which radios have no transmit power', () => {
+		const result = check({ config: { tx_power_default: '' } });
+		expect(result.ok).toBe(true);
+		expect(warnings(result)).toContain('no_tx_power');
+		const powered = [...radio(1), item({ role: 'txpower', name: 'Radio 1 power', key: 'txpower[1]', units: 'dBm', value: '17' })];
+		expect(warnings(check({ config: { tx_power_default: '' }, series: powered }))).not.toContain('no_tx_power');
+	});
+});
+
+describe('C34 channel overlap and coverage gaps', () => {
+	const settings = coverageSettings(CONFIG);
+	const r = (band, channel, width = 20) => ({ band, channel, width });
+
+	it('works out the spectrum each channel and channel width occupies', () => {
+		expect(spectrum(r('2.4', '1'))).toEqual([2402, 2422]);
+		expect(spectrum(r('2.4', '6', 40))).toEqual([2407, 2467]);
+		expect(spectrum(r('5', '36', 80))).toEqual([5170, 5250]);
+		expect(spectrum(r('5', '44', 80))).toEqual([5170, 5250]);
+		expect(spectrum(r('5', '149', 80))).toEqual([5735, 5815]);
+		expect(spectrum(r('5', '100', 160))).toEqual([5490, 5650]);
+		expect(spectrum(r('6', '37', 160))).toEqual([6105, 6265]);
+		expect(spectrum(r('5', 'auto'))).toBeNull();
+	});
+
+	it('flags overlapping channels on the same band only', () => {
+		expect(spectrumOverlap(r('2.4', '1'), r('2.4', '3'))).toBe(true);
+		expect(spectrumOverlap(r('2.4', '1'), r('2.4', '6'))).toBe(false);
+		expect(spectrumOverlap(r('5', '36', 80), r('5', '48'))).toBe(true);
+		expect(spectrumOverlap(r('5', '36', 80), r('5', '52'))).toBe(false);
+		expect(spectrumOverlap(r('5', '36'), r('6', '37'))).toBe(false);
+	});
+
+	it('finds gaps and overlap on a grid over the plan', () => {
+		const a = { name: 'a' };
+		const b = { name: 'b' };
+		const sources = [
+			{ ap: a, radio: { ...r('2.4', '1'), txPower: 15 }, x: 10, y: 10 },
+			{ ap: b, radio: { ...r('2.4', '3'), txPower: 15 }, x: 30, y: 10 }
+		];
+		const grid = coverageGrid(sources, settings, 200, 20);
+		expect(grid.gaps.length).toBeGreaterThan(0);
+		expect(grid.clashes.length).toBeGreaterThan(0);
+		// Overlap lies only where both radios reach the edge level.
+		const range = contours({ ...r('2.4', '1'), txPower: 15 }, settings)[0].radius;
+		const within = (column, row, x) => Math.hypot((column + 0.5) * grid.size - x, (row + 0.5) * grid.size - 10) <= range + grid.size;
+		expect(grid.clashes.every(({ column, row }) => within(column, row, 10) && within(column, row, 30))).toBe(true);
+		const apart = coverageGrid([sources[0], { ...sources[1], radio: { ...r('2.4', '11'), txPower: 15 } }], settings, 200, 20);
+		expect(apart.clashes).toEqual([]);
+	});
+
+	it('estimates nothing without a transmit power', () => {
+		const grid = coverageGrid([{ ap: {}, radio: { ...r('5', '36'), txPower: null }, x: 1, y: 1 }], { ...settings, power: null }, 50, 20);
+		expect(grid.gaps).toEqual([]);
+		expect(grid.clashes).toEqual([]);
 	});
 });

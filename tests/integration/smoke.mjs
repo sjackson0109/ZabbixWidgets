@@ -169,7 +169,8 @@ for (const [hostIndex, hostid] of hostIds.entries()) {
 			{ name: `ZWW Radio ${index} band`, key_: `zww.band[${index}]`, value_type: 1, units: '', value: band },
 			{ name: `ZWW Radio ${index} channel`, key_: `zww.channel[${index}]`, value_type: 3, units: '', value: channel },
 			{ name: `ZWW Radio ${index} width`, key_: `zww.width[${index}]`, value_type: 3, units: 'MHz', value: width },
-			{ name: `ZWW Radio ${index} SNR`, key_: `zww.snr[${index}]`, value_type: 0, units: 'dB', value: snr }
+			{ name: `ZWW Radio ${index} SNR`, key_: `zww.snr[${index}]`, value_type: 0, units: 'dB', value: snr },
+			{ name: `ZWW Radio ${index} transmit power`, key_: `zww.txpower[${index}]`, value_type: 0, units: 'dBm', value: band === '2.4' ? '9' : '15' }
 		]),
 		{ name: 'ZWW Rogue APs detected', key_: 'zww.rogue.count', value_type: 3, units: '', value: String(hostIndex * 2) }
 	];
@@ -349,7 +350,7 @@ const switchTableFields = [
 const wirelessFields = [
 	...hostFields, str('floor_image', FLOOR_IMAGE), str('host_tags', 'floor=2'), ...patterns('band_items', 'ZWW Radio * band'),
 	...patterns('channel_items', 'ZWW Radio * channel'), ...patterns('width_items', 'ZWW Radio * width'), ...patterns('snr_items', 'ZWW Radio * SNR'),
-	...patterns('rogue_items', 'ZWW Rogue*')
+	...patterns('rogue_items', 'ZWW Rogue*'), ...patterns('txpower_items', 'ZWW Radio * transmit power'), str('plan_width', '40')
 ];
 
 const chartWidgets = [

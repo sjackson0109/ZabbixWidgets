@@ -356,6 +356,10 @@
 		"rogue_count": [
 			"value",
 			"items"
+		],
+		"ring_size": [
+			"model",
+			"band"
 		]
 	}
 }

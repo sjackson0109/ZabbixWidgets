@@ -173,6 +173,9 @@ describe('edit form for the new presentations', () => {
 		expect(isShown(form, 'position_macro_x')).toBe(false);
 		expect(isShown(form, 'radio_tag')).toBe(true);
 		expect(isShown(form, 'radio_regex')).toBe(false);
+		expect(['plan_width', 'txpower_items', 'edge_level', 'path_loss_n', 'show_gaps', 'show_interference'].every((field) => isShown(form, field))).toBe(true);
+		choose(form, 'ring_size', 'band');
+		expect(['plan_width', 'txpower_items', 'edge_level', 'path_loss_n', 'tx_power_default', 'show_gaps', 'show_interference'].some((field) => isShown(form, field))).toBe(false);
 	});
 
 	it('hides size items for a plain scatter', () => {

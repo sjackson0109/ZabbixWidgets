@@ -24,7 +24,8 @@ export const ROLE_LABELS = Object.freeze({
 	channel: 'channel',
 	width: 'channel width',
 	snr: 'SNR',
-	rogue: 'rogue AP'
+	rogue: 'rogue AP',
+	txpower: 'transmit power'
 });
 
 /** Joins names into "a, b and 2 more" so messages stay short. */
