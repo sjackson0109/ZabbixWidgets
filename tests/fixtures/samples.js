@@ -7,6 +7,8 @@
 const TO = 1700006400; // 2023-11-15 00:00 UTC
 const FROM = TO - 2 * 86400;
 
+import { FLOOR_PLAN } from './floor-plan.js';
+
 let nextId = 1;
 
 function raw({ role = 'value', hostid = '1', host = 'web01', name = 'CPU utilization', key, units = '%', value = '10', value_type = 0, tags = [], history, ...extra } = {}) {
@@ -287,6 +289,32 @@ export const SAMPLES = {
 			{ ...hosts[0], location: { lat: '51.5072', lon: '-0.1276' } },
 			{ ...hosts[1], location: { lat: '53.4808', lon: '-2.2426' } },
 			{ ...hosts[2], location: { lat: '52.4862', lon: '-1.8904' } }
+		]
+	},
+	wifi_floor: {
+		config: {
+			...common, floor_image: FLOOR_PLAN.name, host_tags: 'floor=2', position_source: 'macros', position_macro_x: '{$WIFI.MAP.X}',
+			position_macro_y: '{$WIFI.MAP.Y}', node_positions: '', radio_by: 'key', radio_tag: '', radio_regex: '', snr_thresholds: '15, 25',
+			rogue_count: 'value', show_band_24: true, show_band_5: true, show_band_6: true, show_node_labels: true
+		},
+		floor: FLOOR_PLAN,
+		series: [
+			['1', 'ap-lobby', [['1', '2.4', '6', '20', '31'], ['2', '5', '36', '80', '27'], ['3', '6', '37', '160', '22']], '0'],
+			['2', 'ap-east', [['1', '2.4', '11', '20', '12'], ['2', '5', '36', '80', '18']], '2'],
+			['3', 'ap-west', [['1', '2.4', '1', '20', '24'], ['2', '5', '149', '40', null], ['3', '6', '69', '160', '29']], '0']
+		].flatMap(([hostid, host, radios, rogues]) => [
+			...radios.flatMap(([index, band, channel, width, snr]) => [
+				raw({ role: 'band', hostid, host, name: `Radio ${index} band`, key: `wlan.radio.band[${index}]`, units: 'GHz', value_type: 1, value: band }),
+				raw({ role: 'channel', hostid, host, name: `Radio ${index} channel`, key: `wlan.radio.channel[${index}]`, units: '', value_type: 3, value: channel }),
+				raw({ role: 'width', hostid, host, name: `Radio ${index} channel width`, key: `wlan.radio.width[${index}]`, units: 'MHz', value_type: 3, value: width }),
+				raw({ role: 'snr', hostid, host, name: `Radio ${index} SNR`, key: `wlan.radio.snr[${index}]`, units: 'dB', value: snr })
+			]),
+			raw({ role: 'rogue', hostid, host, name: 'Rogue APs detected', key: 'wlan.rogue.count', units: '', value_type: 3, value: rogues })
+		]),
+		hosts: [
+			{ hostid: '1', name: 'ap-lobby', groups: ['Wireless/Floor 2'], tags: [{ tag: 'floor', value: '2' }], macros: {}, position: { x: '18', y: '50' } },
+			{ hostid: '2', name: 'ap-east', groups: ['Wireless/Floor 2'], tags: [{ tag: 'floor', value: '2' }], macros: {}, position: { x: '78', y: '28' } },
+			{ hostid: '3', name: 'ap-west', groups: ['Wireless/Floor 2'], tags: [{ tag: 'floor', value: '2' }], macros: {}, position: { x: '46', y: '74' } }
 		]
 	},
 	waterfall: {

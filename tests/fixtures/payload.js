@@ -11,8 +11,8 @@ export function item({
 	return { itemid, role, hostid, host, name, key: key ?? `key.${itemid}`, units, value_type, value, clock, tags, history, ...extra };
 }
 
-export function payload(chart, { config = {}, series = [], hosts = [], time_period = null, errors = [], severities = [] } = {}) {
-	return normalisePayload({ chart, config, series, hosts, time_period, errors, severities });
+export function payload(chart, { config = {}, series = [], hosts = [], time_period = null, errors = [], severities = [], floor = null } = {}) {
+	return normalisePayload({ chart, config, series, hosts, time_period, errors, severities, floor });
 }
 
 export function host({ hostid = '1', name = 'Host A', groups = [], tags = [], macros = {} } = {}) {

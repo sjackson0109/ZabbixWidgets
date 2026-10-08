@@ -6,7 +6,7 @@ Releases are published by the `Release` workflow (`.github/workflows/release.yml
 
 1. Set the new version in `package.json`, `package-lock.json` (`npm version --no-git-tag-version <version>`) and `modules/extended-charts/manifest.json`.
 2. Move everything under `## Unreleased` in `CHANGELOG.md` into a new `## <version> - YYYY-MM-DD` section at the top. Leave `## Unreleased` empty or remove it.
-3. If the number of charts changed, update the first word of the manifest description ("Thirty-two ...").
+3. If the number of charts changed, update the first word of the manifest description ("Thirty-three ...").
 
 `npm run release:check` (part of `npm run check` and CI) checks that the versions agree and that the manifest counts the charts in the registry. `node scripts/release-check.mjs --tag v<version>` also runs the release-only CHANGELOG checks.
 

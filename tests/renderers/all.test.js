@@ -6,6 +6,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SVGRenderer } from 'echarts/renderers';
+import { JSDOM } from 'jsdom';
 import { echarts } from '../../src/echarts.js';
 import { listCharts } from '../../src/registry/index.js';
 import { getRenderer } from '../../src/renderers/index.js';
@@ -15,6 +16,9 @@ import { themeByName } from '../../src/ui/theme.js';
 import { sample } from '../fixtures/samples.js';
 
 echarts.use([SVGRenderer]);
+
+// The Wireless Floor Map registers its floor plan as an SVG map, which ECharts parses with DOMParser.
+globalThis.DOMParser ??= new JSDOM('').window.DOMParser;
 
 function render(option) {
 	const chart = echarts.init(null, null, { renderer: 'svg', ssr: true, width: 640, height: 320 });

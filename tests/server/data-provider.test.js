@@ -135,6 +135,50 @@ describe('map files', () => {
 	});
 });
 
+describe('wireless floor map', () => {
+	const config = { position_source: 'macros', position_macro_x: '{$WIFI.MAP.X}', position_macro_y: '{$WIFI.MAP.Y}' };
+
+	it('reads positions from the host itself, never from templates or other hosts', () => {
+		const rows = [
+			{ hostid: '1', macro: '{$WIFI.MAP.X}', value: '20' }, { hostid: '1', macro: '{$WIFI.MAP.Y}', value: '40' },
+			{ hostid: '2', macro: '{$WIFI.MAP.X}', value: '70' },
+			{ hostid: '100', macro: '{$WIFI.MAP.X}', value: '1' }, { hostid: '100', macro: '{$WIFI.MAP.Y}', value: '1' }
+		];
+		const [result] = run([{ chart: 'wifi_floor', config, call: 'positions', hostids: ['1', '2', '3'], stub: { rows } }]);
+		expect(result).toEqual({ positions: { 1: { x: '20', y: '40' }, 2: { x: '70', y: '' } }, errors: [] });
+	});
+
+	it('refuses position settings that are not user macros', () => {
+		const [result] = run([{ chart: 'wifi_floor', config: { ...config, position_macro_y: 'WIFI.MAP.Y' }, call: 'positions', hostids: ['1'], stub: { rows: [] } }]);
+		expect(result.errors).toEqual(['"WIFI.MAP.Y" is not a user macro such as {$WIFI.MAP.X}.']);
+	});
+
+	it('reads nothing from macros when positions come from the list', () => {
+		const [result] = run([{ chart: 'wifi_floor', config: { ...config, position_source: 'list' }, call: 'positions', hostids: ['1'], stub: { rows: [] } }]);
+		expect(result).toEqual({ positions: {}, errors: [] });
+	});
+
+	it('parses the host tag filter', () => {
+		const [results] = run([{ chart: 'wifi_floor', config: {}, call: 'host_tags', filters: ['floor=2, building = HQ, wifi', '', '=2'] }]);
+		expect(results[0]).toEqual([[
+			{ tag: 'floor', value: '2', operator: 1 }, { tag: 'building', value: 'HQ', operator: 1 }, { tag: 'wifi', operator: 4 }
+		], null]);
+		expect(results[1]).toEqual([[], null]);
+		expect(results[2][1]).toMatch(/has no tag name/);
+	});
+
+	it('reads the size of a background image and points at the Zabbix image address', () => {
+		// A 2 x 1 PNG.
+		const png = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAD0lEQVR4nGP8z8DAwMAAAAYIAQHLR3Z1AAAAAElFTkSuQmCC';
+		const [[image, broken]] = run([{ chart: 'wifi_floor', config: {}, call: 'floor_image', images: [
+			{ imageid: '7', name: 'Floor 2', image: png }, { imageid: '8', name: 'Broken', image: 'bm90IGFuIGltYWdl' }
+		] }]);
+		expect(image).toEqual([{ imageid: '7', name: 'Floor 2', width: 2, height: 1, url: 'imgstore.php?iconid=7' }, null]);
+		expect(broken[0]).toBeNull();
+		expect(broken[1]).toMatch(/could not be read/);
+	});
+});
+
 describe('limits and settings', () => {
 	it('reports more items than the limit instead of showing part of them', () => {
 		const [within, over] = run([

@@ -7,7 +7,7 @@
 	"version": "1.0.0",
 	"author": "ZabbixWidgets contributors",
 	"url": "https://github.com/sjackson0109/ZabbixWidgets",
-	"description": "Thirty-two Apache ECharts and HTML visualisations of Zabbix data with explicit data contracts.",
+	"description": "Thirty-three Apache ECharts and HTML visualisations of Zabbix data with explicit data contracts.",
 	"actions": {
 		"widget.zabbixwidgets_charts.view": {
 			"class": "WidgetView"

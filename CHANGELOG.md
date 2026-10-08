@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **C34 Wireless Floor Map**: access points drawn on a floor plan (a Zabbix background image), with one ring per radio nested by band (2.4, 5 and 6 GHz), coloured by SNR against thresholds, and labelled with channel and channel width. Hovering a radio highlights the others on the same band and channel. An optional badge shows the rogue AP count each access point reports. Positions come from the access point's own host macros or a positions list, in percent of the image; nothing is placed, banded or sized by guesswork, and ring size is not a coverage range.
+- Host tag filter for the Wireless Floor Map (`tag` or `tag=value`, separated by commas).
+
 ## 1.0.0 - 2026-10-08
 
 First release, under the MIT licence.

@@ -118,7 +118,10 @@ export function normalisePayload(payload = {}) {
 				groups: Array.isArray(host.groups) ? host.groups.map(String) : [],
 				tags: normaliseTags(host.tags),
 				macros: host.macros ?? {},
-				location: normaliseLocation(host.location)
+				location: normaliseLocation(host.location),
+				position: host.position && typeof host.position === 'object'
+					? { x: String(host.position.x ?? ''), y: String(host.position.y ?? '') }
+					: null
 			}))
 			: [],
 		timePeriod: payload.time_period
@@ -129,8 +132,24 @@ export function normalisePayload(payload = {}) {
 			? payload.severities.map(({ name, color }) => ({ name: String(name ?? ''), color: String(color ?? '') }))
 			: [],
 		errors: Array.isArray(payload.errors) ? payload.errors.map(String) : [],
-		geo: payload.geo && typeof payload.geo === 'object' ? payload.geo : null
+		geo: payload.geo && typeof payload.geo === 'object' ? payload.geo : null,
+		floor: normaliseFloor(payload.floor)
 	};
+}
+
+/** A floor plan image: its size in pixels and the Zabbix address it is served from, or null. */
+export function normaliseFloor(floor) {
+	if (!floor || typeof floor !== 'object') {
+		return null;
+	}
+	const width = Number(floor.width);
+	const height = Number(floor.height);
+	const url = String(floor.url ?? '');
+	// Only an image this Zabbix server serves, or one embedded in the payload, is drawn.
+	if (!(width > 0) || !(height > 0) || !/^(imgstore\.php\?iconid=\d+|data:image\/(png|jpeg|gif);base64,[A-Za-z0-9+/=]+)$/.test(url)) {
+		return null;
+	}
+	return { name: String(floor.name ?? ''), width, height, url };
 }
 
 /**

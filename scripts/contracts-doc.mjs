@@ -11,6 +11,7 @@ const registry = JSON.parse(await readFile(path.join(root, 'modules/extended-cha
 const target = path.join(root, 'docs/CHART-CONTRACTS.md');
 
 const RULE_TEXT = {
+	wifi_floor: 'A Zabbix background image is the floor plan; each access point needs a position from 0 to 100 (percent across and down) in its own host macros or the positions list, and hosts without one are listed, not drawn. Items are grouped into radios by key parameter, item tag or name expression; a radio needs a band of 2.4, 5 or 6 GHz from its band item (never from the channel number). Radios without SNR are drawn uncoloured and listed. Rogue APs are a count on the reporting access point, never placed.',
 	numeric_only: 'Mapped items must be numeric (float or unsigned).',
 	has_values: 'At least one item has a recent value; items without one are shown as no data, never zero.',
 	same_units: 'All series share units; otherwise the widget reports the incompatible units.',

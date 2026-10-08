@@ -27,6 +27,7 @@ import { funnelStages } from '../data/funnel.js';
 import { pairColours } from '../renderers/treemap.js';
 import { parseGap, unitGroups } from '../data/temporal.js';
 import { parseColourMap } from '../data/states.js';
+import { apPositions, radioIdentity, wirelessModel } from '../data/wireless.js';
 import { listNames, seriesLabel, ROLE_LABELS } from './labels.js';
 
 function error(code, message) {
@@ -663,6 +664,74 @@ export const RULES = {
 			if (unmatched.length > 0) {
 				problems.push(warning('no_site_value', `No item matches on ${listNames(unmatched)}, so these sites are drawn uncoloured.`));
 			}
+		}
+		return problems;
+	},
+
+	/** C34: a floor plan, placed access points and radios with a known band. */
+	wifi_floor(ctx) {
+		const { config, payload } = ctx;
+		const problems = [];
+		if (payload.floor === null) {
+			problems.push(error('no_floor_image', 'The floor plan image could not be loaded. Choose a background image from Administration > General > Images.'));
+		}
+		const identity = radioIdentity(config);
+		if (identity.error !== null) {
+			problems.push(error('invalid_radio_expression', identity.error));
+		}
+		if (identity.source === 'tag' && identity.tag === '') {
+			problems.push(error('no_radio_tag', 'Enter the item tag that names each radio, for example "radio".'));
+		}
+
+		const positions = apPositions(payload);
+		problems.push(...positions.listErrors.map((line) => error('invalid_positions', `Line ${line.line} of the positions is not in the form "host name = across, down".`)));
+		if (positions.unknown.length > 0) {
+			problems.push(warning('unknown_positions', `These positions name hosts that are not selected: ${listNames(positions.unknown)}.`));
+		}
+		const where = config.position_source === 'list' ? 'the positions list' : `the host macros ${config.position_macro_x} and ${config.position_macro_y}`;
+		if (positions.invalid.length > 0) {
+			problems.push((positions.placed.size === 0 ? error : warning)('invalid_position',
+				`These hosts have a position that is not two numbers from 0 to 100 (percent across and down the floor plan) and are not drawn: ${listNames(positions.invalid)}.`));
+		}
+		if (positions.missing.length > 0) {
+			problems.push((positions.placed.size === 0 && positions.invalid.length === 0 ? error : warning)('no_position',
+				`These hosts have no position in ${where} and are not drawn: ${listNames(positions.missing)}.`));
+		}
+
+		for (const host of payload.hosts.filter((entry) => positions.placed.has(entry.hostid))) {
+			const scale = resolveScale({ thresholds: config.snr_thresholds }, host);
+			if (scale.errors.length > 0) {
+				problems.push(error('invalid_thresholds', `SNR ${scale.errors[0].charAt(0).toLowerCase()}${scale.errors[0].slice(1)}.`));
+				break;
+			}
+		}
+
+		if (problems.some((problem) => problem.level === 'error')) {
+			return problems;
+		}
+
+		const { aps, problems: left } = wirelessModel(payload);
+		const how = { key: 'a first key parameter', tag: `the item tag "${identity.tag}"`, regex: 'a match for the radio expression' }[identity.source];
+		if (left.unidentified.length > 0) {
+			problems.push(warning('no_radio_identity', `These items have no ${how}, so their radio is unknown and they are not drawn: ${listNames(left.unidentified)}.`));
+		}
+		if (left.ambiguous.length > 0) {
+			problems.push(warning('ambiguous_radio', `These radios match more than one item for the same reading and are not drawn: ${listNames(left.ambiguous)}. Narrow the item patterns.`));
+		}
+		if (left.noBand.length > 0) {
+			problems.push(warning('no_band', `These radios have no band item, or a band value that is not 2.4, 5 or 6 GHz, and are not drawn: ${listNames(left.noBand)}.`));
+		}
+		if (left.noChannel.length > 0) {
+			problems.push(warning('no_channel', `These radios have no channel value: ${listNames(left.noChannel)}.`));
+		}
+		if (left.noSnr.length > 0) {
+			problems.push(warning('no_snr', `These radios have no SNR value and are drawn uncoloured: ${listNames(left.noSnr)}.`));
+		}
+		const radios = aps.reduce((sum, ap) => sum + ap.radios.length, 0);
+		if (radios === 0) {
+			problems.push(error('no_radios', left.hidden > 0
+				? 'Every radio found is on a band that is switched off. Show at least one of 2.4, 5 and 6 GHz.'
+				: 'No placed access point has a radio with a known band. Check the band items and how radios are identified.'));
 		}
 		return problems;
 	},

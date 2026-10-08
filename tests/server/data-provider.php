@@ -71,6 +71,14 @@ class StubService {
 
 		$rows = [];
 
+		if (array_key_exists('rows', $data)) {
+			// Host macros as stored: only the hosts and macros asked for come back.
+			return array_values(array_filter($data['rows'], static function (array $row) use ($options): bool {
+				return in_array($row['hostid'], array_map('strval', $options['hostids']), true)
+					&& in_array($row['macro'], $options['filter']['macro'], true);
+			}));
+		}
+
 		$macro = $options['filter']['macro'][0];
 
 		if (!empty($options['globalmacro'])) {
@@ -151,6 +159,19 @@ foreach ($input as $case) {
 	elseif ($case['call'] === 'geo') {
 		[$geo, $error] = DataProvider::loadGeoFile($case['name'], $case['folder']);
 		$results[] = ['features' => $geo === null ? null : count($geo['features']), 'error' => $error];
+	}
+	elseif ($case['call'] === 'host_tags') {
+		$results[] = array_map([DataProvider::class, 'parseHostTags'], $case['filters']);
+	}
+	elseif ($case['call'] === 'floor_image') {
+		$results[] = array_map([DataProvider::class, 'floorImageDetails'], $case['images']);
+	}
+	elseif ($case['call'] === 'positions') {
+		$GLOBALS['stub'] = $case['stub'];
+		$positions = call($provider, 'positionMacros', $case['hostids']);
+		$errors = (new ReflectionProperty($provider, 'errors'));
+		$errors->setAccessible(true);
+		$results[] = ['positions' => (object) $positions, 'errors' => $errors->getValue($provider)];
 	}
 	elseif ($case['call'] === 'delay') {
 		$results[] = array_map([DataProvider::class, 'delaySeconds'], $case['delays']);

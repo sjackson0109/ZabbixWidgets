@@ -161,6 +161,20 @@ describe('edit form for the new presentations', () => {
 		expect(isShown(form, 'thresholds')).toBe(true);
 	});
 
+	it('shows the wireless floor map position and radio settings that apply', () => {
+		const form = formFor('wifi_floor');
+		expect(['floor_image', 'host_tags', 'band_items', 'snr_items', 'position_macro_x', 'show_band_6'].every((field) => isShown(form, field))).toBe(true);
+		expect(isShown(form, 'node_positions')).toBe(false);
+		expect(isShown(form, 'radio_tag')).toBe(false);
+		expect(isShown(form, 'show_legend')).toBe(false);
+		choose(form, 'position_source', 'list');
+		choose(form, 'radio_by', 'tag');
+		expect(isShown(form, 'node_positions')).toBe(true);
+		expect(isShown(form, 'position_macro_x')).toBe(false);
+		expect(isShown(form, 'radio_tag')).toBe(true);
+		expect(isShown(form, 'radio_regex')).toBe(false);
+	});
+
 	it('hides size items for a plain scatter', () => {
 		const form = formFor('bubble');
 		expect(isShown(form, 'size_items')).toBe(true);

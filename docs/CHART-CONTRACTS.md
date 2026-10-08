@@ -495,6 +495,22 @@ Every chart also needs items for each required role, no more than `Max items` pe
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `waterfall_steps`: undocumented rule
 
+## C34 Wireless Floor Map (`wifi_floor`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| band | `band_items` | yes | no |  |
+| channel | `channel_items` | yes | no |  |
+| width | `width_items` | no | no |  |
+| snr | `snr_items` | no | yes |  |
+| rogue | `rogue_items` | no | yes |  |
+
+- **Data fetched:** latest, hosts, macros, valuemaps, floor_image, positions
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `floor_image`, `host_tags`, `position_source`, `position_macro_x`, `position_macro_y`, `node_positions`, `band_items`, `channel_items`, `width_items`, `snr_items`, `rogue_items`, `radio_by`, `radio_tag`, `radio_regex`, `snr_thresholds`, `rogue_count`, `show_band_24`, `show_band_5`, `show_band_6`, `show_node_labels`
+- **Rules:**
+  - `wifi_floor`: A Zabbix background image is the floor plan; each access point needs a position from 0 to 100 (percent across and down) in its own host macros or the positions list, and hosts without one are listed, not drawn. Items are grouped into radios by key parameter, item tag or name expression; a radio needs a band of 2.4, 5 or 6 GHz from its band item (never from the channel number). Radios without SNR are drawn uncoloured and listed. Rogue APs are a count on the reporting access point, never placed.
+
 ## Removed charts
 
 These chart types were removed. Their form values stay reserved and are never reused; a widget saved with one says the chart was removed.

@@ -72,6 +72,9 @@ Each image is the module's own bundle drawing that chart's sample payload in Chr
 <td align="center"><img src="docs/screenshots/geomap.png" alt="Geographic Site Map"><br><b>C32 Geographic Site Map</b><br><sub>Hosts at their inventory coordinates over a bundled map.</sub></td>
 <td align="center"><img src="docs/screenshots/waterfall.png" alt="Waterfall chart"><br><b>C33 Waterfall</b><br><sub>Contributions from one level to the next, with totals.</sub></td>
 </tr>
+<tr>
+<td align="center"><img src="docs/screenshots/wifi_floor.png" alt="Wireless Floor Map"><br><b>C34 Wireless Floor Map</b><br><sub>Access points on a floor plan, one ring per radio coloured by SNR.</sub></td>
+</tr>
 </table>
 
 ### Presentation options
@@ -146,6 +149,7 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 | C31 | Sankey | Latest values and tags |
 | C32 | Geographic Site Map | Latest values, host inventory location, user macros and an optional map file |
 | C33 | Waterfall | Latest values |
+| C34 | Wireless Floor Map | Latest values, value maps, a Zabbix background image, host macros and host tags |
 
 [Chart contracts](docs/CHART-CONTRACTS.md) lists every role, setting and rule per chart. [Apache ECharts example coverage](docs/ECHARTS-COVERAGE.md) compares each example in the official ECharts gallery with what the module draws, and says why the rest are not offered.
 
@@ -207,6 +211,7 @@ Presentation options within existing charts:
 - Access to the frontend's `modules` directory on the web server.
 - A Zabbix Super admin account to enable the module.
 - For the Geographic Site Map: host inventory enabled on the hosts it shows, with **Location latitude** and **Location longitude** filled in. Optional custom maps are GeoJSON files placed in the module's `assets/geo` folder (see [its README](modules/extended-charts/assets/geo/README.md)).
+- For the Wireless Floor Map: the floor plan uploaded in **Administration > General > Images** with the type **Background** (PNG, JPEG or GIF), and each access point's position set in its own host macros (see [Wireless Floor Map](#wireless-floor-map)) or in the widget's positions list.
 
 ### 1. Download
 
@@ -275,6 +280,18 @@ Then copy `modules/extended-charts` into the modules directory as `zabbixwidgets
 5. Save the widget and the dashboard.
 
 If the widget shows a message instead of a chart, it names what is missing or incompatible, for example an item that is not numeric, mixed units or a required role with no item.
+
+### Wireless Floor Map
+
+The Wireless Floor Map draws access points that are Zabbix hosts on a floor plan, with one ring per radio. It shows what Zabbix already has: it does not survey, interpolate or estimate coverage.
+
+1. Upload the floor plan in **Administration > General > Images** as a **Background** image, and enter its name in **Floor plan image**.
+2. Give each access point a position in percent of the image: 0 to 100 across from the left, and 0 to 100 down from the top. Set `{$WIFI.MAP.X}` and `{$WIFI.MAP.Y}` (or the macros you name in the form) on the host itself; a value inherited from a template or set globally is ignored, because it would put every access point on the same spot. Alternatively choose **Positions list** and write one `host name = across, down` per line.
+3. Narrow the hosts with host groups, hosts and **Host tags** (for example `floor=2`, or `floor=2, building=HQ`; different tags must all match).
+4. Map the band, channel, channel width, SNR and rogue AP items. Item patterns match anywhere in the item name, so make each one distinct (for example `Radio * band` and `Radio * channel width` rather than `Radio * channel`, which would also match the width items).
+5. Choose how items are grouped into radios: by the first key parameter (for example `wlan.radio.snr[{#RADIO}]`), by an item tag, or by a regular expression on the item name with a capture group.
+
+The band must come from the band item: a value in GHz or MHz, or a value mapping whose text names the band (for example `5 GHz`). It is never worked out from the channel number. Rogue APs are counted from one item's value, or as the number of matching items when each rogue is its own discovered item; they are shown on the access point that reports them and are never placed on the plan.
 
 ## Documentation
 
