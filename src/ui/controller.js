@@ -6,7 +6,9 @@
  * Renderers either build an ECharts option (buildOption) or, with kind "dom",
  * draw HTML into the canvas element themselves (render). Both receive
  * context.state, which survives refreshes of the same chart so sorting,
- * paging, legend selection and zoom are kept when new data arrives.
+ * paging, legend selection and zoom are kept when new data arrives. A
+ * renderer may also read its drawn layout back first (captureState), as the
+ * network diagram does for node positions.
  */
 import { echarts } from '../echarts.js';
 import { getChart } from '../registry/index.js';
@@ -39,7 +41,14 @@ export class ChartController {
 		this.messages = root.querySelector('.zw-charts-messages');
 		this.instance = null;
 		this.state = { chart: null };
-		this.resize = debounce(() => this.instance?.resize(), RESIZE_DELAY);
+		this.lastPayload = null;
+		this.resize = debounce(() => {
+			this.instance?.resize();
+			// Charts laid out for the widget's shape (several gauges in a grid) are laid out again.
+			if (this.instance !== null && this.lastPayload !== null) {
+				this.render(this.lastPayload);
+			}
+		}, RESIZE_DELAY);
 		this.observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.resize()) : null;
 		this.observer?.observe(this.canvas);
 	}
@@ -64,7 +73,8 @@ export class ChartController {
 			return this.showProblems({ ok: false, errors: [{ message: `${chart.name} is not available in this version yet.` }] });
 		}
 
-		if (this.state.chart !== chart.id) {
+		const sameChart = this.state.chart === chart.id;
+		if (!sameChart) {
 			this.state = { chart: chart.id };
 		}
 
@@ -73,6 +83,7 @@ export class ChartController {
 			showLegend: payload.config.show_legend !== false,
 			decimals: Number.isInteger(payload.config.decimals) ? payload.config.decimals : 2,
 			timeZone: payload.config.time_zone || undefined,
+			aspect: this.canvas.clientWidth > 0 && this.canvas.clientHeight > 0 ? this.canvas.clientWidth / this.canvas.clientHeight : undefined,
 			state: this.state
 		};
 
@@ -95,8 +106,13 @@ export class ChartController {
 			this.instance = echarts.init(this.canvas, null, { renderer: 'canvas' });
 			this.trackView(this.instance);
 		}
+		else if (sameChart && renderer.captureState) {
+			// Layout the user arranged (dragged nodes, zoom, pan) is read back before the chart is rebuilt.
+			renderer.captureState(this.instance, this.state);
+		}
 		this.instance.setOption(restoreView(renderer.buildOption(payload, context), this.state), { notMerge: true, lazyUpdate: true });
-		this.resize();
+		this.lastPayload = renderer.sizeDependent ? rawPayload : null;
+		this.instance.resize();
 		return result;
 	}
 
@@ -114,6 +130,7 @@ export class ChartController {
 	}
 
 	showProblems(result) {
+		this.lastPayload = null;
 		this.instance?.clear();
 		if (this.canvas.dataset.zwView === 'dom') {
 			this.canvas.replaceChildren();
@@ -124,6 +141,7 @@ export class ChartController {
 	}
 
 	disposeInstance() {
+		this.lastPayload = null;
 		this.instance?.dispose();
 		this.instance = null;
 	}

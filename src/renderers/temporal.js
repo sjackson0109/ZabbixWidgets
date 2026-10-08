@@ -5,7 +5,7 @@
  * period and time zone, and gives every chart the same crosshair tooltip.
  */
 import { baseOption, formatClock, valueAxis } from './common.js';
-import { alignForStack, lineData, parseGap, sampleAt, temporalSeries, unitGroups, valueExtent } from '../data/temporal.js';
+import { alignForStack, echartsStep, heldSampleAt, lineData, parseGap, sampleAt, temporalSeries, unitGroups, valueExtent } from '../data/temporal.js';
 import { bandColours, sharedScale } from '../data/thresholds.js';
 import { formatValue, displayUnits } from '../data/units.js';
 import { escapeHtml } from '../utils/escape.js';
@@ -34,9 +34,13 @@ export function timeLabel(ms, span, timeZone) {
  * shows "no data"; one whose nearest sample is at another time shows that
  * time. Nothing is interpolated.
  */
-export function tooltipRows(list, pointerMs, visible = () => true) {
+export function tooltipRows(list, pointerMs, visible = () => true, step = 'none') {
 	const shown = list.filter((series) => visible(series.label));
 	const pointer = pointerMs / 1000;
+	if (step === 'after' || step === 'before') {
+		// A stepped line has a value everywhere along a hold, so the tooltip reads it at the pointer.
+		return { clock: pointer, rows: shown.map((series) => ({ series, sample: heldSampleAt(series, pointer, step) })) };
+	}
 	const samples = shown.map((series) => sampleAt(series, pointer));
 	const nearest = samples.filter(Boolean).reduce((best, point) => (best === null || Math.abs(point.clock - pointer) < Math.abs(best - pointer) ? point.clock : best), null);
 	const at = nearest ?? pointer;
@@ -53,8 +57,8 @@ function sampleText(sample, units, decimals) {
 		: `${value} (hourly average; ${formatValue(sample.min, units, decimals)} – ${formatValue(sample.max, units, decimals)})`;
 }
 
-export function tooltipHtml(list, pointerMs, context, visible) {
-	const { clock, rows } = tooltipRows(list, pointerMs, visible);
+export function tooltipHtml(list, pointerMs, context, visible, step = 'none') {
+	const { clock, rows } = tooltipRows(list, pointerMs, visible, step);
 	if (rows.length === 0) {
 		return '';
 	}
@@ -100,6 +104,7 @@ export function buildTemporalOption(payload, context, { kind = 'line' } = {}) {
 	const stacked = kind === 'area' && config.area_mode === 'stacked';
 	const opacity = Math.min(100, Math.max(0, Number.isFinite(Number(config.area_opacity)) ? Number(config.area_opacity) : 30)) / 100;
 	const visible = (name) => context.state?.legendSelected?.[name] !== false;
+	const step = kind === 'line' ? echartsStep(config.line_step) : false;
 
 	let data = list.map((series) => lineData(series.points, series.threshold));
 	if (stacked && list.length > 0) {
@@ -157,7 +162,7 @@ export function buildTemporalOption(payload, context, { kind = 'line' } = {}) {
 			},
 			formatter: (params) => {
 				const pointer = Array.isArray(params) ? params[0]?.axisValue : params?.axisValue;
-				return pointer === undefined ? '' : tooltipHtml(list, pointer, context, visible);
+				return pointer === undefined ? '' : tooltipHtml(list, pointer, context, visible, step === false ? 'none' : config.line_step);
 			}
 		},
 		series: list.map((series, index) => ({
@@ -169,8 +174,10 @@ export function buildTemporalOption(payload, context, { kind = 'line' } = {}) {
 			connectNulls: false,
 			showSymbol: config.show_points === true,
 			symbolSize: 4,
-			smooth: config.smooth === true ? 0.3 : false,
-			sampling: stacked ? undefined : 'lttb',
+			step,
+			smooth: config.smooth === true && step === false ? 0.3 : false,
+			// Downsampling would move a step's corners, so stepped lines are drawn from every sample.
+			sampling: stacked || step !== false ? undefined : 'lttb',
 			lineStyle: { width: 1.5 },
 			emphasis: { focus: 'series' },
 			stack: stacked ? 'total' : undefined,

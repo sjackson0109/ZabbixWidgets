@@ -79,10 +79,17 @@ describe('edges', () => {
 	it('parses edge lists and reports bad lines', () => {
 		const { edges, errors } = parseEdgeList('# core\nrouter -> switch : uplink\n\nbroken line\nswitch->server');
 		expect(edges).toEqual([
-			{ source: 'router', target: 'switch', label: 'uplink' },
-			{ source: 'switch', target: 'server', label: '' }
+			{ source: 'router', target: 'switch', label: 'uplink', weight: null },
+			{ source: 'switch', target: 'server', label: '', weight: null }
 		]);
 		expect(errors).toEqual([{ line: 4, text: 'broken line' }]);
+	});
+
+	it('reads fixed and item weights after the last bar', () => {
+		const { edges, errors } = parseEdgeList('a -> b : 10G | 10000\na -> c | net.if.out[ge-0/0/1]\na -> d |\na -> e : x|y | 2.5e3');
+		expect(edges.map((edge) => edge.weight)).toEqual([{ constant: 10000 }, { key: 'net.if.out[ge-0/0/1]' }, { constant: 2500 }]);
+		expect(edges[2].label).toBe('x|y');
+		expect(errors).toEqual([{ line: 3, text: 'a -> d |' }]);
 	});
 
 	it('builds edges from host tags and resolves them', () => {

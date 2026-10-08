@@ -18,16 +18,19 @@ class WidgetConfig {
 		'tree_tags', 'tree_delimiter', 'edge_list', 'edge_tag', 'source_tag', 'target_tag', 'row_tag', 'row_regex', 'row_heading',
 		'table_columns', 'scale_min', 'scale_max', 'target_value', 'thresholds', 'levels', 'path_delimiter', 'stages',
 		'y_min', 'y_max', 'max_gap', 'colour_map', 'port_tag', 'port_regex', 'port_groups', 'port_group_tag', 'port_type_rules',
-		'port_type_tag', 'speed_colours', 'state_colours', 'admin_down', 'port_fixed_colour', 'port_label_regex', 'stale_after'
+		'port_type_tag', 'speed_colours', 'state_colours', 'admin_down', 'port_fixed_colour', 'port_label_regex', 'stale_after',
+		'node_positions', 'node_category_tag', 'parallel_axes', 'geo_file', 'geo_links', 'waterfall_steps'
 	];
 
 	private const FLAG_FIELDS = ['show_percent', 'hide_zero', 'show_legend', 'show_host', 'show_item_name', 'show_last_update',
 		'show_change', 'show_problems', 'use_valuemap', 'table_dense', 'table_striped', 'show_value', 'gauge_segmented', 'show_track',
-		'pct_first', 'pct_previous', 'zero_baseline', 'smooth', 'show_points', 'area_gradient', 'show_minmax', 'port_abbreviate'
+		'pct_first', 'pct_previous', 'zero_baseline', 'smooth', 'show_points', 'area_gradient', 'show_minmax', 'port_abbreviate',
+		'show_node_labels', 'show_edge_labels', 'show_outliers'
 	];
 
 	private const INTEGER_FIELDS = ['rank_count' => 10, 'max_depth' => 0, 'area_opacity' => 30, 'grid_columns' => 0, 'port_id_group' => 1,
-		'port_member_group' => 0, 'port_number_group' => 0, 'port_columns' => 0
+		'port_member_group' => 0, 'port_number_group' => 0, 'port_columns' => 0, 'inner_radius' => 0, 'outer_radius' => 0,
+		'hist_bins' => 0
 	];
 
 	public static function fromFieldValues(array $values): array {

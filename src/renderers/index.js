@@ -30,11 +30,17 @@ import stateTimeline from './state_timeline.js';
 import sparklineGrid from './sparkline_grid.js';
 import thresholdBand from './threshold_band.js';
 import switchPorts from './switch_ports.js';
+import mixed from './mixed.js';
+import distribution from './distribution.js';
+import parallel from './parallel.js';
+import sankey from './sankey.js';
+import geomap from './geomap.js';
+import waterfall from './waterfall.js';
 
 const RENDERERS = new Map([
 	column, stackedBar, doughnut, bullet, radar, heatmap, candlestick, bubble, gantt, tree, network, relationship, calendarHeatmap,
 	lldTable, pie, levelGauge, rankingBar, treemap, sunburst, funnel, line, area, statusMatrix, stateTimeline, sparklineGrid, thresholdBand,
-	switchPorts
+	switchPorts, mixed, distribution, parallel, sankey, geomap, waterfall
 ].map((renderer) => [renderer.id, renderer]));
 
 export function getRenderer(id) {

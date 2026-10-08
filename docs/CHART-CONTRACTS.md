@@ -16,7 +16,7 @@ Every chart also needs items for each required role, no more than `Max items` pe
 
 - **Data fetched:** latest
 - **History:** `none`; **time period:** `false`; **min_series:** 1
-- **Controls:** `items`, `group_by`
+- **Controls:** `items`, `group_by`, `bar_orientation`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
@@ -26,14 +26,16 @@ Every chart also needs items for each required role, no more than `Max items` pe
 | Role | Form field | Required | Numeric | Max items |
 |---|---|---|---|---|
 | value | `items` | yes | yes |  |
+| opposing | `opposing_items` | `when:stack_mode=diverging` | yes |  |
 
 - **Data fetched:** latest
 - **History:** `none`; **time period:** `false`; **min_series:** 2
-- **Controls:** `items`, `group_by`
+- **Controls:** `items`, `opposing_items`, `group_by`, `stack_mode`, `stack_orientation`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `stack_presentation`: undocumented rule
 
 ## C03 Doughnut (`doughnut`)
 
@@ -43,12 +45,13 @@ Every chart also needs items for each required role, no more than `Max items` pe
 
 - **Data fetched:** latest
 - **History:** `none`; **time period:** `false`; **min_series:** 1
-- **Controls:** `items`, `show_percent`, `hide_zero`, `centre_value`
+- **Controls:** `items`, `show_percent`, `hide_zero`, `centre_value`, `label_position`, `pie_rose`, `inner_radius`, `outer_radius`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `non_negative`: Values must not be negative.
   - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `pie_geometry`: undocumented rule
 
 ## C04 Bullet Graph (`bullet`)
 
@@ -123,11 +126,11 @@ Every chart also needs items for each required role, no more than `Max items` pe
 |---|---|---|---|---|
 | x | `x_items` | yes | yes |  |
 | y | `y_items` | yes | yes |  |
-| size | `size_items` | yes | yes |  |
+| size | `size_items` | `when:bubble_size=item` | yes |  |
 
 - **Data fetched:** latest
 - **History:** `none`; **time period:** `false`; **min_series:** 1
-- **Controls:** `x_items`, `y_items`, `size_items`, `pair_by`, `pair_tag`
+- **Controls:** `x_items`, `y_items`, `bubble_size`, `size_items`, `pair_by`, `pair_tag`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
@@ -160,7 +163,7 @@ Every chart also needs items for each required role, no more than `Max items` pe
 
 - **Data fetched:** latest, hosts, groups, tags
 - **History:** `none`; **time period:** `false`; **min_series:** 1
-- **Controls:** `items`, `tree_source`, `tree_tags`, `tree_delimiter`
+- **Controls:** `items`, `tree_source`, `tree_tags`, `tree_delimiter`, `tree_layout`
 - **Rules:**
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `hierarchy_source`: The hierarchy comes from host groups, named tags, or item names split by an explicit delimiter.
@@ -173,10 +176,11 @@ Every chart also needs items for each required role, no more than `Max items` pe
 
 - **Data fetched:** latest, hosts, tags
 - **History:** `none`; **time period:** `false`; **min_series:** 0
-- **Controls:** `items`, `edge_source`, `edge_list`, `edge_tag`
+- **Controls:** `items`, `edge_source`, `edge_list`, `edge_tag`, `edge_direction`, `network_layout`, `node_positions`, `node_category`, `node_category_tag`, `show_node_labels`, `show_edge_labels`
 - **Rules:**
   - `has_edges`: Relationships come from an explicit list or a host tag naming the peer host. None are inferred.
   - `edges_resolve`: Every relationship endpoint is one of the selected hosts.
+  - `network_settings`: undocumented rule
 
 ## C12 Chord / Relationship Diagram (`relationship`)
 
@@ -227,15 +231,16 @@ Every chart also needs items for each required role, no more than `Max items` pe
 
 - **Data fetched:** latest
 - **History:** `none`; **time period:** `false`; **min_series:** 1
-- **Controls:** `items`, `entity_by`, `pie_sort`, `label_position`, `show_percent`, `show_value`, `hide_zero`
+- **Controls:** `items`, `entity_by`, `pie_sort`, `label_position`, `show_percent`, `show_value`, `hide_zero`, `pie_rose`, `inner_radius`, `outer_radius`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
   - `non_negative`: Values must not be negative.
   - `same_units`: All series share units; otherwise the widget reports the incompatible units.
   - `additive_groups`: Host totals add up a host's items only for additive units; shares (%), timestamps, temperatures, levels and rotation rates are rejected.
+  - `pie_geometry`: undocumented rule
 
-## C16 Vertical Level Gauge (`level_gauge`)
+## C16 Gauge (`level_gauge`)
 
 | Role | Form field | Required | Numeric | Max items |
 |---|---|---|---|---|
@@ -243,7 +248,7 @@ Every chart also needs items for each required role, no more than `Max items` pe
 
 - **Data fetched:** latest, macros
 - **History:** `none`; **time period:** `false`; **min_series:** 1
-- **Controls:** `items`, `scale_min`, `scale_max`, `target_value`, `thresholds`, `threshold_order`, `gauge_display`, `gauge_segmented`, `show_value`
+- **Controls:** `items`, `gauge_style`, `scale_min`, `scale_max`, `target_value`, `thresholds`, `threshold_order`, `gauge_display`, `gauge_segmented`, `show_value`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
@@ -323,7 +328,7 @@ Every chart also needs items for each required role, no more than `Max items` pe
 
 - **Data fetched:** history, macros
 - **History:** `always`; **time period:** `true`; **min_series:** 1
-- **Controls:** `items`, `time_period`, `y_min`, `y_max`, `zero_baseline`, `smooth`, `show_points`, `max_gap`
+- **Controls:** `items`, `time_period`, `y_min`, `y_max`, `zero_baseline`, `line_step`, `smooth`, `show_points`, `max_gap`
 - **Rules:**
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
@@ -434,3 +439,91 @@ Every chart also needs items for each required role, no more than `Max items` pe
 - **Rules:**
   - `port_mapping`: Each role item belongs to the port named by its item tag, its first key parameter or a capture group of the port expression; the role items of one identity on one host make one port. Two items for one port and role, or one item in two roles, are errors naming the port, role and items. Items without an identity are reported. A physical port number comes only from an identity that is a whole number or from the port number capture group.
   - `port_settings`: Interface type and port group lines read "Name = ports", where ports are numbers, ranges, wildcards or /regular expressions/. Speed colours read "1G = #rrggbb" (plus "other" and "unknown"); status colours read "value = #rrggbb". Fixed colour, label expression and stale limit must be valid; colouring by thresholds needs thresholds that resolve for every host.
+
+## C28 Mixed Line and Bar (`mixed`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| bar | `bar_items` | no | yes |  |
+| line | `line_items` | no | yes |  |
+
+- **Data fetched:** history, macros
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `bar_items`, `line_items`, `time_period`, `bucket`, `aggregation`, `y_min`, `y_max`, `zero_baseline`, `line_step`, `smooth`, `show_points`, `max_gap`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `temporal_settings`: Maximum gap is empty (automatic: 2.5 update intervals, 2 hours for hourly trends), 0 (never break) or a duration. Axis limits, thresholds and target are numbers or macros that resolve to the same values on every selected host, with the minimum below the maximum.
+  - `mixed_settings`: undocumented rule
+
+## C29 Distribution (Boxplot / Histogram) (`distribution`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** history
+- **History:** `always`; **time period:** `true`; **min_series:** 1
+- **Controls:** `items`, `time_period`, `dist_view`, `hist_bins`, `show_outliers`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `some_history`: At least one item has history in the period; items without any are listed and kept in the legend. Gaps are drawn as breaks, never bridged or filled with zero.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `distribution_settings`: undocumented rule
+
+## C30 Parallel Coordinates (`parallel`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest
+- **History:** `none`; **time period:** `false`; **min_series:** 2
+- **Controls:** `items`, `parallel_axes`, `pair_by`, `pair_tag`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `parallel_axes`: undocumented rule
+
+## C31 Sankey (`sankey`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| weight | `items` | yes | yes |  |
+
+- **Data fetched:** latest, tags
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `source_tag`, `target_tag`, `sankey_orient`, `sankey_align`, `show_value`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `has_values`: At least one item has a recent value; items without one are shown as no data, never zero.
+  - `non_negative`: Values must not be negative.
+  - `same_units`: All series share units; otherwise the widget reports the incompatible units.
+  - `relationship_tags`: Every item carries both the source and the target tag; flows from an endpoint to itself are reported and not drawn.
+  - `sankey_flows`: undocumented rule
+
+## C32 Geographic Site Map (`geomap`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | no | yes |  |
+
+- **Data fetched:** latest, hosts, inventory, macros
+- **History:** `none`; **time period:** `false`; **min_series:** 0
+- **Controls:** `items`, `geo_base`, `geo_file`, `geo_links`, `site_colour`, `thresholds`, `threshold_order`, `show_node_labels`
+- **Rules:**
+  - `geo_sites`: undocumented rule
+  - `geo_settings`: undocumented rule
+
+## C33 Waterfall (`waterfall`)
+
+| Role | Form field | Required | Numeric | Max items |
+|---|---|---|---|---|
+| value | `items` | yes | yes |  |
+
+- **Data fetched:** latest
+- **History:** `none`; **time period:** `false`; **min_series:** 1
+- **Controls:** `items`, `waterfall_steps`, `show_value`
+- **Rules:**
+  - `numeric_only`: Mapped items must be numeric (float or unsigned).
+  - `waterfall_steps`: undocumented rule

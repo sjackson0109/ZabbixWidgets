@@ -4,6 +4,8 @@
  * resolved through templates. Runs DataProvider.php with a stand-in API.
  */
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -94,6 +96,42 @@ describe('history and trend planning', () => {
 		]);
 		expect(line.filter((read) => read.table === 'trends').map((read) => read.itemids)).toEqual([['1'], ['2']]);
 		expect(states.every((read) => read.table === 'history')).toBe(true);
+	});
+
+	it('reads raw history only for distributions, and trends for the bars and lines of a mixed chart', () => {
+		const period = { from: base, to: base + 3 * 86400 };
+		const [distribution, mixed] = run([
+			{ chart: 'distribution', config: {}, call: 'plan', series, period },
+			{ chart: 'mixed', config: { bucket: '1h' }, call: 'plan', series, period }
+		]);
+		expect(distribution.every((read) => read.table === 'history')).toBe(true);
+		expect(mixed.some((read) => read.table === 'trends')).toBe(true);
+	});
+
+	it('orders samples by clock and then nanoseconds', () => {
+		const [order] = run([{ chart: 'line', config: {}, call: 'order', rows: [
+			{ clock: '20', ns: '5' }, { clock: '10', ns: '900000000' }, { clock: '20', ns: '1' }, { clock: '10', ns: '100' }
+		] }]);
+		expect(order).toEqual(['10.100', '10.900000000', '20.1', '20.5']);
+	});
+});
+
+describe('map files', () => {
+	const folder = mkdtempSync(path.join(tmpdir(), 'geo-'));
+	writeFileSync(path.join(folder, 'sites.geojson'), JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: null }] }));
+	writeFileSync(path.join(folder, 'point.geojson'), JSON.stringify({ type: 'Point', coordinates: [0, 0] }));
+	const load = (...names) => run(names.map((name) => ({ chart: 'geomap', config: {}, call: 'geo', name, folder })));
+
+	it('reads a feature collection by plain name, with or without the extension', () => {
+		expect(load('sites', 'sites.geojson').map((result) => result.features)).toEqual([1, 1]);
+	});
+
+	it('refuses paths, missing files and other GeoJSON', () => {
+		const [traversal, absolute, missing, point] = load('../sites', '/etc/passwd', 'nowhere', 'point');
+		expect(traversal.error).toMatch(/must be the name/);
+		expect(absolute.error).toMatch(/must be the name/);
+		expect(missing.error).toMatch(/is not in the module/);
+		expect(point.error).toMatch(/not a GeoJSON feature collection/);
 	});
 });
 

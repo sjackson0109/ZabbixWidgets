@@ -37,7 +37,8 @@ const PLACEHOLDERS = {
 const ENUM_FIELDS = Object.keys(ENUMS);
 
 function controlsFor(form, name) {
-	return [...form.querySelectorAll(`[name="${name}"], [name^="${name}["]`)];
+	// An empty Zabbix multiselect has no named input yet; its container carries the field name in its id ("items_").
+	return [...form.querySelectorAll(`[name="${name}"], [name^="${name}["], .multiselect[id="${name}_"]`)];
 }
 
 /** The form rows (label and field) that hold a control. */

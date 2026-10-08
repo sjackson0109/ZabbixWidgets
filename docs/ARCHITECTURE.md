@@ -12,16 +12,19 @@ modules/extended-charts/         Zabbix module (what gets installed)
 │   └── DataProvider.php         fetches what the chart's contract asks for
 ├── actions/WidgetView.php       builds the payload
 ├── views/                       widget body, edit form (fields in WidgetForm order), edit-form bootstrap
-└── assets/                      built bundle (git-ignored) and scoped CSS
+└── assets/                      built bundle (git-ignored), scoped CSS, and geo/ for administrators' map files
 
 src/                             browser code, bundled with ECharts by esbuild
 ├── registry/                    registry access, conditions, visible controls
 ├── data/                        normalisation, units, aggregation, OHLC, pairing,
 │                                hierarchy, edges, relationships, radar, value maps,
 │                                row identity, thresholds, time series, states,
-│                                axis ranges (scale.js), switch ports (ports.js)
+│                                axis ranges (scale.js), switch ports (ports.js), time
+│                                buckets (buckets.js), distribution statistics,
+│                                parallel axes, waterfall steps, node positions,
+│                                and the bundled world outline (geo/world-land.js)
 ├── validation/                  contract rules and user-facing messages
-├── renderers/                   one module per chart (C01-C27), plus shared axes, dimensions and the time-series builder
+├── renderers/                   one module per chart (C01-C33), plus shared axes, dimensions and the time-series builder
 ├── ui/                          widget class, chart controller, edit form, theme
 └── utils/
 ```
@@ -36,9 +39,11 @@ src/                             browser code, bundled with ECharts by esbuild
 - **Control conditions:** when a control is shown, for example `target_macro` only when the target comes from a macro. A chart can override one, as the heat map does for its time controls.
 - **Required controls:** settings that must be filled in whenever they are shown. The form enforces them on save; the browser reports them for widgets saved another way.
 
-- **Data tokens:** `latest`, `previous` (the value before the latest), `history`, `valuemaps`, `problems` (the item's triggers in the problem state), `hosts`, `groups`, `tags` and `macros`. `macro_fields` names the settings whose user macros are resolved per host. `trends: "display"` lets a time-series chart draw hourly trends of both numeric types as they are.
+- **Data tokens:** `latest`, `previous` (the value before the latest), `history`, `valuemaps`, `problems` (the item's triggers in the problem state), `hosts`, `groups`, `tags` and `macros`. `macro_fields` names the settings whose user macros are resolved per host. `trends: "display"` lets a time-series chart draw hourly trends of both numeric types as they are. `inventory` reads the host inventory's location latitude and longitude (C32).
 
 Adding a chart means adding its entry, its renderer and any new rule, field or condition; the form, the server and the browser pick it up from there.
+
+A presentation that reads the same data as an existing chart is a new enum on that chart (appended, so index 0 stays the original behaviour), not a new chart. A stored widget without the new field reads index 0: `WidgetConfig` fills every enum with its first value before the payload reaches the browser, and `tests/fixtures/stored-values.json` keeps that first value fixed. C16 Gauge, for example, keeps its level tube as `gauge_style` 0 and adds dial, progress arc and ring after it.
 
 ## Request flow
 
@@ -48,9 +53,11 @@ Adding a chart means adding its entry, its renderer and any new rule, field or c
    - Items come from item-name patterns, one pattern field per role.
    - Latest values are read only when the chart needs them.
    - History or trends are read only when the chart needs them.
-   - Host groups, tags and macros are read only when the chart needs them. A bullet target macro is resolved in Zabbix's order: the host, then its templates level by level (in template ID order within a level), then the global macro.
+   - Host groups, tags, macros and inventory locations are read only when the chart needs them.
+   - History rows are ordered by clock and then nanoseconds, so samples within one second keep the order Zabbix recorded them in.
+   - C32 reads a map file only from the module's `assets/geo` folder, by plain name, at most 2 MB, and only when the widget asks for one. A bullet target macro is resolved in Zabbix's order: the host, then its templates level by level (in template ID order within a level), then the global macro.
 3. The payload goes to the browser as `zw_payload`. It contains `chart`, `config`, `series[]`, `hosts[]`, `time_period`, `history_source` and `errors[]`.
-4. `ChartController` normalises the payload, validates it against the contract, and then either renders or shows the problems as text. ECharts renderers return an option; HTML renderers (`kind: "dom"`: C14, C23, C25, C27) draw into the canvas themselves. The controller keeps one ECharts instance per widget, disposes it when the widget is destroyed or switches to an HTML chart, and keeps view state (legend selection, zoom, table sorting and paging) across refreshes of the same chart.
+4. `ChartController` normalises the payload, validates it against the contract, and then either renders or shows the problems as text. ECharts renderers return an option; HTML renderers (`kind: "dom"`: C14, C23, C25, C27) draw into the canvas themselves. The controller keeps one ECharts instance per widget, disposes it when the widget is destroyed or switches to an HTML chart, and keeps view state (legend selection, zoom, table sorting and paging) across refreshes of the same chart. A renderer can also read its drawn layout back before a refresh (`captureState`): the network diagram keeps dragged node positions and zoom, the tree and site map keep zoom and pan. A renderer marked `sizeDependent` (C16 Gauge, whose dials are arranged for the widget's shape) is laid out again when the widget is resized.
 
 ## Data limits
 
@@ -69,9 +76,11 @@ Periods longer than two days can read hourly trends. This applies only to charts
 - **Calendar: whole-hour UTC offsets only.** Trends are used only when every offset in the period is a whole number of hours, so no trend hour straddles midnight.
 - **Weighting.** Each trend hour adds `avg × count` to sums and `count` to counts; min and max come from the hour's min and max.
 
-Time-series charts (C21 Temporal Line, C22 Temporal Area, C25 Sparkline Grid, C26 Threshold Band) also read hourly trends for periods longer than two days, for both numeric types, and draw each trend hour as its average with its minimum and maximum in the tooltip. C24 State Timeline never reads trends, because states cannot be averaged.
+Time-series charts (C21 Temporal Line, C22 Temporal Area, C25 Sparkline Grid, C26 Threshold Band, C28 Mixed Line and Bar) also read hourly trends for periods longer than two days, for both numeric types, and draw each trend hour as its average with its minimum and maximum in the tooltip. C24 State Timeline never reads trends, because states cannot be averaged.
 
-Under these conditions, trend-based sums, averages, counts, minima and maxima match raw history except for floating-point rounding of the stored average. Candlesticks always read raw history, because trends do not record first and last samples.
+Under these conditions, trend-based sums, averages, counts, minima and maxima match raw history except for floating-point rounding of the stored average. Candlesticks always read raw history, because trends do not record first and last samples. C29 Distribution always reads raw history too, because quartiles, outliers and bins need every sample; when the period would need trends it is refused rather than drawn from them.
+
+C28 bars are aggregated per bar period. Periods shorter than a day are aligned to the Unix epoch; whole-day periods follow calendar days in the dashboard time zone, so a day across a daylight-saving change lasts 23 or 25 hours. With trends, a bar period must be whole hours, and in a time zone whose offset is not a whole number of hours a warning says that up to half an hour of samples may fall in the neighbouring day.
 
 ## Time series
 
@@ -82,6 +91,7 @@ Under these conditions, trend-based sums, averages, counts, minima and maxima ma
 - **Tooltip.** The crosshair shows the sample time nearest the pointer, then each visible series' own nearest sample within half its gap threshold, with its time when it differs, or "no data".
 - **Axes.** Each distinct unit gets its own Y-axis, at most two. Axis limits are numbers or macros.
 - **Stacking.** Stacked areas average each series into shared buckets (the longest typical interval, rounded up to a usual step). A bucket missing any series is left empty for all of them, so a stack never adds up a partial set. Only one additive unit can be stacked.
+- **Steps.** C21 and C28 lines can be stepped. "Hold until the next sample" draws each value until the next one; "hold back to the previous sample" draws it from the previous one; "change halfway" switches between them. The tooltip reads the value held at the pointer under the chosen mode, and lines still break at gaps.
 - **States.** A state lasts from its sample until the next one, but no longer than the gap threshold; unknown time is drawn as "no data". Colours come from the value colour list, then from the palette in a stable order.
 
 ## Switch Port Panel
@@ -96,9 +106,21 @@ Under these conditions, trend-based sums, averages, counts, minima and maxima ma
 - **Visuals.** Fill (speed, status, thresholds, severity or a fixed colour), border colour and style, admin-down and problem markers, labels, a utilisation bar and staleness are separate channels. Unknown speeds and unmapped statuses stay neutral; admin-down is a dotted border and a marker, distinct from an operational failure. Every tile has an ARIA label with its identity, status and speed, and arrow keys move between tiles.
 - **Cost.** One item lookup per role, latest values in one read and triggers in one read, however many ports.
 
+## Charts added in this release
+
+- **C28 Mixed Line and Bar.** Bar items are aggregated per bar period (average, sum, minimum, maximum or count); line items are drawn as C21 draws them. Up to two units, one per axis; a count of samples has no unit. Sums of non-additive units are refused, and sums of rates are warned about.
+- **C29 Distribution.** Box plots (linear-interpolation quartiles, whiskers at 1.5 interquartile ranges, outliers beyond) or histograms (Freedman–Diaconis bin width, Sturges when the interquartile range is zero, at most 200 bins) of the raw samples in the period. Each sample counts once, however long it held. All items need one unit.
+- **C30 Parallel Coordinates.** Axes are named item patterns (`Label = pattern | min, max`); a line is one host or tag value with exactly one item per axis. Lines missing an axis are left out and reported, never drawn through zero.
+- **C31 Sankey.** Flows between endpoints named by a source tag and a target tag, as for C12. Items for the same pair are added up. Negative flows, non-additive units and cycles are refused.
+- **C32 Geographic Site Map.** Hosts with valid inventory coordinates are drawn over the bundled world outline, an administrator's GeoJSON file, or no base map. Hosts without coordinates are listed, not placed. Links use the network edge syntax; colours can follow thresholds on each site's one item.
+- **C33 Waterfall.** Steps are written one per line: `+` or `-` contributions, `= Label = pattern` measured levels and `= Label` totals. A measured level that differs from the running total is warned about; a step without a value stops the chart.
+
+Links in C11 and C32 can carry a weight: `source -> target : label | weight`, where the weight is a number or an item key looked up on the source host. A link without a measured weight is drawn thin, and dashed when its item has no value. Links and tag relationships show that hosts are connected; they are never presented as measured traffic.
+
 ## Isolation from other modules
 
 - **ECharts:** bundled inside an IIFE. `window.echarts` is never read or written.
+- **Maps:** map names registered with ECharts are prefixed `zabbixwidgets-`.
 - **Globals:** only `WidgetZabbixWidgetsCharts` and `ZabbixWidgetsCharts`.
 - **CSS:** every rule is under `.zw-charts`.
 - **DOM:** lookups are scoped to the widget. Lint forbids document-wide queries in runtime code.

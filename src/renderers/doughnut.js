@@ -6,9 +6,11 @@
  * zero-width segments unless "Hide zero values" is set. Items without a recent
  * value are left out (and listed in a warning by validation).
  *
- * The centre can show the sum or the average of the segments shown.
+ * The centre can show the sum or the average of the segments shown. Labels,
+ * radii and the optional rose layout are presentation settings shared with
+ * the pie (see pieGeometry).
  */
-import { baseOption, commonUnits, seriesLabels, tooltipLine } from './common.js';
+import { baseOption, commonUnits, pieGeometry, seriesLabels, tooltipLine } from './common.js';
 import { aggregate } from '../data/aggregate.js';
 import { formatValue } from '../data/units.js';
 
@@ -30,6 +32,7 @@ export function buildDoughnutOption(payload, context) {
 		: aggregate(segments.map(({ entry }) => entry.value), centreFn);
 
 	const percent = (value) => (total > 0 ? `${formatValue((value / total) * 100, '', 1)}%` : '');
+	const inside = config.label_position === 'inside';
 
 	const base = baseOption(context);
 
@@ -58,17 +61,21 @@ export function buildDoughnutOption(payload, context) {
 		}],
 		series: [{
 			type: 'pie',
-			radius: ['45%', '68%'],
+			...pieGeometry(config, [45, 68]),
 			avoidLabelOverlap: true,
 			minShowLabelAngle: 4,
 			label: {
-				color: context.theme.text,
+				show: config.label_position !== 'none',
+				position: inside ? 'inside' : 'outside',
+				color: inside ? '#ffffff' : context.theme.text,
 				formatter: (param) => {
 					const { entry } = segments[param.dataIndex];
 					const value = formatValue(entry.value, entry.units, context.decimals);
-					return config.show_percent ? `${param.name}\n${value} (${percent(entry.value)})` : `${param.name}\n${value}`;
+					const detail = config.show_percent ? `${value} (${percent(entry.value)})` : value;
+					return inside ? detail : `${param.name}\n${detail}`;
 				}
 			},
+			labelLine: { show: config.label_position !== 'none' && !inside },
 			data: segments.map(({ entry, name }) => ({ name, value: entry.value }))
 		}]
 	};

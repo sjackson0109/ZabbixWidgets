@@ -5,7 +5,7 @@
  * zero values" is set; items without a recent value are left out and listed
  * in a warning.
  */
-import { baseOption } from './common.js';
+import { baseOption, pieGeometry } from './common.js';
 import { chartEntities, sortEntities } from '../data/groups.js';
 import { formatValue } from '../data/units.js';
 import { escapeHtml } from '../utils/escape.js';
@@ -56,7 +56,7 @@ export function buildPieOption(payload, context) {
 		},
 		series: [{
 			type: 'pie',
-			radius: context.showLegend ? ['0%', '62%'] : ['0%', '70%'],
+			...pieGeometry(config, [0, context.showLegend ? 62 : 70]),
 			center: ['50%', context.showLegend ? '45%' : '50%'],
 			avoidLabelOverlap: true,
 			minShowLabelAngle: 3,

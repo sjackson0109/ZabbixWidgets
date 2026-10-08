@@ -42,7 +42,23 @@
 		"port_sublabel": ["speed", "alias", "description", "status", "utilisation", "none"],
 		"port_util_bar": ["none", "max", "in", "out", "avg", "utilisation"],
 		"port_metric": ["utilisation", "util_max", "util_in", "util_out", "poe_power", "errors_in", "errors_out", "discards", "traffic_in", "traffic_out"],
-		"port_click": ["none", "latest", "history", "problems"]
+		"port_click": ["none", "latest", "history", "problems"],
+		"line_step": ["none", "after", "before", "middle"],
+		"bar_orientation": ["vertical", "horizontal"],
+		"stack_mode": ["absolute", "percent", "diverging"],
+		"stack_orientation": ["horizontal", "vertical"],
+		"pie_rose": ["none", "radius", "area"],
+		"bubble_size": ["item", "none"],
+		"gauge_style": ["level", "dial", "progress", "ring"],
+		"network_layout": ["circular", "force", "fixed"],
+		"edge_direction": ["directed", "undirected"],
+		"node_category": ["none", "group", "tag"],
+		"tree_layout": ["lr", "rl", "tb", "bt", "radial"],
+		"dist_view": ["boxplot", "histogram"],
+		"sankey_orient": ["horizontal", "vertical"],
+		"sankey_align": ["justify", "left", "right"],
+		"geo_base": ["world", "custom", "none"],
+		"site_colour": ["single", "thresholds"]
 	},
 	"item_fields": {
 		"items": "Items",
@@ -79,7 +95,10 @@
 		"port_alias_items": "Alias items",
 		"port_description_items": "Description items",
 		"port_mtu_items": "MTU items",
-		"port_last_change_items": "Last change items"
+		"port_last_change_items": "Last change items",
+		"opposing_items": "Opposing items",
+		"bar_items": "Bar items",
+		"line_items": "Line items"
 	},
 	"control_conditions": {
 		"target_macro": "when:target_source=macro",
@@ -106,12 +125,16 @@
 		"speed_colours": "when:port_fill=neg_speed|cfg_speed",
 		"port_metric": "when:port_fill=thresholds",
 		"port_fixed_colour": "when:port_fill=fixed",
-		"port_label_regex": "when:port_label=regex"
+		"port_label_regex": "when:port_label=regex",
+		"node_positions": "when:network_layout=fixed",
+		"node_category_tag": "when:node_category=tag",
+		"geo_file": "when:geo_base=custom"
 	},
 	"required_controls": [
 		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
 		"row_tag", "row_regex", "scale_min", "scale_max", "levels", "stages",
-		"port_tag", "port_regex", "port_groups", "port_group_tag", "port_label_regex", "port_fixed_colour"
+		"port_tag", "port_regex", "port_groups", "port_group_tag", "port_label_regex", "port_fixed_colour",
+		"node_positions", "node_category_tag", "parallel_axes", "geo_file", "waterfall_steps"
 	],
 	"charts": [
 		{
@@ -131,7 +154,7 @@
 			"history": "none",
 			"time_period": false,
 			"min_series": 1,
-			"controls": ["items", "group_by"],
+			"controls": ["items", "group_by", "bar_orientation"],
 			"rules": ["numeric_only", "has_values"]
 		},
 		{
@@ -145,14 +168,20 @@
 					"field": "items",
 					"required": true,
 					"numeric": true
+				},
+				"opposing": {
+					"field": "opposing_items",
+					"required": "when:stack_mode=diverging",
+					"numeric": true,
+					"applies": "when:stack_mode=diverging"
 				}
 			},
 			"data": ["latest"],
 			"history": "none",
 			"time_period": false,
 			"min_series": 2,
-			"controls": ["items", "group_by"],
-			"rules": ["numeric_only", "has_values", "same_units"]
+			"controls": ["items", "opposing_items", "group_by", "stack_mode", "stack_orientation"],
+			"rules": ["numeric_only", "has_values", "same_units", "stack_presentation"]
 		},
 		{
 			"id": "doughnut",
@@ -171,8 +200,8 @@
 			"history": "none",
 			"time_period": false,
 			"min_series": 1,
-			"controls": ["items", "show_percent", "hide_zero", "centre_value"],
-			"rules": ["numeric_only", "has_values", "non_negative", "same_units"]
+			"controls": ["items", "show_percent", "hide_zero", "centre_value", "label_position", "pie_rose", "inner_radius", "outer_radius"],
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "pie_geometry"]
 		},
 		{
 			"id": "bullet",
@@ -309,15 +338,16 @@
 				},
 				"size": {
 					"field": "size_items",
-					"required": true,
-					"numeric": true
+					"required": "when:bubble_size=item",
+					"numeric": true,
+					"applies": "when:bubble_size=item"
 				}
 			},
 			"data": ["latest"],
 			"history": "none",
 			"time_period": false,
 			"min_series": 1,
-			"controls": ["x_items", "y_items", "size_items", "pair_by", "pair_tag"],
+			"controls": ["x_items", "y_items", "bubble_size", "size_items", "pair_by", "pair_tag"],
 			"rules": ["numeric_only", "has_values", "complete_tuples", "non_negative_size"]
 		},
 		{
@@ -372,7 +402,7 @@
 			"history": "none",
 			"time_period": false,
 			"min_series": 1,
-			"controls": ["items", "tree_source", "tree_tags", "tree_delimiter"],
+			"controls": ["items", "tree_source", "tree_tags", "tree_delimiter", "tree_layout"],
 			"rules": ["has_values", "hierarchy_source"]
 		},
 		{
@@ -392,8 +422,11 @@
 			"history": "none",
 			"time_period": false,
 			"min_series": 0,
-			"controls": ["items", "edge_source", "edge_list", "edge_tag"],
-			"rules": ["has_edges", "edges_resolve"]
+			"controls": [
+				"items", "edge_source", "edge_list", "edge_tag", "edge_direction", "network_layout", "node_positions", "node_category", "node_category_tag",
+				"show_node_labels", "show_edge_labels"
+			],
+			"rules": ["has_edges", "edges_resolve", "network_settings"]
 		},
 		{
 			"id": "relationship",
@@ -479,14 +512,14 @@
 			"history": "none",
 			"time_period": false,
 			"min_series": 1,
-			"controls": ["items", "entity_by", "pie_sort", "label_position", "show_percent", "show_value", "hide_zero"],
-			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "additive_groups"]
+			"controls": ["items", "entity_by", "pie_sort", "label_position", "show_percent", "show_value", "hide_zero", "pie_rose", "inner_radius", "outer_radius"],
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "additive_groups", "pie_geometry"]
 		},
 		{
 			"id": "level_gauge",
 			"code": "C16",
 			"form_value": 16,
-			"name": "Vertical Level Gauge",
+			"name": "Gauge",
 			"renderer": "level_gauge",
 			"roles": {
 				"value": {
@@ -501,10 +534,11 @@
 			"time_period": false,
 			"min_series": 1,
 			"controls": [
-				"items", "scale_min", "scale_max", "target_value", "thresholds", "threshold_order", "gauge_display", "gauge_segmented", "show_value"
+				"items", "gauge_style", "scale_min", "scale_max", "target_value", "thresholds", "threshold_order", "gauge_display", "gauge_segmented", "show_value"
 			],
 			"control_conditions": {
-				"show_legend": "none"
+				"show_legend": "none",
+				"gauge_segmented": "when:gauge_style=level"
 			},
 			"rules": ["numeric_only", "has_values", "gauge_scale"]
 		},
@@ -620,7 +654,8 @@
 			"trends": "display",
 			"time_period": true,
 			"min_series": 1,
-			"controls": ["items", "time_period", "y_min", "y_max", "zero_baseline", "smooth", "show_points", "max_gap"],
+			"controls": ["items", "time_period", "y_min", "y_max", "zero_baseline", "line_step", "smooth", "show_points", "max_gap"],
+			"control_conditions": {"smooth": "when:line_step=none"},
 			"rules": ["numeric_only", "some_history", "temporal_units", "temporal_settings"]
 		},
 		{
@@ -749,6 +784,117 @@
 			"controls": ["port_identity", "port_tag", "port_regex_target", "port_regex", "port_id_group", "port_member_group", "port_number_group", "port_roles_shown", "port_oper_items", "port_admin_items", "port_speed_items", "port_cfg_speed_items", "port_util_items", "port_util_in_items", "port_util_out_items", "port_traffic_in_items", "port_traffic_out_items", "port_errors_in_items", "port_errors_out_items", "port_discard_items", "port_duplex_items", "port_poe_state_items", "port_poe_power_items", "port_vlan_items", "port_pvid_items", "port_alias_items", "port_description_items", "port_mtu_items", "port_last_change_items", "port_layout", "port_columns", "port_grouping", "port_groups", "port_group_tag", "port_type", "port_type_rules", "port_type_tag", "port_fill", "port_border", "port_marker", "speed_colours", "state_colours", "admin_down", "port_metric", "thresholds", "threshold_order", "port_fixed_colour", "port_label", "port_label_regex", "port_abbreviate", "port_sublabel", "port_util_bar", "stale_after", "port_click"],
 			"control_conditions": {"thresholds": "when:port_fill=thresholds", "threshold_order": "when:port_fill=thresholds"},
 			"rules": ["port_mapping", "port_settings"]
+		},
+		{
+			"id": "mixed",
+			"code": "C28",
+			"form_value": 28,
+			"name": "Mixed Line and Bar",
+			"renderer": "mixed",
+			"roles": {
+				"bar": {"field": "bar_items", "required": false, "numeric": true},
+				"line": {"field": "line_items", "required": false, "numeric": true}
+			},
+			"data": ["history", "macros"],
+			"macro_fields": ["y_min", "y_max"],
+			"history": "always",
+			"trends": "display",
+			"time_period": true,
+			"min_series": 1,
+			"controls": [
+				"bar_items", "line_items", "time_period", "bucket", "aggregation", "y_min", "y_max", "zero_baseline", "line_step", "smooth", "show_points", "max_gap"
+			],
+			"control_conditions": {"smooth": "when:line_step=none"},
+			"rules": ["numeric_only", "some_history", "temporal_settings", "mixed_settings"]
+		},
+		{
+			"id": "distribution",
+			"code": "C29",
+			"form_value": 29,
+			"name": "Distribution (Boxplot / Histogram)",
+			"renderer": "distribution",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["history"],
+			"history": "always",
+			"time_period": true,
+			"min_series": 1,
+			"controls": ["items", "time_period", "dist_view", "hist_bins", "show_outliers"],
+			"control_conditions": {"hist_bins": "when:dist_view=histogram", "show_outliers": "when:dist_view=boxplot"},
+			"rules": ["numeric_only", "some_history", "same_units", "distribution_settings"]
+		},
+		{
+			"id": "parallel",
+			"code": "C30",
+			"form_value": 30,
+			"name": "Parallel Coordinates",
+			"renderer": "parallel",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 2,
+			"controls": ["items", "parallel_axes", "pair_by", "pair_tag"],
+			"rules": ["numeric_only", "has_values", "parallel_axes"]
+		},
+		{
+			"id": "sankey",
+			"code": "C31",
+			"form_value": 31,
+			"name": "Sankey",
+			"renderer": "sankey",
+			"roles": {
+				"weight": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["latest", "tags"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "source_tag", "target_tag", "sankey_orient", "sankey_align", "show_value"],
+			"control_conditions": {"show_legend": "none"},
+			"rules": ["numeric_only", "has_values", "non_negative", "same_units", "relationship_tags", "sankey_flows"]
+		},
+		{
+			"id": "geomap",
+			"code": "C32",
+			"form_value": 32,
+			"name": "Geographic Site Map",
+			"renderer": "geomap",
+			"roles": {
+				"value": {"field": "items", "required": false, "numeric": true}
+			},
+			"data": ["latest", "hosts", "inventory", "macros"],
+			"macro_fields": ["thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 0,
+			"controls": ["items", "geo_base", "geo_file", "geo_links", "site_colour", "thresholds", "threshold_order", "show_node_labels"],
+			"control_conditions": {
+				"show_legend": "none",
+				"thresholds": "when:site_colour=thresholds",
+				"threshold_order": "when:site_colour=thresholds"
+			},
+			"rules": ["geo_sites", "geo_settings"]
+		},
+		{
+			"id": "waterfall",
+			"code": "C33",
+			"form_value": 33,
+			"name": "Waterfall",
+			"renderer": "waterfall",
+			"roles": {
+				"value": {"field": "items", "required": true, "numeric": true}
+			},
+			"data": ["latest"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": ["items", "waterfall_steps", "show_value"],
+			"control_conditions": {"show_legend": "none"},
+			"rules": ["numeric_only", "waterfall_steps"]
 		}
 	]
 }

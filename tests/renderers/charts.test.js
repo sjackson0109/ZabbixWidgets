@@ -195,7 +195,7 @@ describe('C11 network', () => {
 			hosts: [host({ hostid: '1', name: 'a' }), host({ hostid: '2', name: 'b' }), host({ hostid: '3', name: 'c' })]
 		}));
 		expect(graph.nodes.map((node) => node.name)).toEqual(['a', 'b', 'c']);
-		expect(graph.links).toEqual([{ source: '1', target: '2', text: 'uplink' }]);
+		expect(graph.links).toEqual([{ source: '1', target: '2', text: 'uplink', weight: null }]);
 	});
 });
 
