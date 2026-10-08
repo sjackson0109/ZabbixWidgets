@@ -252,7 +252,8 @@ export function buildWifiFloorOption(payload, context) {
 		if (rings !== undefined && rings.length > 0) {
 			const power = radio.txPower ?? coverage.power;
 			lines.push(`Estimated range to ${escapeHtml(String(coverage.edge))} dBm: <b>${escapeHtml(formatValue(rings[0].radius, '', 0))} m</b>`
-				+ ` <span style="opacity:0.7">(${escapeHtml(formatValue(power, '', 1))} dBm${radio.txPower === null ? ' entered' : ''})</span>`);
+				+ ` <span style="opacity:0.7">(${escapeHtml(formatValue(power, '', 1))} dBm${radio.txPower === null ? ' entered' : ''}`
+				+ `${coverage.factor !== 1 ? `, scaled to ${Math.round(coverage.factor * 100)}%` : ''})</span>`);
 		}
 		if (others > 0) {
 			lines.push(`${others} other radio${others === 1 ? '' : 's'} on this channel`);
@@ -378,7 +379,7 @@ export function buildWifiFloorOption(payload, context) {
 			style: {
 				text: coverage === null
 					? 'Colour: SNR\nRings, outer to inner: 2.4, 5, 6 GHz (not coverage)'
-					: `Estimated coverage to ${coverage.edge} dBm in ${LEVEL_STEP} dB steps, colour: SNR\nDark: no coverage. Red: channel overlap\nITU-R P.1238 indoor model, walls not included`,
+					: `Estimated coverage to ${coverage.edge} dBm in ${LEVEL_STEP} dB steps${coverage.factor !== 1 ? `, ranges scaled to ${Math.round(coverage.factor * 100)}%` : ''}, colour: SNR\nDark: no coverage. Red: channel overlap\nITU-R P.1238 indoor model, walls not included`,
 				lineHeight: 14,
 				fill: theme.mutedText,
 				fontSize: 11

@@ -101,7 +101,7 @@
 		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
 		"row_tag", "row_regex", "scale_min", "scale_max", "levels", "stages",
 		"node_positions", "node_category_tag", "parallel_axes", "geo_file", "waterfall_steps",
-		"radio_tag", "radio_regex", "floor_image", "position_macro_x", "position_macro_y", "plan_width", "edge_level", "path_loss_n"
+		"radio_tag", "radio_regex", "floor_image", "position_macro_x", "position_macro_y", "plan_width", "edge_level", "path_loss_n", "coverage_scale"
 	],
 	"retired": [
 		{
@@ -856,7 +856,7 @@
 			"controls": [
 				"floor_image", "host_tags", "position_source", "position_macro_x", "position_macro_y", "node_positions",
 				"band_items", "channel_items", "width_items", "snr_items", "rogue_items", "radio_by", "radio_tag", "radio_regex",
-				"ring_size", "plan_width", "txpower_items", "tx_power_default", "edge_level", "path_loss_n", "show_gaps", "show_interference",
+				"ring_size", "plan_width", "txpower_items", "tx_power_default", "edge_level", "path_loss_n", "coverage_scale", "show_gaps", "show_interference",
 				"snr_thresholds", "rogue_count", "show_band_24", "show_band_5", "show_band_6", "show_node_labels"
 			],
 			"control_conditions": {
@@ -866,6 +866,7 @@
 				"tx_power_default": "when:ring_size=model",
 				"edge_level": "when:ring_size=model",
 				"path_loss_n": "when:ring_size=model",
+				"coverage_scale": "when:ring_size=model",
 				"show_gaps": "when:ring_size=model",
 				"show_interference": "when:ring_size=model"
 			},

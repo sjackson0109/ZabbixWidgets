@@ -19,7 +19,7 @@ class WidgetConfig {
 		'table_columns', 'scale_min', 'scale_max', 'target_value', 'thresholds', 'levels', 'path_delimiter', 'stages',
 		'y_min', 'y_max', 'max_gap', 'colour_map', 'node_positions', 'node_category_tag', 'parallel_axes', 'geo_file', 'geo_links',
 		'waterfall_steps', 'floor_image', 'host_tags', 'position_macro_x', 'position_macro_y', 'radio_tag', 'radio_regex', 'snr_thresholds',
-		'plan_width', 'tx_power_default', 'edge_level', 'path_loss_n'
+		'plan_width', 'tx_power_default', 'edge_level', 'path_loss_n', 'coverage_scale'
 	];
 
 	private const FLAG_FIELDS = ['show_percent', 'hide_zero', 'show_legend', 'show_host', 'show_item_name', 'show_last_update',

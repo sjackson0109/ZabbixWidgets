@@ -199,6 +199,7 @@ class WidgetForm extends CWidgetForm {
 			->addField(new CWidgetFieldTextBox('tx_power_default', _('Transmit power without an item (dBm)')))
 			->addField((new CWidgetFieldTextBox('edge_level', _('Coverage edge (dBm)')))->setDefault('-67'))
 			->addField((new CWidgetFieldTextBox('path_loss_n', _('Distance loss coefficients (2.4, 5, 6 GHz)')))->setDefault('28, 31, 31'))
+			->addField((new CWidgetFieldTextBox('coverage_scale', _('Coverage scale (%)')))->setDefault('100'))
 			->addField((new CWidgetFieldCheckBox('show_gaps', _('Show coverage gaps')))->setDefault(1))
 			->addField((new CWidgetFieldCheckBox('show_interference', _('Show channel overlap')))->setDefault(1))
 			->addField((new CWidgetFieldTextBox('snr_thresholds', _('SNR thresholds (dB)')))->setDefault('15, 25'))

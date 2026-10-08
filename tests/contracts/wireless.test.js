@@ -219,6 +219,8 @@ describe('C34 estimated coverage', () => {
 		expect(errors(check({ config: { edge_level: '-10' } }))).toContain('invalid_coverage');
 		expect(errors(check({ config: { path_loss_n: '28, 31' } }))).toContain('invalid_coverage');
 		expect(errors(check({ config: { tx_power_default: '50' } }))).toContain('invalid_coverage');
+		expect(errors(check({ config: { coverage_scale: '5' } }))).toContain('invalid_coverage');
+		expect(errors(check({ config: { coverage_scale: 'big' } }))).toContain('invalid_coverage');
 		expect(check({ config: { ring_size: 'band', plan_width: '' } }).ok).toBe(true);
 	});
 
@@ -270,6 +272,18 @@ describe('C34 channel overlap and coverage gaps', () => {
 		expect(grid.clashes.every(({ column, row }) => within(column, row, 10) && within(column, row, 30))).toBe(true);
 		const apart = coverageGrid([sources[0], { ...sources[1], radio: { ...r('2.4', '11'), txPower: 15 } }], settings, 200, 20);
 		expect(apart.clashes).toEqual([]);
+	});
+
+	it('stretches every range by the coverage scale', () => {
+		const doubled = { ...settings, factor: 2 };
+		const radio = { ...r('5', '36'), txPower: 15 };
+		const plain = contours(radio, settings);
+		const scaled = contours(radio, doubled);
+		expect(scaled.map((ring) => ring.radius)).toEqual(plain.map((ring) => ring.radius * 2));
+		const lone = [{ ap: { name: 'a' }, radio, x: 5, y: 5 }];
+		expect(coverageGrid(lone, doubled, 200, 20).gaps.length).toBeLessThan(coverageGrid(lone, settings, 200, 20).gaps.length);
+		expect(coverageSettings({ ...CONFIG, coverage_scale: '200' }).factor).toBe(2);
+		expect(coverageSettings({ ...CONFIG, coverage_scale: '' }).factor).toBe(1);
 	});
 
 	it('leaves cells outside the building unshaded', () => {

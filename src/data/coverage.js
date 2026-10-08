@@ -63,7 +63,12 @@ export function rangeTo(power, level, frequency, coefficient) {
 	return distance >= 1 ? distance : 0;
 }
 
-/** Parses the coverage settings: { width, edge, power, coefficients, errors }. */
+/**
+ * Parses the coverage settings: { width, edge, power, coefficients, factor, errors }.
+ * `factor` is the coverage scale as a multiplier (1 for 100 %): every
+ * modelled range is multiplied by it, for plans where the model's ranges
+ * look too small or too large against what is known on site.
+ */
 export function coverageSettings(config) {
 	const errors = [];
 	const width = toNumber(String(config.plan_width ?? '').trim());
@@ -86,14 +91,21 @@ export function coverageSettings(config) {
 	if (coefficients === null) {
 		errors.push('The distance loss coefficients must be three numbers from 10 to 60 for 2.4, 5 and 6 GHz, for example "28, 31, 31".');
 	}
-	return { width, edge, power, coefficients, errors };
+	const scaleText = String(config.coverage_scale ?? '').trim();
+	const scale = scaleText === '' ? 100 : toNumber(scaleText);
+	if (scale === null || scale < 10 || scale > 1000) {
+		errors.push('The coverage scale must be a percentage from 10 to 1000, for example "100" for the model as it is or "200" for twice the range.');
+	}
+	// Multiplier for every modelled distance, from the coverage scale.
+	const factor = scale === null || scale < 10 || scale > 1000 ? 1 : scale / 100;
+	return { width, edge, power, coefficients, factor, errors };
 }
 
 /**
  * Contour rings for one radio, outermost first: [{ level, radius }] with the
  * radius in metres, for signal levels from the edge upwards in LEVEL_STEP dB
- * steps. Levels the radio never reaches are left out. Returns [] without a
- * transmit power.
+ * steps, multiplied by the coverage scale. Levels the radio never reaches are
+ * left out. Returns [] without a transmit power.
  */
 export function contours(radio, settings) {
 	const power = radio.txPower ?? settings.power;
@@ -105,7 +117,7 @@ export function contours(radio, settings) {
 	const rings = [];
 	for (let index = 0; index < LEVELS; index++) {
 		const level = settings.edge + index * LEVEL_STEP;
-		const radius = rangeTo(power, level, frequency, coefficient);
+		const radius = rangeTo(power, level, frequency, coefficient) * (settings.factor ?? 1);
 		if (radius > 0) {
 			rings.push({ level, radius });
 		}
@@ -202,7 +214,8 @@ export function coverageGrid(sources, settings, planWidth, planHeight, inside = 
 			const cy = (row + 0.5) * size;
 			const heard = [];
 			for (const source of powered) {
-				const distance = Math.max(1, Math.hypot(cx - source.x, cy - source.y));
+				// The coverage scale stretches every range, so a cell is as far as its distance divided by it.
+				const distance = Math.max(1, Math.hypot(cx - source.x, cy - source.y) / (settings.factor ?? 1));
 				const level = source.power - pathLoss(source.frequency, distance, source.coefficient);
 				if (level >= settings.edge) {
 					heard.push({ ap: source.ap, radio: source.radio, level });
