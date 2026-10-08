@@ -35,6 +35,8 @@ jobs:
         run: npm run docs:contracts -- --check
       - name: Licence inventory
         run: npm run licences
+      - name: Versions agree and the manifest counts the charts
+        run: npm run release:check
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=moderate
       - name: Package reproducibly (when LICENSE exists)

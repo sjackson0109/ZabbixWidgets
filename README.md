@@ -282,6 +282,7 @@ If the widget shows a message instead of a chart, it names what is missing or in
 - [Apache ECharts example coverage](docs/ECHARTS-COVERAGE.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Testing](docs/TESTING.md)
+- [Releasing](docs/RELEASING.md)
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 

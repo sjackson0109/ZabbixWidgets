@@ -28,8 +28,6 @@ node tests/integration/smoke.mjs
 
 No password is stored in the repository. The database password comes from `POSTGRES_PASSWORD`. The test signs in once with the image's first-login Admin password and replaces it with `ZW_ADMIN_PASSWORD` (or a random one when unset), and the read-only test user gets a new random password on every run. To run the test again against the same containers, keep the same `ZW_ADMIN_PASSWORD`.
 
-The widgets for C28-C33 and the new presentations were added to the integration test with this release; until the workflow has run on them, they are checked by the tests above only.
-
 ## Still manual
 
 - Template dashboards with an override host.
