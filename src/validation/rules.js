@@ -641,6 +641,7 @@ export const RULES = {
 		if (config.site_colour === 'thresholds') {
 			const found = new Map();
 			const several = [];
+			const unmatched = [];
 			for (const host of payload.hosts.filter((entry) => entry.location?.valid)) {
 				const scale = resolveScale({ thresholds: config.thresholds }, host);
 				for (const message of scale.errors) {
@@ -649,13 +650,20 @@ export const RULES = {
 				if (scale.errors.length === 0 && scale.thresholds.length === 0) {
 					found.set('none', error('no_thresholds', 'Colouring sites by thresholds requires at least one threshold (numbers or user macros, separated by commas).'));
 				}
-				if (values.filter((entry) => entry.hostid === host.hostid).length > 1) {
+				const matches = values.filter((entry) => entry.hostid === host.hostid).length;
+				if (matches > 1) {
 					several.push(host.name);
+				}
+				if (matches === 0) {
+					unmatched.push(host.name);
 				}
 			}
 			problems.push(...found.values());
 			if (several.length > 0) {
 				problems.push(error('ambiguous_site_value', `Thresholds colour a site by one item, but several items match on ${listNames(several)}. Narrow the item pattern.`));
+			}
+			if (unmatched.length > 0) {
+				problems.push(warning('no_site_value', `No item matches on ${listNames(unmatched)}, so these sites are drawn uncoloured.`));
 			}
 		}
 		return problems;

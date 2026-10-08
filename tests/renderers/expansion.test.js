@@ -54,6 +54,13 @@ describe('C02 stacked bar presentations', () => {
 		expect(incompleteCategories(shown).map((entry) => entry.label)).toEqual(['b']);
 	});
 
+	it('leaves out a category where a member has no item at all', () => {
+		const shown = payload('stacked_bar', { config: { group_by: 'host', stack_mode: 'percent' }, series: series.slice(0, 3) });
+		const option = buildStackedBarOption(shown, context);
+		expect(option.series.map((entry) => entry.data)).toEqual([[25, null], [75, null]]);
+		expect(incompleteCategories(shown).map((entry) => entry.label)).toEqual(['b']);
+	});
+
 	it('plots opposing values below zero on the same stack, labelled by magnitude', () => {
 		const option = buildStackedBarOption(payload('stacked_bar', { config: { group_by: 'host', stack_mode: 'diverging', stack_orientation: 'vertical' }, series: [
 			item({ hostid: '1', host: 'a', name: 'In', value: '5' }), item({ role: 'opposing', hostid: '1', host: 'a', name: 'Out', value: '3' })

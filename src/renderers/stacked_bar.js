@@ -57,12 +57,12 @@ export function stackGroups(payload) {
 
 /**
  * Category totals for percentage stacking: the sum of every member's value,
- * or null when a member has no value (the category is then left empty).
+ * or null when a member has no value or no item (the category is then left empty).
  */
 export function categoryTotals(groups, count) {
 	return Array.from({ length: count }, (_, index) => {
-		const cells = groups.map((group) => group.cells[index]).filter((cell) => cell !== null);
-		if (cells.length === 0 || cells.some((cell) => typeof cell.value !== 'number')) {
+		const cells = groups.map((group) => group.cells[index]);
+		if (cells.some((cell) => cell === null || typeof cell.value !== 'number')) {
 			return null;
 		}
 		return cells.reduce((sum, cell) => sum + cell.value, 0);
@@ -73,7 +73,7 @@ export function categoryTotals(groups, count) {
 export function incompleteCategories(payload) {
 	const { categories, groups } = stackGroups(payload);
 	return categories.flatMap((label, index) => {
-		const missing = groups.map((group) => group.cells[index]).filter((cell) => cell !== null && typeof cell.value !== 'number');
+		const missing = groups.filter((group) => group.cells[index] === null || typeof group.cells[index].value !== 'number');
 		return missing.length === 0 ? [] : [{ label, missing }];
 	});
 }

@@ -112,6 +112,13 @@ describe('C32 geographic site map', () => {
 		const result = check('geomap', { config: { geo_base: 'world', site_colour: 'thresholds', thresholds: '50' }, hosts, series: [item(), item({ name: 'Other' })] });
 		expect(errors(result)).toContain('ambiguous_site_value');
 	});
+
+	it('warns about a site that no item matches when colouring by thresholds', () => {
+		const hosts = [{ ...host(), location: { lat: '1', lon: '1' } }, { ...host({ hostid: '20', name: 'Spare' }), location: { lat: '2', lon: '2' } }];
+		const result = check('geomap', { config: { geo_base: 'world', site_colour: 'thresholds', thresholds: '50' }, hosts, series: [item()] });
+		expect(warnings(result)).toContain('no_site_value');
+		expect(result.warnings.find((problem) => problem.code === 'no_site_value').message).toContain('Spare');
+	});
 });
 
 describe('C33 waterfall', () => {
