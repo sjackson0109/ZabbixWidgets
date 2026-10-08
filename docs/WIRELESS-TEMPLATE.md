@@ -27,6 +27,49 @@ What a Zabbix template (and the hosts it is linked to) must provide for every pa
 - **Host tags (optional).** With a tag such as `floor` = `0`, the widget's **Host tags** field (`floor=0`) keeps one widget per floor plan. The tag must be set on the host itself: a tag that exists only on a linked template is not matched.
 - The dashboard user needs read permission on the hosts. Up to 1000 hosts per widget.
 
+### Worked example: Chelsea Harbour, ground floor
+
+The ground-floor plan is 300 m wide and 175 m deep (792 × 462 pixels as drawn, 1584 × 924 in the transparent copy; percentages are the same in both). On this plan:
+
+- 1 % across is 3 m, and 1 % down is 1.75 m. So 1 m is 0.33 % across or 0.57 % down.
+- A 9 m spacing between access points is 3 % across or 5.1 % down.
+- The building fills X 0.4 to 85.2 % and Y 9.5 to 92.6 %. Any value outside that puts the access point outdoors, and the rest of the image (the river side to the east and south) is empty.
+
+| Area | `{$WIFI.MAP.X}` | `{$WIFI.MAP.Y}` | Notes |
+|---|---|---|---|
+| West wing | 0.4 to 16.5 | 9.5 to 26.8 | |
+| Domes building (north) | 16.5 to 80.8 | 9.5 to 53.0 | Shops around the three hex areas |
+| West dome hex | 24 to 35 | 21.6 to 41 | Glass dome and mezzanine void: no access points inside |
+| Centre dome hex | 43 to 54 | 23 to 42 | As above |
+| East dome hex | 63 to 74 | 21.6 to 41 | As above |
+| Avenue | 14.1 to 83.3 | 53.0 to 66.7 | Access points only under the arches, not in the middle |
+| Avenue, north arches | 20 to 80 | 53 to 55 | Along the shopfronts of the domes building |
+| Avenue, south arches | 30 to 83 | 65 to 67.5 | Along the Chambers colonnade |
+| The Chambers (south) | 30.6 to 85.2 | 66.7 to 92.6 | Design studios and shops |
+
+The 16 access points drawn in the demo renders were placed by these rules (positions chosen for the demo, not surveyed):
+
+| Host | Where | X | Y |
+|---|---|---|---|
+| ch-gf-ap01 | West wing shop | 7.6 | 18.4 |
+| ch-gf-ap02 | West dome, north shop edge | 27.1 | 19.9 |
+| ch-gf-ap03 | West dome, south shop edge | 33.5 | 42.2 |
+| ch-gf-ap04 | Centre dome, north shop edge | 51.8 | 20.6 |
+| ch-gf-ap05 | Centre dome, south shop edge | 45.5 | 43.3 |
+| ch-gf-ap06 | East dome, north shop edge | 65.0 | 19.9 |
+| ch-gf-ap07 | East dome, south shop edge | 72.0 | 42.2 |
+| ch-gf-ap08 | Domes building, east entrance | 78.9 | 41.1 |
+| ch-gf-ap09 | Avenue, north arches west | 31.6 | 53.7 |
+| ch-gf-ap10 | Avenue, north arches east | 56.8 | 53.7 |
+| ch-gf-ap11 | Avenue, south arches west | 44.2 | 66.0 |
+| ch-gf-ap12 | Avenue, south arches east | 69.4 | 66.0 |
+| ch-gf-ap13 | Avenue and Chambers, east entrance | 77.7 | 62.8 |
+| ch-gf-ap14 | Chambers west | 37.9 | 79.0 |
+| ch-gf-ap15 | Chambers centre | 59.3 | 79.0 |
+| ch-gf-ap16 | Chambers east | 75.8 | 79.0 |
+
+To find a real access point's values, measure its pixel position on the plan in any image editor and divide: X = pixel across ÷ image width × 100, Y = pixel down ÷ image height × 100. In the widget, set **Floor plan width (m)** to `300` for this plan.
+
 ## 2. Radio items
 
 Each radio is a set of items on the AP host: one band item, one channel item, and optionally one each of width, SNR and transmit power. A tri-band AP therefore has three sets. Low-level discovery (one item prototype per role, discovered once per radio) is the natural way to build them.
