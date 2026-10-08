@@ -55,6 +55,8 @@ describe('unit helpers', () => {
 	it('formats short durations', () => {
 		expect(formatDuration(0)).toBe('0s');
 		expect(formatDuration(0.25)).toBe('0.25s');
+		expect(formatDuration(2.5)).toBe('2.5s');
+		expect(formatDuration(61.5)).toBe('1m 2s');
 		expect(formatDuration(-3600)).toBe('-1h');
 	});
 });

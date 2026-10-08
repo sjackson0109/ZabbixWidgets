@@ -1,7 +1,8 @@
 /**
- * C01 Vertical Column: current values as vertical bars, grouped by host or by
- * item (see dimensions.js). A host without a given item leaves a gap; it is
- * never drawn as zero.
+ * C01 Vertical Column: current values as bars, grouped by host or by item
+ * (see dimensions.js). A host without a given item leaves a gap; it is never
+ * drawn as zero. "Bars" turns the chart on its side (categories down the
+ * left, values along the bottom) without changing anything else.
  */
 import { baseOption, categoryAxis, commonUnits, tooltipLine, valueAxis } from './common.js';
 import { groupSeries } from './dimensions.js';
@@ -12,13 +13,16 @@ export function buildColumnOption(payload, context) {
 	const { categories, groups } = groupSeries(series, payload.config.group_by);
 	const units = commonUnits(series) ?? '';
 
+	const horizontal = payload.config.bar_orientation === 'horizontal';
+
 	const base = baseOption(context);
 
 	return {
 		...base,
-		grid: { left: 8, right: 8, top: 16, bottom: context.showLegend ? 32 : 8, containLabel: true },
-		xAxis: categoryAxis(context, categories),
-		yAxis: valueAxis(context, units),
+		grid: { left: 8, right: horizontal ? 16 : 8, top: 16, bottom: context.showLegend ? 32 : 8, containLabel: true },
+		xAxis: horizontal ? valueAxis(context, units) : categoryAxis(context, categories),
+		// Horizontal bars read top-down in the same order as columns read left to right.
+		yAxis: horizontal ? { ...categoryAxis(context, categories), inverse: true } : valueAxis(context, units),
 		tooltip: {
 			...base.tooltip,
 			trigger: 'axis',

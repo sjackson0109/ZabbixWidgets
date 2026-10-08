@@ -50,7 +50,8 @@ export function formatDuration(totalSeconds) {
 		}
 	}
 	if (parts.length < 3 && (seconds > 0 || parts.length === 0)) {
-		parts.push(`${round(seconds, seconds < 1 ? 3 : 0)}s`);
+		// Under a minute, fractions are kept (2.5s, not 3s); beside larger parts, whole seconds read better.
+		parts.push(`${round(seconds, parts.length === 0 ? 3 : 0)}s`);
 	}
 	return (negative ? '-' : '') + parts.slice(0, 3).join(' ');
 }

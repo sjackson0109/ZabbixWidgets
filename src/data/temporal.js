@@ -135,6 +135,54 @@ export function sampleAt(series, clock) {
 	return Math.abs(point.clock - clock) <= tolerance ? point : null;
 }
 
+/**
+ * Step semantics for the line chart. "after": each value holds from its own
+ * sample until the next one (sample and hold, the usual reading of a gauge
+ * value). "before": each value holds back to the previous sample (the usual
+ * reading of a value measured over the interval that ends at its sample).
+ * "middle": the line changes halfway between samples. Holds never cross a
+ * gap: a line broken at a gap is not carried over it.
+ */
+export const STEP_MODES = Object.freeze({ after: 'end', before: 'start', middle: 'middle' });
+
+/** The ECharts step setting for a configured mode, or false for straight lines. */
+export function echartsStep(mode) {
+	return STEP_MODES[mode] ?? false;
+}
+
+/**
+ * The sample a stepped line shows at a clock: the value held there under the
+ * step mode, or, near a sample, that sample. Returns null where the line
+ * shows nothing (before the first sample, after the last, or across a gap).
+ */
+export function heldSampleAt(series, clock, mode) {
+	const points = series.points;
+	if (mode !== 'after' && mode !== 'before') {
+		return sampleAt(series, clock);
+	}
+	let low = 0;
+	let high = points.length;
+	// First index whose clock is after the pointer.
+	while (low < high) {
+		const middle = (low + high) >> 1;
+		if (points[middle].clock <= clock) {
+			low = middle + 1;
+		}
+		else {
+			high = middle;
+		}
+	}
+	const before = points[low - 1];
+	const after = points[low];
+	if (before !== undefined && before.clock === clock) {
+		return before;
+	}
+	if (before !== undefined && after !== undefined && after.clock - before.clock <= series.threshold) {
+		return mode === 'after' ? before : after;
+	}
+	return sampleAt(series, clock);
+}
+
 /** Distinct display units in first-seen order; each becomes one value axis. */
 export function unitGroups(series) {
 	return [...new Set(series.map((entry) => displayUnits(entry.units)))];

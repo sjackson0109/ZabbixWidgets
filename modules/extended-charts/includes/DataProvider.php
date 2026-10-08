@@ -34,6 +34,9 @@ class DataProvider {
 		ITEM_VALUE_TYPE_TEXT
 	];
 
+	/** Largest map file the Geographic Site Map reads from assets/geo, in bytes. */
+	public const MAX_GEO_FILE = 2 * 1024 * 1024;
+
 	/** Matches one user macro reference, with or without a context. */
 	public const MACRO_PATTERN = '/\{\$[A-Z0-9_.]+(?::(?:"(?:[^"\\\\]|\\\\.)*"|[^}]*))?\}/';
 
@@ -62,6 +65,14 @@ class DataProvider {
 			'severities' => [],
 			'errors' => []
 		];
+
+		if ($this->chart['id'] === 'geomap' && ($this->config['geo_base'] ?? '') === 'custom') {
+			[$payload['geo'], $error] = self::loadGeoFile((string) ($this->config['geo_file'] ?? ''));
+
+			if ($error !== null) {
+				$this->errors[] = $error;
+			}
+		}
 
 		$hosts = $this->resolveHosts($fields_values);
 
@@ -543,30 +554,85 @@ class DataProvider {
 
 		$rows = API::History()->get($options + [
 			'history' => $read['value_type'],
-			'output' => ['itemid', 'clock', 'value'],
+			'output' => ['itemid', 'clock', 'ns', 'value'],
 			'sortfield' => 'clock',
 			'sortorder' => ZBX_SORT_UP
 		]);
 
 		return array_map(static function (array $row): array {
 			return [$row['itemid'], (int) $row['clock'], $row['value']];
-		}, $rows);
+		}, self::inSampleOrder($rows));
+	}
+
+	/**
+	 * History rows in the order Zabbix recorded them: by second, then by
+	 * nanosecond within a second. history.get sorts by second only, so two
+	 * samples in one second could otherwise swap, and the first or last
+	 * sample of a period (a candle's open and close) would be the wrong one.
+	 */
+	public static function inSampleOrder(array $rows): array {
+		usort($rows, static function (array $a, array $b): int {
+			return [(int) $a['clock'], (int) ($a['ns'] ?? 0)] <=> [(int) $b['clock'], (int) ($b['ns'] ?? 0)];
+		});
+
+		return $rows;
+	}
+
+	/**
+	 * Reads a map file an administrator placed in the module's assets/geo
+	 * folder. Only a plain file name is accepted (no folders), the file must
+	 * be GeoJSON no larger than MAX_GEO_FILE, and nothing is fetched from
+	 * anywhere else.
+	 *
+	 * @return array  [GeoJSON feature collection or null, error message or null]
+	 */
+	public static function loadGeoFile(string $name, ?string $folder = null): array {
+		$folder = $folder ?? __DIR__.'/../assets/geo';
+
+		if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}(\.(geo)?json)?$/', $name)) {
+			return [null, _('The map file must be the name of a .geojson file in the module\'s assets/geo folder, for example "sites".')];
+		}
+
+		$path = $folder.'/'.(preg_match('/\.(geo)?json$/', $name) ? $name : $name.'.geojson');
+
+		if (!is_file($path)) {
+			return [null, _s('The map file "%1$s" is not in the module\'s assets/geo folder.', $name)];
+		}
+
+		if (filesize($path) > self::MAX_GEO_FILE) {
+			return [null, _s('The map file "%1$s" is larger than %2$d MB. Simplify it.', $name, self::MAX_GEO_FILE / 1024 / 1024)];
+		}
+
+		$geo = json_decode((string) file_get_contents($path), true, 512);
+
+		if (!is_array($geo) || ($geo['type'] ?? '') !== 'FeatureCollection' || !is_array($geo['features'] ?? null)) {
+			return [null, _s('The map file "%1$s" is not a GeoJSON feature collection.', $name)];
+		}
+
+		return [$geo, null];
 	}
 
 	private function needsHostDetails(): bool {
 		return ChartRegistry::needs($this->chart, 'hosts') || ChartRegistry::needs($this->chart, 'groups')
-			|| ChartRegistry::needs($this->chart, 'macros');
+			|| ChartRegistry::needs($this->chart, 'macros') || ChartRegistry::needs($this->chart, 'inventory');
 	}
 
 	private function hostDetails(array $hosts): array {
-		$details = API::Host()->get([
+		$options = [
 			'output' => ['hostid', 'name'],
 			'hostids' => array_keys($hosts),
 			'selectHostGroups' => ['name'],
 			'selectTags' => ['tag', 'value'],
 			'selectParentTemplates' => ['templateid'],
 			'preservekeys' => true
-		]);
+		];
+
+		// Only the coordinates are read from the inventory, and only for charts that place hosts on a map.
+		if (ChartRegistry::needs($this->chart, 'inventory')) {
+			$options['selectInventory'] = ['location_lat', 'location_lon'];
+		}
+
+		$details = API::Host()->get($options);
 
 		$macros = $this->resolveMacros($details, $this->macroNames());
 		$result = [];
@@ -579,6 +645,15 @@ class DataProvider {
 				'tags' => $host['tags'],
 				'macros' => $macros[$hostid] ?? []
 			];
+
+			if (ChartRegistry::needs($this->chart, 'inventory')) {
+				// A host without inventory comes back with an empty list instead of fields.
+				$inventory = is_array($host['inventory'] ?? null) ? $host['inventory'] : [];
+				$result[count($result) - 1]['location'] = [
+					'lat' => (string) ($inventory['location_lat'] ?? ''),
+					'lon' => (string) ($inventory['location_lon'] ?? '')
+				];
+			}
 		}
 
 		return $result;

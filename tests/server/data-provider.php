@@ -14,6 +14,12 @@ const TRIGGER_VALUE_TRUE = 1;
 const ZBX_MACRO_TYPE_TEXT = 0;
 const ZBX_SORT_UP = 'ASC';
 
+if (!function_exists('_')) {
+	function _(string $text): string {
+		return $text;
+	}
+}
+
 function _s(string $format, ...$arguments): string {
 	return vsprintf($format, $arguments);
 }
@@ -136,6 +142,15 @@ foreach ($input as $case) {
 	}
 	elseif ($case['call'] === 'form_options') {
 		$results[] = ChartRegistry::formOptions($case['selected']);
+	}
+	elseif ($case['call'] === 'order') {
+		$results[] = array_map(static function (array $row): string {
+			return $row['clock'].'.'.$row['ns'];
+		}, DataProvider::inSampleOrder($case['rows']));
+	}
+	elseif ($case['call'] === 'geo') {
+		[$geo, $error] = DataProvider::loadGeoFile($case['name'], $case['folder']);
+		$results[] = ['features' => $geo === null ? null : count($geo['features']), 'error' => $error];
 	}
 	elseif ($case['call'] === 'delay') {
 		$results[] = array_map([DataProvider::class, 'delaySeconds'], $case['delays']);

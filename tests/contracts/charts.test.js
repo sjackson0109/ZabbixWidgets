@@ -197,8 +197,15 @@ describe('C08 bubble', () => {
 	});
 
 	it('requires all three mappings', () => {
-		const result = check('bubble', { config: { pair_by: 'host' }, series: [item({ role: 'x' }), item({ role: 'y' })] });
+		const result = check('bubble', { config: { pair_by: 'host', bubble_size: 'item' }, series: [item({ role: 'x' }), item({ role: 'y' })] });
 		expect(result.errors[0].message).toBe('Bubble requires Size items: no matching items were found.');
+	});
+
+	it('draws an XY scatter without size items when bubble size is none', () => {
+		const series = [item({ role: 'x', value: '-3' }), item({ role: 'y', value: '7' })];
+		expect(check('bubble', { config: { pair_by: 'host', bubble_size: 'none' }, series }).ok).toBe(true);
+		const incomplete = [...series, item({ role: 'x', hostid: '2', host: 'Host B' })];
+		expect(codes(check('bubble', { config: { pair_by: 'host', bubble_size: 'none' }, series: incomplete }))).toContain('incomplete_tuples');
 	});
 
 	it('reports hosts missing a dimension', () => {
@@ -369,7 +376,7 @@ describe('C16 level gauge', () => {
 		const config = { scale_min: '0', scale_max: '{$MAX}' };
 		const hosts = [host({ hostid: '1', macros: { '{$MAX}': '10' } }), host({ hostid: '2', name: 'Host B' })];
 		const result = check('level_gauge', { config, hosts, series: [item({ hostid: '1' }), item({ hostid: '2', host: 'Host B' })] });
-		expect(result.errors.map((problem) => problem.message)).toEqual(['Vertical Level Gauge: Maximum: {$MAX} is not defined as a number on Host B.']);
+		expect(result.errors.map((problem) => problem.message)).toEqual(['Gauge: Maximum: {$MAX} is not defined as a number on Host B.']);
 	});
 
 	it('rejects thresholds that do not ascend', () => {

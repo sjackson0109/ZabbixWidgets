@@ -93,10 +93,13 @@ const [{ groupid }] = await api('hostgroup.get', { filter: { name: ['ZW tests'] 
 const hostIds = [];
 // zw-host-2 names zw-host-1 as its uplink, giving the Network chart one real edge.
 const hostTags = { 'zw-host-1': [], 'zw-host-2': [{ tag: 'uplink', value: 'zw-host-1' }] };
+// Inventory locations place the hosts on the Geographic Site Map.
+const hostLocations = { 'zw-host-1': ['51.5072', '-0.1276'], 'zw-host-2': ['48.8566', '2.3522'] };
 for (const name of ['zw-host-1', 'zw-host-2']) {
 	const found = await api('host.get', { filter: { host: [name] } });
 	const hostid = found.length ? found[0].hostid : (await api('host.create', { host: name, groups: [{ groupid }] })).hostids[0];
-	await api('host.update', { hostid, tags: hostTags[name] });
+	const [lat, lon] = hostLocations[name];
+	await api('host.update', { hostid, tags: hostTags[name], inventory_mode: 0, inventory: { location_lat: lat, location_lon: lon } });
 	hostIds.push(hostid);
 }
 
@@ -341,7 +344,18 @@ const chartWidgets = [
 	]],
 	['State Timeline', 24, [...firstHost, ...patterns('items', 'ZWT Interface*: Operational status'), str('colour_map', 'up = #1A9850\ndown = #D73027'), ...lastDay]],
 	['Sparkline Grid', 25, [...hostFields, ...patterns('items', 'ZW CPU*'), int('show_change', 1), int('show_minmax', 1), ...lastDay]],
-	['Threshold Band', 26, [...firstHost, ...patterns('items', 'ZW CPU*'), str('thresholds', '40, 50'), str('target_value', '{$ZW.TARGET}'), ...lastDay]]
+	['Threshold Band', 26, [...firstHost, ...patterns('items', 'ZW CPU*'), str('thresholds', '40, 50'), str('target_value', '{$ZW.TARGET}'), ...lastDay]],
+	['Mixed Line and Bar', 28, [...hostFields, ...patterns('bar_items', 'ZW CPU*'), ...patterns('line_items', 'ZW CPU*'), str('bucket', '2h'), int('aggregation', 3), int('line_step', 1), ...lastDay]],
+	['Distribution', 29, [...hostFields, ...patterns('items', 'ZW CPU*'), ...lastDay]],
+	['Histogram', 29, [...hostFields, ...patterns('items', 'ZW CPU*'), int('dist_view', 1), ...lastDay]],
+	['Parallel Coordinates', 30, [
+		...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*'), str('parallel_axes', 'CPU = ZW CPU*\nMemory = ZW Memory*\nDisk = ZW Disk*')
+	]],
+	['Sankey', 31, [...hostFields, ...patterns('items', 'ZW Flow*'), str('source_tag', 'from'), str('target_tag', 'to')]],
+	['Geographic Site Map', 32, [...hostFields, ...patterns('items', 'ZW CPU*'), str('geo_links', 'zw-host-2 -> zw-host-1 | zw.cpu')]],
+	['Waterfall', 33, [...firstHost, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('waterfall_steps', '= Sessions = ZW Sessions\n- Load = ZW Load average\n= Remaining')]],
+	['Gauge Dial', 16, [...hostFields, ...patterns('items', 'ZW Disk*'), str('scale_min', '0'), str('scale_max', '100'), str('thresholds', '40, 50'), int('gauge_style', 1)]],
+	['Force Network', 11, [...hostFields, ...patterns('items', 'ZW CPU*'), int('edge_source', 1), str('edge_tag', 'uplink'), int('network_layout', 1), int('node_category', 1)]]
 ];
 // Shared with the limited user: the Column widget can show its permitted hosts, the switch must stay hidden.
 const { dashboardids: [permissionsDashboardid] } = await api('dashboard.create', {
@@ -363,12 +377,13 @@ const { dashboardids: [chartsDashboardid] } = await api('dashboard.create', {
 	pages: [{
 		widgets: [
 			...chartWidgets.map(([name, chartType, fields], index) => ({
-				type: 'zabbixwidgets_charts', name: `ZW ${name}`, x: (index % 3) * 24, y: Math.floor(index / 3) * 5, width: 24, height: 5,
+				// Four to a row keeps every widget within the dashboard's 64 rows.
+				type: 'zabbixwidgets_charts', name: `ZW ${name}`, x: (index % 4) * 18, y: Math.floor(index / 4) * 5, width: 18, height: 5,
 				fields: [int('chart_type', chartType), ...fields]
 			})),
 			// A widget saved while the Switch Port Panel (27) existed: Zabbix must still accept it, and it must say the chart was removed.
 			{
-				type: 'zabbixwidgets_charts', name: 'ZW removed chart', x: 0, y: Math.ceil(chartWidgets.length / 3) * 5, width: 24, height: 5,
+				type: 'zabbixwidgets_charts', name: 'ZW removed chart', x: 0, y: Math.ceil(chartWidgets.length / 4) * 5, width: 18, height: 5,
 				fields: [int('chart_type', 27), ...firstHost]
 			}
 		]
@@ -567,7 +582,9 @@ try {
 	await page.screenshot({ path: `${OUT}/edit-form-${version}.png` });
 	await writeFile(`${OUT}/edit-form-${version}.html`, await form.innerHTML());
 	check(await page.locator('.overlay-dialogue .msg-bad').count() === 0, 'Edit form opens without errors');
-	check(await form.locator('[name^="start_items"]').first().isHidden(), 'Edit form hides Gantt fields for Column');
+	// The label is what a user sees; an empty multiselect has no named input to test.
+	check(await form.locator('label[for="start_items__ms"]').isHidden(), 'Edit form hides Gantt fields for Column');
+	check(await form.locator('label[for="items__ms"]').isVisible(), 'Edit form shows the Column item patterns');
 	check(await form.locator('[name="group_by"]').first().isVisible(), 'Edit form shows Column grouping');
 }
 catch (error) {

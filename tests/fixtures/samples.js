@@ -239,8 +239,118 @@ export const SAMPLES = {
 		config: { ...common, aggregation: 'max' },
 		series: [raw({ history: hourly(50, 7) })],
 		time_period: { from: TO - 60 * 86400, to: TO }
+	},
+	mixed: {
+		config: {
+			...common, bucket: '4h', aggregation: 'sum', y_min: '', y_max: '', zero_baseline: true, line_step: 'none', smooth: false, show_points: false, max_gap: ''
+		},
+		series: [
+			raw({ role: 'bar', name: 'Orders', units: '', history: hourly(20, 3), delay: 1800 }),
+			raw({ role: 'line', name: 'Response time', units: 's', history: hourly(12, 2).map(([clock, value]) => [clock, String(Number(value) / 100)]), delay: 1800 })
+		],
+		time_period: period,
+		hosts
+	},
+	distribution: {
+		config: { ...common, dist_view: 'boxplot', hist_bins: 0, show_outliers: true },
+		series: [
+			raw({ name: 'Response time', units: 's', history: hourly(40, 3).map(([clock, value], index) => [clock, String(index === 30 ? 2.5 : Number(value) / 100)]) }),
+			raw({ hostid: '2', host: 'web02', name: 'Response time', units: 's', history: hourly(60, 5).map(([clock, value]) => [clock, String(Number(value) / 100)]) })
+		],
+		time_period: period
+	},
+	parallel: {
+		config: { ...common, parallel_axes: 'CPU = CPU utilization | 0, 100\nMemory = Memory utilization | 0, 100\nLoad = Load average', pair_by: 'host', pair_tag: '' },
+		series: ['web01', 'web02', 'core01'].flatMap((host, index) => [
+			raw({ hostid: String(index + 1), host, name: 'CPU utilization', value: String([42, 77, 18][index]) }),
+			raw({ hostid: String(index + 1), host, name: 'Memory utilization', value: String([63, 51, 30][index]) }),
+			raw({ hostid: String(index + 1), host, name: 'Load average', units: '', value: String([1.2, 3.8, 0.4][index]) })
+		])
+	},
+	sankey: {
+		config: { ...common, source_tag: 'from', target_tag: 'to', sankey_orient: 'horizontal', sankey_align: 'justify', show_value: true },
+		series: [
+			['Internet', 'Firewall', '900'], ['Firewall', 'Web', '600'], ['Firewall', 'Mail', '250'], ['Web', 'Database', '400'], ['Web', 'Cache', '150']
+		].map(([from, to, value]) => raw({ role: 'weight', name: `Traffic ${from} to ${to}`, units: 'bps', value, tags: [{ tag: 'from', value: from }, { tag: 'to', value: to }] }))
+	},
+	geomap: {
+		config: {
+			...common, geo_base: 'world', geo_file: '', geo_links: 'web01 -> core01 : WAN | net.wan.util\nweb02 -> core01', site_colour: 'thresholds',
+			thresholds: '50, 80', threshold_order: 'higher_worse', show_node_labels: true
+		},
+		series: [
+			raw({ name: 'WAN utilization', key: 'net.wan.util', value: '35' }),
+			raw({ hostid: '2', host: 'web02', name: 'WAN utilization', key: 'net.wan.util', value: '91' }),
+			raw({ hostid: '3', host: 'core01', name: 'WAN utilization', key: 'net.wan.util', value: '62' })
+		],
+		hosts: [
+			{ ...hosts[0], location: { lat: '51.5072', lon: '-0.1276' } },
+			{ ...hosts[1], location: { lat: '53.4808', lon: '-2.2426' } },
+			{ ...hosts[2], location: { lat: '52.4862', lon: '-1.8904' } }
+		]
+	},
+	waterfall: {
+		config: { ...common, waterfall_steps: '= Opening = Stock at start\n+ Received = Stock received\n- Shipped = Stock shipped\n- Damaged = Stock written off\n= Closing', show_value: true },
+		series: [
+			raw({ name: 'Stock at start', units: '', value: '1200' }), raw({ name: 'Stock received', units: '', value: '450' }),
+			raw({ name: 'Stock shipped', units: '', value: '780' }), raw({ name: 'Stock written off', units: '', value: '35' })
+		]
 	}
 };
+
+/**
+ * Presentations of existing families and new charts, drawn and saved as
+ * screenshots next to the plain samples: name -> payload changes.
+ */
+export const VARIANTS = {
+	'line-step': { chart: 'line', config: { line_step: 'after' } },
+	'column-horizontal': { chart: 'column', config: { bar_orientation: 'horizontal' } },
+	'stacked_bar-diverging': {
+		chart: 'stacked_bar',
+		config: { stack_mode: 'diverging', stack_orientation: 'vertical' },
+		series: [
+			raw({ name: 'Received', units: 'bps', key: 'in', value: '420' }), raw({ hostid: '2', host: 'web02', name: 'Received', units: 'bps', key: 'in', value: '260' }),
+			raw({ role: 'opposing', name: 'Sent', units: 'bps', key: 'out', value: '180' }),
+			raw({ role: 'opposing', hostid: '2', host: 'web02', name: 'Sent', units: 'bps', key: 'out', value: '310' })
+		]
+	},
+	'stacked_bar-percent': {
+		chart: 'stacked_bar',
+		config: { stack_mode: 'percent' },
+		series: [
+			raw({ name: 'Used', units: 'B', key: 'used', value: '600' }), raw({ name: 'Free', units: 'B', key: 'free', value: '400' }),
+			raw({ hostid: '2', host: 'web02', name: 'Used', units: 'B', key: 'used', value: '250' }), raw({ hostid: '2', host: 'web02', name: 'Free', units: 'B', key: 'free', value: '750' })
+		]
+	},
+	'pie-rose': { chart: 'pie', config: { pie_rose: 'radius', inner_radius: 20 } },
+	'bubble-scatter': { chart: 'bubble', config: { bubble_size: 'none' }, drop: 'size' },
+	'level_gauge-dial': { chart: 'level_gauge', config: { gauge_style: 'dial' } },
+	'level_gauge-progress': { chart: 'level_gauge', config: { gauge_style: 'progress' } },
+	'level_gauge-ring': { chart: 'level_gauge', config: { gauge_style: 'ring' } },
+	'network-force': { chart: 'network', config: { network_layout: 'force', node_category: 'group', edge_direction: 'undirected' } },
+	'network-fixed': {
+		chart: 'network',
+		config: { edge_source: 'list', edge_list: 'web01 -> core01 : uplink | 400\nweb02 -> core01 : uplink | 150', network_layout: 'fixed', node_positions: 'core01 = 50, 0\nweb01 = 0, 60\nweb02 = 100, 60' }
+	},
+	'tree-radial': { chart: 'tree', config: { tree_layout: 'radial' } },
+	'distribution-histogram': { chart: 'distribution', config: { dist_view: 'histogram' } },
+	'sankey-vertical': { chart: 'sankey', config: { sankey_orient: 'vertical' } },
+	'geomap-none': { chart: 'geomap', config: { geo_base: 'none' } }
+};
+
+/** The raw payload for a variant. */
+export function variant(name) {
+	const { chart, config, series, drop } = VARIANTS[name];
+	const payload = sample(chart);
+	payload.config = { ...payload.config, ...config };
+	if (series) {
+		payload.series = structuredClone(series);
+	}
+	if (drop) {
+		payload.series = payload.series.filter((entry) => entry.role !== drop);
+	}
+	return payload;
+}
 
 /** The raw payload for a chart, with the chart id filled in. */
 export function sample(chart) {

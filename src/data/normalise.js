@@ -117,7 +117,8 @@ export function normalisePayload(payload = {}) {
 				name: String(host.name ?? ''),
 				groups: Array.isArray(host.groups) ? host.groups.map(String) : [],
 				tags: normaliseTags(host.tags),
-				macros: host.macros ?? {}
+				macros: host.macros ?? {},
+				location: normaliseLocation(host.location)
 			}))
 			: [],
 		timePeriod: payload.time_period
@@ -127,8 +128,26 @@ export function normalisePayload(payload = {}) {
 		severities: Array.isArray(payload.severities)
 			? payload.severities.map(({ name, color }) => ({ name: String(name ?? ''), color: String(color ?? '') }))
 			: [],
-		errors: Array.isArray(payload.errors) ? payload.errors.map(String) : []
+		errors: Array.isArray(payload.errors) ? payload.errors.map(String) : [],
+		geo: payload.geo && typeof payload.geo === 'object' ? payload.geo : null
 	};
+}
+
+/**
+ * A host's inventory coordinates as numbers, or null when either is empty,
+ * not a number or outside the range of latitudes and longitudes. The raw
+ * text is kept so a message can say what was wrong.
+ */
+export function normaliseLocation(location) {
+	if (!location || typeof location !== 'object') {
+		return null;
+	}
+	const latText = String(location.lat ?? '').trim();
+	const lonText = String(location.lon ?? '').trim();
+	const lat = toNumber(latText);
+	const lon = toNumber(lonText);
+	const valid = lat !== null && lon !== null && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+	return { lat: valid ? lat : null, lon: valid ? lon : null, latText, lonText, valid };
 }
 
 export function tagValue(tags, name) {

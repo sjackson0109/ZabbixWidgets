@@ -7,7 +7,15 @@ import { displayUnits } from '../data/units.js';
 import { alignOhlc, bucketCount, isConsistentCandle, MAX_BUCKETS, parseBucket } from '../data/aggregate.js';
 import { parseRanges } from '../data/targets.js';
 import { pairSeries } from '../data/pairing.js';
-import { parseEdgeList, edgesFromHostTag, resolveEdges } from '../data/edges.js';
+import { edgeWeight, parseEdgeList, edgesFromHostTag, resolveEdges } from '../data/edges.js';
+import { parseNodePositions } from '../data/positions.js';
+import { incompleteCategories } from '../renderers/stacked_bar.js';
+import { barUnits } from '../renderers/mixed.js';
+import { findCycle, sankeyFlows } from '../renderers/sankey.js';
+import { MAX_BINS } from '../data/distribution.js';
+import { parseAxes, parallelModel } from '../data/parallel.js';
+import { waterfallModel } from '../data/waterfall.js';
+import { zoneOffset } from '../data/buckets.js';
 import { tagValue, toNumber } from '../data/normalise.js';
 import { activeRoles, isRoleRequired } from '../registry/index.js';
 import { buildTable } from '../data/table.js';
@@ -337,13 +345,81 @@ export const RULES = {
 
 	edges_resolve(ctx) {
 		const { config, payload } = ctx;
-		const edges = config.edge_source === 'list'
-			? parseEdgeList(config.edge_list).edges
-			: edgesFromHostTag(payload.hosts, String(config.edge_tag ?? '').trim());
-		const { unresolved } = resolveEdges(edges, payload.hosts);
+		if (config.edge_source !== 'list') {
+			// A tag can name a host this user may not see. Such peers are counted, never named.
+			const edges = edgesFromHostTag(payload.hosts, String(config.edge_tag ?? '').trim());
+			const { resolved, unresolved } = resolveEdges(edges, payload.hosts);
+			if (unresolved.length === 0) {
+				return [];
+			}
+			const message = `${unresolved.length} link${unresolved.length === 1 ? ' names a host' : 's name hosts'} that ${unresolved.length === 1 ? 'is' : 'are'} not among the selected hosts, or not visible to you, and ${unresolved.length === 1 ? 'is' : 'are'} not drawn.`;
+			return [(resolved.length === 0 ? error : warning)('unknown_hosts', message)];
+		}
+		const { unresolved } = resolveEdges(parseEdgeList(config.edge_list).edges, payload.hosts);
 		const names = unresolved.flatMap((edge) => edge.missing);
 		return names.length === 0 ? [] : [error('unknown_hosts',
 			`These relationship endpoints are not among the selected hosts: ${listNames(names)}.`)];
+	},
+
+	/** C11: layout, categories and link weights. */
+	network_settings(ctx) {
+		const { config, payload } = ctx;
+		const problems = [];
+		if (config.network_layout === 'fixed') {
+			const { positions, errors, duplicates } = parseNodePositions(config.node_positions);
+			problems.push(...errors.map((line) => error('invalid_positions', `Line ${line.line} of the node positions is not in the form "host name = x, y".`)));
+			if (duplicates.length > 0) {
+				problems.push(error('invalid_positions', `These hosts have more than one position: ${listNames(duplicates)}.`));
+			}
+			if (errors.length === 0 && duplicates.length === 0) {
+				const unplaced = payload.hosts.filter((entry) => !positions.has(entry.name));
+				if (unplaced.length === payload.hosts.length && unplaced.length > 0) {
+					problems.push(error('no_positions', 'None of the selected hosts has a position. Add one "host name = x, y" line per host.'));
+				}
+				else if (unplaced.length > 0) {
+					problems.push(warning('unplaced_hosts', `These hosts have no position and are not drawn: ${listNames(unplaced.map((entry) => entry.name))}.`));
+				}
+				const hostNames = new Set(payload.hosts.map((entry) => entry.name));
+				const unknown = [...positions.keys()].filter((name) => !hostNames.has(name));
+				if (unknown.length > 0) {
+					problems.push(warning('unknown_positions', `These positions name hosts that are not selected: ${listNames(unknown)}.`));
+				}
+			}
+		}
+		if (config.node_category === 'tag' && String(config.node_category_tag ?? '').trim() === '') {
+			problems.push(error('missing_category_tag', 'Colouring nodes by host tag requires the tag name.'));
+		}
+		if (config.edge_source === 'list') {
+			const { resolved } = resolveEdges(parseEdgeList(config.edge_list).edges, payload.hosts);
+			const values = payload.series.filter((entry) => entry.role === 'value');
+			const missing = [];
+			const noValue = [];
+			for (const edge of resolved) {
+				const weight = edgeWeight(edge, values);
+				const where = `${edge.source} -> ${edge.target} (${edge.weight?.key})`;
+				if (weight.error === 'missing_item') {
+					missing.push(where);
+				}
+				else if (weight.error === 'no_value') {
+					noValue.push(where);
+				}
+				else if (weight.value !== null && weight.value < 0) {
+					problems.push(error('negative_weight', `Link weights cannot be negative: ${edge.source} -> ${edge.target}.`));
+				}
+			}
+			if (missing.length > 0) {
+				problems.push(error('missing_weight_item',
+					`No item with the weight key was found on the source host for ${listNames(missing)}. The item must also match the item pattern.`));
+			}
+			if (noValue.length > 0) {
+				problems.push(warning('missing_weight_value', `No recent value for the weight of ${listNames(noValue)}; drawn as a dashed line.`));
+			}
+			const units = [...new Set(resolved.map((edge) => edgeWeight(edge, values)).filter((weight) => weight.entry !== null).map((weight) => displayUnits(weight.units)))];
+			if (units.length > 1) {
+				problems.push(error('mixed_units', `Link weights must share units to be compared, but they use ${listNames(units.map((unit) => (unit === '' ? '(no units)' : `"${unit}"`)))}.`));
+			}
+		}
+		return problems;
 	},
 
 	relationship_tags(ctx) {
@@ -368,6 +444,276 @@ export const RULES = {
 				`These items flow from an endpoint to itself and are not drawn: ${listNames(loops.map(seriesLabel))}.`));
 		}
 		return problems;
+	},
+
+	/** C02: percentage and diverging stacks. */
+	stack_presentation(ctx) {
+		const { config, payload } = ctx;
+		if (config.stack_mode !== 'percent' && config.stack_mode !== 'diverging') {
+			return [];
+		}
+		const series = roleSeries(ctx);
+		const problems = [];
+		const negative = series.filter((entry) => typeof entry.value === 'number' && entry.value < 0);
+		if (negative.length > 0) {
+			problems.push(error('negative_values', `${config.stack_mode === 'percent' ? 'Shares' : 'Diverging bars'} need values of zero or more: ${listNames(negative.map(seriesLabel))}.`));
+		}
+		const units = unitGroups(series);
+		if (units.length === 1 && !isAdditive(units[0])) {
+			problems.push(error('non_additive', `Values in "${units[0]}" cannot be added up, so they cannot be stacked into ${config.stack_mode === 'percent' ? 'shares of a total' : 'totals'}. Use stacked values or another chart.`));
+		}
+		if (config.stack_mode === 'diverging') {
+			const both = series.filter((entry) => entry.role === 'value' && series.some((other) => other.role === 'opposing' && other.itemid === entry.itemid));
+			if (both.length > 0) {
+				problems.push(error('shared_item', `These items match both the item and the opposing item patterns: ${listNames(both.map(seriesLabel))}. Make the patterns more specific.`));
+			}
+		}
+		if (config.stack_mode === 'percent' && problems.length === 0) {
+			const incomplete = incompleteCategories(payload);
+			if (incomplete.length > 0) {
+				problems.push(warning('incomplete_categories',
+					`These categories have members without a value, so their shares are not drawn: ${listNames(incomplete.map((category) => category.label))}.`));
+			}
+		}
+		return problems;
+	},
+
+	/** C28: bar buckets, aggregation and axes. */
+	mixed_settings(ctx) {
+		const { config, payload } = ctx;
+		const bars = roleSeries(ctx, ['bar']);
+		const lines = roleSeries(ctx, ['line']);
+		const problems = [];
+		const aggregation = config.aggregation ?? 'avg';
+		const units = [...new Set([
+			...bars.map((entry) => displayUnits(barUnits(entry, aggregation))),
+			...lines.map((entry) => displayUnits(entry.units))
+		])];
+		if (units.length > 2) {
+			problems.push(error('too_many_units',
+				`${ctx.chart.name} draws at most two units, one per Y-axis, but the series use ${listNames(units.map((unit) => (unit === '' ? '(no units)' : `"${unit}"`)))}.`));
+		}
+		if (bars.length === 0) {
+			return problems;
+		}
+		const bucket = parseBucket(config.bucket);
+		if (bucket === null) {
+			return [...problems, error('invalid_bucket', 'The bar period must look like 15m, 1h or 1d.')];
+		}
+		problems.push(...tooManyBuckets(ctx, 'bars'));
+		if (payload.historySource === 'mixed' && bucket % 3600 !== 0) {
+			problems.push(error('trend_buckets',
+				'Periods longer than two days are read from hourly trends, so each bar must cover whole hours. Choose a bar period such as 1h or 1d.'));
+		}
+		if (payload.historySource === 'mixed' && bucket % 86400 === 0 && payload.timePeriod !== null) {
+			const zone = config.time_zone || 'UTC';
+			const offsets = [payload.timePeriod.from, payload.timePeriod.to].map((clock) => zoneOffset(clock, zone));
+			if (offsets.some((offset) => offset % 3600 !== 0)) {
+				problems.push(warning('trend_days',
+					'Hourly trends do not start at local midnight in this time zone, so up to half an hour of samples may fall in the neighbouring day\'s bar.'));
+			}
+		}
+		if (aggregation === 'sum') {
+			const nonAdditive = [...new Set(bars.map((entry) => displayUnits(entry.units)).filter((unit) => !isAdditive(unit)))];
+			if (nonAdditive.length > 0) {
+				problems.push(error('non_additive', `Values in ${listNames(nonAdditive.map((unit) => `"${unit}"`))} cannot be added up. Use the average, minimum or maximum for the bars.`));
+			}
+			const rates = bars.filter((entry) => /(ps|\/s)$/i.test(displayUnits(entry.units)));
+			if (rates.length > 0) {
+				problems.push(warning('summed_rates',
+					`Adding up samples of a rate does not give a volume: ${listNames(rates.map(seriesLabel))}. The bars show the sum of the samples taken.`));
+			}
+		}
+		return problems;
+	},
+
+	/** C29: bins, and enough samples to describe a distribution. */
+	distribution_settings(ctx) {
+		const problems = [];
+		const bins = Number(ctx.config.hist_bins) || 0;
+		if (bins < 0 || bins > MAX_BINS) {
+			problems.push(error('invalid_bins', `The number of bins must be between 1 and ${MAX_BINS}, or 0 for automatic.`));
+		}
+		if (ctx.payload.historySource === 'mixed') {
+			problems.push(error('trends_not_allowed', 'Distributions need every raw sample; hourly trends cannot give quartiles, outliers or bins.'));
+		}
+		const few = roleSeries(ctx).filter((entry) => entry.history.length > 0 && entry.history.length < 5);
+		if (few.length > 0) {
+			problems.push(warning('few_samples', `Fewer than five samples in the period for ${listNames(few.map(seriesLabel))}; their quartiles say little.`));
+		}
+		return problems;
+	},
+
+	/** C30: the axes and one complete set of values per line. */
+	parallel_axes(ctx) {
+		const { axes, errors } = parseAxes(ctx.config.parallel_axes);
+		if (errors.length > 0) {
+			return errors.map((line) => error('invalid_axes', `Line ${line.line} of the axes is not valid: ${line.reason}.`));
+		}
+		if (axes.length < 2) {
+			return [error('invalid_axes', 'Parallel Coordinates needs at least two axes, one per line: "Label = item name pattern".')];
+		}
+		const model = parallelModel(roleSeries(ctx), ctx.config);
+		const problems = [];
+		if (model.mixedUnits.length > 0) {
+			problems.push(error('mixed_units', `Every item on an axis needs the same units. They differ on ${listNames(model.mixedUnits.map((heading) => `"${heading}"`))}.`));
+		}
+		if (model.ambiguous.length > 0) {
+			const detail = model.ambiguous.map((entry) => `${entry.label} (${entry.axes.join(', ')})`);
+			problems.push(error('ambiguous_axes', `More than one item matches the same axis for ${listNames(detail)}. Narrow the axis pattern or pair by tag.`));
+		}
+		if (model.untagged.length > 0) {
+			problems.push(error('untagged_items', `These items have no "${ctx.config.pair_tag}" tag to pair them by: ${listNames(model.untagged.map(seriesLabel))}.`));
+		}
+		if (model.incomplete.length > 0) {
+			const detail = model.incomplete.map((entry) => `${entry.label} (no ${entry.axes.join(', ')})`);
+			problems.push((model.entities.length === 0 ? error : warning)('incomplete_lines',
+				`These lines have no value on every axis and are not drawn: ${listNames(detail)}.`));
+		}
+		if (model.unused.length > 0) {
+			problems.push(warning('unused_items', `These items match no axis and are not shown: ${listNames(model.unused.map(seriesLabel))}.`));
+		}
+		if (model.entities.length === 0 && problems.every((problem) => problem.level !== 'error')) {
+			problems.push(error('no_lines', 'No host or tag value has an item on every axis.'));
+		}
+		return problems;
+	},
+
+	/** C31: additive flows that form no loop. */
+	sankey_flows(ctx) {
+		const units = unitGroups(roleSeries(ctx));
+		const problems = [];
+		if (units.length === 1 && !isAdditive(units[0])) {
+			problems.push(error('non_additive', `Flows in "${units[0]}" cannot be added up, so they cannot be drawn as a Sankey diagram.`));
+		}
+		const { flows } = sankeyFlows(ctx.payload);
+		const cycle = findCycle(flows);
+		if (cycle.length > 0) {
+			problems.push(error('flow_cycle', `The flows form a loop (${cycle.join(' → ')}), which a Sankey diagram cannot draw. Use the Chord / Relationship Diagram for flows in both directions.`));
+		}
+		if (flows.length === 0 && problems.length === 0) {
+			problems.push(error('no_flows', 'No flow between two different endpoints has a value.'));
+		}
+		return problems;
+	},
+
+	/** C32: every site needs coordinates from its inventory. */
+	geo_sites(ctx) {
+		const { payload } = ctx;
+		const hosts = payload.hosts;
+		const placed = hosts.filter((host) => host.location?.valid);
+		const empty = hosts.filter((host) => !host.location || (host.location.latText === '' && host.location.lonText === ''));
+		const invalid = hosts.filter((host) => host.location && !host.location.valid && !(host.location.latText === '' && host.location.lonText === ''));
+		const problems = [];
+		if (invalid.length > 0) {
+			problems.push((placed.length === 0 ? error : warning)('invalid_location',
+				`These hosts have inventory coordinates that are not a latitude from -90 to 90 and a longitude from -180 to 180, and are not drawn: ${listNames(invalid.map((host) => host.name))}.`));
+		}
+		if (empty.length > 0) {
+			problems.push((placed.length === 0 && invalid.length === 0 ? error : warning)('no_location',
+				`These hosts have no latitude and longitude in their inventory and are not drawn: ${listNames(empty.map((host) => host.name))}.`));
+		}
+		return problems;
+	},
+
+	/** C32: links, colours and the map file. */
+	geo_settings(ctx) {
+		const { config, payload } = ctx;
+		const problems = [];
+		const { edges, errors } = parseEdgeList(config.geo_links);
+		problems.push(...errors.map((entry) => error('invalid_edge', `Line ${entry.line} of the links is not in the form "site -> site".`)));
+		const { resolved, unresolved } = resolveEdges(edges, payload.hosts);
+		if (unresolved.length > 0) {
+			problems.push(error('unknown_hosts', `These link endpoints are not among the selected hosts: ${listNames(unresolved.flatMap((edge) => edge.missing))}.`));
+		}
+		const unplaced = resolved.filter((edge) => [edge.sourceId, edge.targetId].some((hostid) => !payload.hosts.find((host) => host.hostid === hostid)?.location?.valid));
+		if (unplaced.length > 0) {
+			problems.push(warning('unplaced_links', `These links join a host without coordinates and are not drawn: ${listNames(unplaced.map((edge) => `${edge.source} -> ${edge.target}`))}.`));
+		}
+		const values = roleSeries(ctx);
+		const missingItems = resolved.filter((edge) => edgeWeight(edge, values).error === 'missing_item');
+		if (missingItems.length > 0) {
+			problems.push(error('missing_weight_item',
+				`No item with the weight key was found on the source host for ${listNames(missingItems.map((edge) => `${edge.source} -> ${edge.target} (${edge.weight.key})`))}. The item must also match the item pattern.`));
+		}
+		if (config.site_colour === 'thresholds') {
+			const found = new Map();
+			const several = [];
+			const unmatched = [];
+			for (const host of payload.hosts.filter((entry) => entry.location?.valid)) {
+				const scale = resolveScale({ thresholds: config.thresholds }, host);
+				for (const message of scale.errors) {
+					found.set(message, error('invalid_thresholds', `${capitalise(message)}.`));
+				}
+				if (scale.errors.length === 0 && scale.thresholds.length === 0) {
+					found.set('none', error('no_thresholds', 'Colouring sites by thresholds requires at least one threshold (numbers or user macros, separated by commas).'));
+				}
+				const matches = values.filter((entry) => entry.hostid === host.hostid).length;
+				if (matches > 1) {
+					several.push(host.name);
+				}
+				if (matches === 0) {
+					unmatched.push(host.name);
+				}
+			}
+			problems.push(...found.values());
+			if (several.length > 0) {
+				problems.push(error('ambiguous_site_value', `Thresholds colour a site by one item, but several items match on ${listNames(several)}. Narrow the item pattern.`));
+			}
+			if (unmatched.length > 0) {
+				problems.push(warning('no_site_value', `No item matches on ${listNames(unmatched)}, so these sites are drawn uncoloured.`));
+			}
+		}
+		return problems;
+	},
+
+	/** C33: steps that each match one item with a value, in one additive unit. */
+	waterfall_steps(ctx) {
+		const series = roleSeries(ctx);
+		const model = waterfallModel(series, ctx.config.waterfall_steps);
+		const problems = model.errors.map((line) => error('invalid_steps',
+			`Line ${line.line} of the steps is not in the form "+ Label = item name pattern", "- Label = pattern", "= Label = pattern" or "= Label".`));
+		if (model.steps.length === 0 && model.errors.length === 0) {
+			problems.push(error('invalid_steps', 'Waterfall requires steps, one per line, such as "= Opening = Balance at start" and "+ Income = Revenue *".'));
+		}
+		if (model.steps.length > 0 && model.steps.every((step) => step.kind === 'total')) {
+			problems.push(error('invalid_steps', 'Waterfall requires at least one step that reads an item.'));
+		}
+		if (model.missing.length > 0) {
+			problems.push(error('missing_step', `No item matches the step ${listNames(model.missing.map((label) => `"${label}"`))}.`));
+		}
+		if (model.ambiguous.length > 0) {
+			problems.push(error('ambiguous_step',
+				`Each step needs exactly one item, but ${listNames(model.ambiguous.map((step) => `"${step.label}" matches ${step.items.length}`))}. Narrow the step pattern or select one host.`));
+		}
+		if (model.withoutValue.length > 0) {
+			problems.push(error('missing_step', `No recent value for the step ${listNames(model.withoutValue.map((label) => `"${label}"`))}, so the totals after it cannot be worked out.`));
+		}
+		const used = model.steps.filter((step) => step.entry !== null).map((step) => step.entry);
+		const units = unitGroups(used);
+		if (units.length > 1) {
+			problems.push(error('mixed_units', `Every step needs the same units, but they use ${listNames(units.map((unit) => (unit === '' ? '(no units)' : `"${unit}"`)))}.`));
+		}
+		else if (units.length === 1 && !isAdditive(units[0])) {
+			problems.push(error('non_additive', `Values in "${units[0]}" cannot be added up, so they cannot make a waterfall.`));
+		}
+		for (const mismatch of model.mismatches) {
+			problems.push(warning('steps_do_not_add_up',
+				`The steps before "${mismatch.label}" add up to ${mismatch.expected}, but it measures ${mismatch.actual}. Something between them is not listed.`));
+		}
+		if (model.unused.length > 0) {
+			problems.push(warning('unused_items', `These items match no step and are not shown: ${listNames(model.unused.map(seriesLabel))}.`));
+		}
+		return problems;
+	},
+
+	/** C03, C15: the inner radius must leave a ring inside the outer one. */
+	pie_geometry(ctx) {
+		const inner = Number(ctx.config.inner_radius) || 0;
+		const outer = Number(ctx.config.outer_radius) || 0;
+		return inner > 0 && outer > 0 && inner >= outer
+			? [error('invalid_radius', 'The inner radius must be smaller than the outer radius.')]
+			: [];
 	},
 
 	bullet_ranges(ctx) {

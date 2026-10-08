@@ -27,7 +27,13 @@
 		"state_timeline": 24,
 		"sparkline_grid": 25,
 		"threshold_band": 26,
-		"switch_ports": 27
+		"switch_ports": 27,
+		"mixed": 28,
+		"distribution": 29,
+		"parallel": 30,
+		"sankey": 31,
+		"geomap": 32,
+		"waterfall": 33
 	},
 	"enums": {
 		"group_by": [
@@ -259,6 +265,83 @@
 			"latest",
 			"history",
 			"problems"
+		],
+		"line_step": [
+			"none",
+			"after",
+			"before",
+			"middle"
+		],
+		"bar_orientation": [
+			"vertical",
+			"horizontal"
+		],
+		"stack_mode": [
+			"absolute",
+			"percent",
+			"diverging"
+		],
+		"stack_orientation": [
+			"horizontal",
+			"vertical"
+		],
+		"pie_rose": [
+			"none",
+			"radius",
+			"area"
+		],
+		"bubble_size": [
+			"item",
+			"none"
+		],
+		"gauge_style": [
+			"level",
+			"dial",
+			"progress",
+			"ring"
+		],
+		"network_layout": [
+			"circular",
+			"force",
+			"fixed"
+		],
+		"edge_direction": [
+			"directed",
+			"undirected"
+		],
+		"node_category": [
+			"none",
+			"group",
+			"tag"
+		],
+		"tree_layout": [
+			"lr",
+			"rl",
+			"tb",
+			"bt",
+			"radial"
+		],
+		"dist_view": [
+			"boxplot",
+			"histogram"
+		],
+		"sankey_orient": [
+			"horizontal",
+			"vertical"
+		],
+		"sankey_align": [
+			"justify",
+			"left",
+			"right"
+		],
+		"geo_base": [
+			"world",
+			"custom",
+			"none"
+		],
+		"site_colour": [
+			"single",
+			"thresholds"
 		]
 	}
 }

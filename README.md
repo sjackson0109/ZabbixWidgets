@@ -2,7 +2,7 @@
 
 Independent Zabbix dashboard widgets built on Apache ECharts.
 
-ZabbixWidgets adds one dashboard widget, **Extended Charts**, that offers 26 chart types drawn from your existing Zabbix items. Pick a chart type in the widget's edit form and only the settings that chart uses are shown. Every chart has an explicit data contract: when the data does not fit, the widget says what is missing instead of drawing a misleading picture.
+ZabbixWidgets adds one dashboard widget, **Extended Charts**, that offers 32 chart types drawn from your existing Zabbix items, several with more than one presentation. Pick a chart type in the widget's edit form and only the settings that chart uses are shown. Every chart has an explicit data contract: when the data does not fit, the widget says what is missing instead of drawing a misleading picture.
 
 Tested against Zabbix 7.0, 7.2 and 7.4.
 
@@ -44,7 +44,7 @@ Each image is the module's own bundle drawing that chart's sample payload in Chr
 <td align="center"><img src="docs/screenshots/pie.png" alt="Pie chart"><br><b>C15 Pie</b><br><sub>Shares of a total, sorted, with value and percentage labels.</sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/screenshots/level_gauge.png" alt="Vertical Level Gauge"><br><b>C16 Vertical Level Gauge</b><br><sub>Tank-style levels with thresholds and a target.</sub></td>
+<td align="center"><img src="docs/screenshots/level_gauge.png" alt="Gauge as level tubes"><br><b>C16 Gauge</b><br><sub>Level tubes, dials, progress arcs or rings, with thresholds and a target.</sub></td>
 <td align="center"><img src="docs/screenshots/ranking_bar.png" alt="Horizontal Ranking Bar"><br><b>C17 Horizontal Ranking Bar</b><br><sub>Top or bottom N, coloured by threshold.</sub></td>
 <td align="center"><img src="docs/screenshots/treemap.png" alt="Treemap"><br><b>C18 Treemap</b><br><sub>Area by one item, colour by another, with drill-down.</sub></td>
 </tr>
@@ -61,6 +61,48 @@ Each image is the module's own bundle drawing that chart's sample payload in Chr
 <tr>
 <td align="center"><img src="docs/screenshots/sparkline_grid.png" alt="Sparkline Grid"><br><b>C25 Sparkline Grid</b><br><sub>A tile per item with its latest value, change and recent trend.</sub></td>
 <td align="center"><img src="docs/screenshots/threshold_band.png" alt="Threshold Band"><br><b>C26 Threshold Band</b><br><sub>History drawn over threshold bands, with an optional target line.</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/mixed.png" alt="Mixed Line and Bar"><br><b>C28 Mixed Line and Bar</b><br><sub>Bars aggregated per period with lines over them, one axis per unit.</sub></td>
+<td align="center"><img src="docs/screenshots/distribution.png" alt="Distribution as box plots"><br><b>C29 Distribution</b><br><sub>Box plots or histograms of raw samples in the period.</sub></td>
+<td align="center"><img src="docs/screenshots/parallel.png" alt="Parallel Coordinates"><br><b>C30 Parallel Coordinates</b><br><sub>Several metrics per host side by side, one axis each.</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/sankey.png" alt="Sankey diagram"><br><b>C31 Sankey</b><br><sub>Directed flows between endpoints named by item tags.</sub></td>
+<td align="center"><img src="docs/screenshots/geomap.png" alt="Geographic Site Map"><br><b>C32 Geographic Site Map</b><br><sub>Hosts at their inventory coordinates over a bundled map.</sub></td>
+<td align="center"><img src="docs/screenshots/waterfall.png" alt="Waterfall chart"><br><b>C33 Waterfall</b><br><sub>Contributions from one level to the next, with totals.</sub></td>
+</tr>
+</table>
+
+### Presentation options
+
+Charts that share a data contract offer several presentations, chosen in the edit form. Saved widgets keep their original presentation.
+
+<table>
+<tr>
+<td align="center" width="33%"><img src="docs/screenshots/level_gauge-dial.png" alt="Gauge as dials"><br><b>C16 Gauge: dial</b></td>
+<td align="center" width="33%"><img src="docs/screenshots/level_gauge-progress.png" alt="Gauge as progress arcs"><br><b>C16 Gauge: progress arc</b></td>
+<td align="center" width="33%"><img src="docs/screenshots/level_gauge-ring.png" alt="Gauge as rings"><br><b>C16 Gauge: ring</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/stacked_bar-diverging.png" alt="Diverging stacked bars"><br><b>C02 Stacked Bar: diverging</b></td>
+<td align="center"><img src="docs/screenshots/stacked_bar-percent.png" alt="Percentage stacked bars"><br><b>C02 Stacked Bar: percentage</b></td>
+<td align="center"><img src="docs/screenshots/column-horizontal.png" alt="Horizontal columns"><br><b>C01 Column: horizontal</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/line-step.png" alt="Stepped lines"><br><b>C21 Line: stepped</b></td>
+<td align="center"><img src="docs/screenshots/pie-rose.png" alt="Rose pie"><br><b>C15 Pie: rose</b></td>
+<td align="center"><img src="docs/screenshots/bubble-scatter.png" alt="XY scatter"><br><b>C08 Bubble: XY scatter</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/network-force.png" alt="Force-directed network"><br><b>C11 Network: force layout, host group colours</b></td>
+<td align="center"><img src="docs/screenshots/network-fixed.png" alt="Network with fixed positions and weighted links"><br><b>C11 Network: fixed positions, weighted links</b></td>
+<td align="center"><img src="docs/screenshots/tree-radial.png" alt="Radial tree"><br><b>C10 Tree: radial</b></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/distribution-histogram.png" alt="Histogram"><br><b>C29 Distribution: histogram</b></td>
+<td align="center"><img src="docs/screenshots/sankey-vertical.png" alt="Vertical Sankey"><br><b>C31 Sankey: vertical</b></td>
+<td align="center"><img src="docs/screenshots/geomap-none.png" alt="Site map without a base map"><br><b>C32 Site Map: no base map</b></td>
 </tr>
 </table>
 
@@ -87,7 +129,7 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 | C13 | Calendar Heat Map | History |
 | C14 | LLD Data Table | Latest and previous values, value maps and problems |
 | C15 | Pie | Latest values |
-| C16 | Vertical Level Gauge | Latest values and user macros |
+| C16 | Gauge (level, dial, progress, ring) | Latest values and user macros |
 | C17 | Horizontal Ranking Bar | Latest values and user macros |
 | C18 | Treemap | Latest values, hosts, host groups and tags |
 | C19 | Sunburst | Latest values, hosts, host groups and tags |
@@ -98,8 +140,25 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 | C24 | State Timeline | History and value maps |
 | C25 | Sparkline Grid | Latest values and history |
 | C26 | Threshold Band | History and user macros |
+| C28 | Mixed Line and Bar | History (trends for long periods) and user macros |
+| C29 | Distribution (Boxplot / Histogram) | Raw history only |
+| C30 | Parallel Coordinates | Latest values and tags |
+| C31 | Sankey | Latest values and tags |
+| C32 | Geographic Site Map | Latest values, host inventory location, user macros and an optional map file |
+| C33 | Waterfall | Latest values |
 
-[Chart contracts](docs/CHART-CONTRACTS.md) lists every role, setting and rule per chart.
+[Chart contracts](docs/CHART-CONTRACTS.md) lists every role, setting and rule per chart. [Apache ECharts example coverage](docs/ECHARTS-COVERAGE.md) compares each example in the official ECharts gallery with what the module draws, and says why the rest are not offered.
+
+Presentation options within existing charts:
+
+- **C01 Column**: vertical or horizontal.
+- **C02 Stacked Bar**: values, percentage of each category, or diverging (opposing items extend the other way from zero); horizontal or vertical.
+- **C03 Doughnut and C15 Pie**: rose layout by radius or area, inner and outer radius, label position.
+- **C08 Bubble**: bubble size from an item, or a plain XY scatter without one.
+- **C10 Tree**: left to right, right to left, top down, bottom up or radial.
+- **C11 Network**: circular, force or fixed layout; directed or undirected; node colours by host group or host tag; host and link labels; link widths from a number or an item.
+- **C16 Gauge**: level tube, dial, progress arc or ring.
+- **C21 Temporal Line and C28**: straight, smoothed or stepped lines (hold until the next sample, back to the previous one, or change halfway).
 
 ### Trustworthy data
 
@@ -109,6 +168,11 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 - Time series use real samples only. Lines break at gaps (2.5 update intervals by default, or a maximum you set) instead of joining across them.
 - Long periods are read from hourly trends, short ones from history.
 - Ambiguous mappings, such as two items for one table cell, are reported, never guessed.
+- Distributions are computed from raw history only; hourly trends cannot give quartiles, outliers or bins, so a period that would need them is refused.
+- Percentage stacks, Sankey flows and waterfall steps are only drawn for values that add up, and a category with a missing member is left empty rather than shared out.
+- Sites are placed only at the latitude and longitude in host inventory, and nothing is fetched from map services.
+- Network and map links say that two hosts are connected; a link shows a measured value only when its weight names an item. Relationships such as LLDP neighbours or LAG membership are never shown as traffic.
+- Samples with the same second are kept in Zabbix's nanosecond order, and calendar-day buckets follow the dashboard time zone across daylight-saving changes.
 
 ### Zabbix integration
 
@@ -123,7 +187,7 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 
 - Crosshair tooltip on time series, with each series' nearest sample.
 - Zoom and pan on time series, drill-down on the treemap, sorting and filtering in the LLD table.
-- Legend selection, zoom and table sorting survive refreshes.
+- Legend selection, zoom, table sorting, dragged network nodes and the map view survive refreshes.
 
 ### Runs beside other modules
 
@@ -142,6 +206,7 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 - Zabbix frontend 7.0, 7.2 or 7.4.
 - Access to the frontend's `modules` directory on the web server.
 - A Zabbix Super admin account to enable the module.
+- For the Geographic Site Map: host inventory enabled on the hosts it shows, with **Location latitude** and **Location longitude** filled in. Optional custom maps are GeoJSON files placed in the module's `assets/geo` folder (see [its README](modules/extended-charts/assets/geo/README.md)).
 
 ### 1. Download
 
@@ -214,6 +279,7 @@ If the widget shows a message instead of a chart, it names what is missing or in
 ## Documentation
 
 - [Chart contracts](docs/CHART-CONTRACTS.md)
+- [Apache ECharts example coverage](docs/ECHARTS-COVERAGE.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Testing](docs/TESTING.md)
 - [Changelog](CHANGELOG.md)

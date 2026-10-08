@@ -16,7 +16,10 @@ export const ROLE_LABELS = Object.freeze({
 	duration: 'duration',
 	progress: 'progress',
 	weight: 'weight',
-	colour: 'colour'
+	colour: 'colour',
+	opposing: 'opposing',
+	bar: 'bar',
+	line: 'line'
 });
 
 /** Joins names into "a, b and 2 more" so messages stay short. */

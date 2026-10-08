@@ -130,3 +130,18 @@ export function colourScale(context, values, { min = null, max = null, units = '
 		inRange: { color: context.theme.mode === 'dark' ? ['#1d3b53', '#56B4E9', '#F0E442'] : ['#e8f1f8', '#0072B2', '#08306b'] }
 	};
 }
+
+/**
+ * Pie and doughnut radii: the user's inner and outer radius (percent of the
+ * smaller side, 0 = the chart's own default) and an optional rose layout.
+ * A rose draws a value as a radius ("radius") or keeps equal angles and
+ * draws it as a radius ("area"); both are presentations, and slices of a
+ * rose are harder to compare than plain slices.
+ */
+export function pieGeometry(config, [defaultInner, defaultOuter]) {
+	const percent = (value, fallback) => (Number.isInteger(value) && value > 0 ? value : fallback);
+	const outer = percent(config.outer_radius, defaultOuter);
+	const inner = Math.min(percent(config.inner_radius, defaultInner), Math.max(0, outer - 5));
+	const rose = config.pie_rose === 'radius' || config.pie_rose === 'area' ? config.pie_rose : undefined;
+	return { radius: [`${inner}%`, `${outer}%`], roseType: rose };
+}
