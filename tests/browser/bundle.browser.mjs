@@ -11,7 +11,7 @@ import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SAMPLES, sample } from '../fixtures/samples.js';
+import { SAMPLES, VARIANTS, sample, variant } from '../fixtures/samples.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const bundle = path.join(root, 'modules/extended-charts/assets/js/zabbixwidgets-charts.js');
@@ -90,10 +90,14 @@ const result = await page.evaluate(async ({ body, first, second }) => {
 }, { body, first: series('42'), second: series('43') });
 
 const charts = [];
-for (const chart of Object.keys(SAMPLES)) {
-	const outcome = await page.evaluate(async ({ body, payload }) => {
+const drawn = [
+	...Object.keys(SAMPLES).map((chart) => [chart, sample(chart)]),
+	...Object.keys(VARIANTS).map((name) => [name, variant(name)])
+];
+for (const [chart, payload] of drawn) {
+	const outcome = await page.evaluate(async ({ body, payload, name }) => {
 		const target = document.createElement('div');
-		target.id = `chart-${payload.chart}`;
+		target.id = `chart-${name}`;
 		target.style.cssText = 'width:640px;height:320px;background:#fff';
 		document.body.append(target);
 		const widget = new window.WidgetZabbixWidgetsCharts(target);
@@ -119,7 +123,7 @@ for (const chart of Object.keys(SAMPLES)) {
 			painted += data[index] > 0 ? 1 : 0;
 		}
 		return { painted: painted / (canvas.width * canvas.height), messages };
-	}, { body, payload: sample(chart) });
+	}, { body, payload, name: chart });
 
 	if (process.env.SCREENSHOT_DIR) {
 		await mkdir(process.env.SCREENSHOT_DIR, { recursive: true });

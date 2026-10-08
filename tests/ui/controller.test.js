@@ -112,4 +112,27 @@ describe('ChartController', () => {
 		expect(restoreView({ legend: { show: false } }, { legendSelected: { a: false } }).legend.selected).toBeUndefined();
 		expect(option.legend.selected).toBeUndefined();
 	});
+
+	it('reads a moved network layout back before a refresh redraws it', () => {
+		const layouts = { 0: [10, 20], 1: [30, 40] };
+		const data = { each: (fn) => [0, 1].forEach(fn), getItemLayout: (index) => layouts[index], getId: (index) => String(index + 1) };
+		instance.getModel = vi.fn(() => ({
+			getSeriesByIndex: () => ({ subType: 'graph', getData: () => data, get: (key) => ({ zoom: 2, center: [5, 5] })[key] })
+		}));
+		const network = {
+			chart: 'network',
+			config: { edge_source: 'list', edge_list: 'a -> b', network_layout: 'force', show_legend: true },
+			series: [],
+			hosts: [{ hostid: '1', name: 'a', groups: [], tags: [], macros: {} }, { hostid: '2', name: 'b', groups: [], tags: [], macros: {} }]
+		};
+		const controller = new ChartController(widgetRoot());
+		controller.render(network);
+		expect(instance.getModel).not.toHaveBeenCalled();
+		controller.render(network);
+		expect(controller.state.nodePositions).toEqual({ 1: [10, 20], 2: [30, 40] });
+		const nodes = instance.setOption.mock.calls[1][0].series[0].data;
+		expect(nodes.map((node) => [node.x, node.y])).toEqual([[10, 20], [30, 40]]);
+		expect(instance.setOption.mock.calls[1][0].series[0].zoom).toBe(2);
+		delete instance.getModel;
+	});
 });

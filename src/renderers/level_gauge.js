@@ -1,12 +1,15 @@
 /**
- * C16 Vertical Level Gauge: each value as the fill level of an upright
- * tube, like a tank, thermometer or pressure column.
+ * C16 Gauge: each value against a fixed scale, drawn as the fill level of an
+ * upright tube (the default, like a tank, thermometer or pressure column),
+ * a dial with a needle, a progress arc or a ring.
  *
  * Minimum and maximum are required settings (numbers or user macros, which
  * resolve per host); nothing is derived from the data. The fill is clamped
  * to the tube, while the label always shows the actual value and marks
  * values outside the scale. Thresholds colour the fill by the band the
- * value falls in and are drawn as a strip beside the tube.
+ * value falls in and are drawn as a strip beside the tube (or as the
+ * coloured rim of a dial). The style changes the drawing only: every style
+ * reads the same values, scale, thresholds and target.
  */
 import { baseOption, seriesLabels } from './common.js';
 import { bandColours, bandIndex, resolveScale } from '../data/thresholds.js';
@@ -53,8 +56,153 @@ function valueText(gauge, config, decimals) {
 	return gauge.above ? `▲ ${text}` : gauge.below ? `▼ ${text}` : text;
 }
 
+/**
+ * Centre and radius (percentages) of each dial in a grid. The grid is the
+ * one that gives the largest dials for the widget's shape (width / height),
+ * and the radius leaves room for the title under each dial.
+ */
+export function dialLayout(count, aspect = 2) {
+	const ratio = Number.isFinite(aspect) && aspect > 0 ? aspect : 2;
+	let best = null;
+	for (let columns = 1; columns <= Math.max(1, count); columns++) {
+		const rows = Math.max(1, Math.ceil(count / columns));
+		// In units of the widget height: a cell is ratio / columns wide and 1 / rows high.
+		const radius = Math.min((ratio / columns) * 0.45, (1 / rows) * 0.4);
+		if (best === null || radius > best.radius + 1e-9) {
+			best = { columns, rows, radius };
+		}
+	}
+	const { columns, rows, radius } = best;
+	// ECharts reads a percentage radius against half the smaller side.
+	const percent = (radius / (Math.min(ratio, 1) / 2)) * 100;
+	return Array.from({ length: count }, (_, index) => ({
+		center: [`${((index % columns) + 0.5) * (100 / columns)}%`, `${(Math.floor(index / columns) + 0.5) * (100 / rows)}%`],
+		radius: `${Math.round(percent * 10) / 10}%`
+	}));
+}
+
+const DIAL_ANGLES = { dial: [210, -30], progress: [210, -30], ring: [90, -270] };
+
+/** One ECharts gauge (two with a target) per value: dial, progress arc or ring. */
+export function buildDialOption(payload, context, style) {
+	const { config } = payload;
+	const list = gauges(payload);
+	const { theme } = context;
+	const layout = dialLayout(list.length, context.aspect);
+	const [startAngle, endAngle] = DIAL_ANGLES[style];
+	const showValue = config.show_value !== false;
+	const base = baseOption(context);
+
+	const series = list.flatMap((gauge, index) => {
+		const { min, max } = gauge.scale;
+		const fill = gauge.colour ?? theme.palette[index % theme.palette.length];
+		const rim = gauge.bands.length > 0
+			? gauge.bands.map((band) => [band.to, band.colour])
+			: [[1, theme.splitLine]];
+		const width = style === 'dial' ? 10 : 14;
+		const shared = {
+			type: 'gauge',
+			center: layout[index].center,
+			radius: layout[index].radius,
+			startAngle,
+			endAngle,
+			min,
+			max
+		};
+		const main = {
+			...shared,
+			name: gauge.label,
+			// The needle and arc stop at the scale ends; the value text shows the real value.
+			data: [{ value: Math.min(max, Math.max(min, gauge.entry.value)), name: gauge.label }],
+			axisLine: { lineStyle: { width, color: style === 'dial' ? rim : [[1, theme.splitLine]] } },
+			progress: { show: style !== 'dial', width, roundCap: style === 'ring', itemStyle: { color: fill } },
+			pointer: { show: style === 'dial', length: '62%', width: 4, itemStyle: { color: theme.text } },
+			anchor: { show: style === 'dial', size: 8, itemStyle: { color: theme.text } },
+			axisTick: { show: style === 'dial', distance: -width, length: 4, lineStyle: { color: theme.axisLine } },
+			splitLine: { show: style === 'dial', distance: -width, length: width, lineStyle: { color: theme.axisLine, width: 1 } },
+			axisLabel: {
+				show: style === 'dial',
+				distance: width + 6,
+				color: theme.mutedText,
+				fontSize: 10,
+				formatter: (value) => formatValue(value, gauge.entry.units, 0)
+			},
+			title: { show: true, offsetCenter: [0, style === 'ring' ? '28%' : '78%'], color: theme.mutedText, fontSize: 12, overflow: 'truncate', width: 140 },
+			detail: {
+				show: showValue,
+				offsetCenter: [0, style === 'ring' ? '-6%' : '42%'],
+				valueAnimation: false,
+				color: theme.text,
+				fontSize: 16,
+				fontWeight: 600,
+				formatter: () => valueText(gauge, config, context.decimals)
+			}
+		};
+		if (gauge.scale.target === null) {
+			return [main];
+		}
+		// The target is a short mark across the rim, never a second needle that could be read as a value.
+		const at = (Math.min(max, Math.max(min, gauge.scale.target)) - min) / (max - min);
+		const half = 0.006;
+		const target = {
+			...shared,
+			name: `${gauge.label} target`,
+			silent: true,
+			z: 3,
+			data: [],
+			axisLine: { lineStyle: { width: width + 6, color: [[Math.max(0, at - half), 'transparent'], [Math.min(1, at + half), theme.text], [1, 'transparent']] } },
+			progress: { show: false },
+			axisTick: { show: false },
+			splitLine: { show: false },
+			axisLabel: { show: false },
+			title: { show: false },
+			detail: { show: false },
+			anchor: { show: false },
+			pointer: { show: false }
+		};
+		return [main, target];
+	});
+
+	return {
+		...base,
+		legend: { show: false },
+		tooltip: {
+			...base.tooltip,
+			trigger: 'item',
+			formatter: (param) => {
+				const gauge = list.find((entry) => entry.label === param.seriesName) ?? list[Math.floor(param.seriesIndex / 2)];
+				return gauge ? tooltipText(gauge, context) : '';
+			}
+		},
+		series
+	};
+}
+
+function tooltipText(gauge, context) {
+	const units = gauge.entry.units;
+	const format = (value) => formatValue(value, units, context.decimals);
+	const lines = [
+		`<b>${escapeHtml(gauge.label)}</b>`,
+		`Value: <b>${escapeHtml(format(gauge.entry.value))}</b> (${escapeHtml(formatValue(gauge.percent, '', 1))}% of scale)`,
+		`Scale: ${escapeHtml(format(gauge.scale.min))} – ${escapeHtml(format(gauge.scale.max))}`
+	];
+	if (gauge.scale.target !== null) {
+		lines.push(`Target: ${escapeHtml(format(gauge.scale.target))}`);
+	}
+	if (gauge.scale.thresholds.length > 0) {
+		lines.push(`Thresholds: ${escapeHtml(gauge.scale.thresholds.map(format).join(', '))}`);
+	}
+	if (gauge.above || gauge.below) {
+		lines.push(gauge.above ? 'Above the maximum' : 'Below the minimum');
+	}
+	return lines.join('<br>');
+}
+
 export function buildLevelGaugeOption(payload, context) {
 	const { config } = payload;
+	if (config.gauge_style === 'dial' || config.gauge_style === 'progress' || config.gauge_style === 'ring') {
+		return buildDialOption(payload, context, config.gauge_style);
+	}
 	const list = gauges(payload);
 	const { theme } = context;
 	const showValue = config.show_value !== false;
@@ -135,26 +283,7 @@ export function buildLevelGaugeOption(payload, context) {
 		tooltip: {
 			...base.tooltip,
 			trigger: 'item',
-			formatter: (param) => {
-				const gauge = list[param.dataIndex];
-				const units = gauge.entry.units;
-				const format = (value) => formatValue(value, units, context.decimals);
-				const lines = [
-					`<b>${escapeHtml(gauge.label)}</b>`,
-					`Value: <b>${escapeHtml(format(gauge.entry.value))}</b> (${escapeHtml(formatValue(gauge.percent, '', 1))}% of scale)`,
-					`Scale: ${escapeHtml(format(gauge.scale.min))} – ${escapeHtml(format(gauge.scale.max))}`
-				];
-				if (gauge.scale.target !== null) {
-					lines.push(`Target: ${escapeHtml(format(gauge.scale.target))}`);
-				}
-				if (gauge.scale.thresholds.length > 0) {
-					lines.push(`Thresholds: ${escapeHtml(gauge.scale.thresholds.map(format).join(', '))}`);
-				}
-				if (gauge.above || gauge.below) {
-					lines.push(gauge.above ? 'Above the maximum' : 'Below the minimum');
-				}
-				return lines.join('<br>');
-			}
+			formatter: (param) => tooltipText(list[param.dataIndex], context)
 		},
 		series: [{
 			type: 'custom',
@@ -167,5 +296,7 @@ export function buildLevelGaugeOption(payload, context) {
 
 export default {
 	id: 'level_gauge',
-	buildOption: buildLevelGaugeOption
+	buildOption: buildLevelGaugeOption,
+	// Dials are arranged for the widget's shape, so a resize lays them out again.
+	sizeDependent: true
 };

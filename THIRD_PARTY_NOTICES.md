@@ -21,4 +21,13 @@ The Apache Software Foundation (https://www.apache.org/).
 
 The full NOTICE file is distributed as `licenses/echarts/NOTICE` in the release package.
 
+## Natural Earth
+
+The world land outline drawn by the Geographic Site Map,
+`src/data/geo/world-land.js`, is derived from Natural Earth's 1:110m land
+polygons (`ne_110m_land.geojson` from the natural-earth-vector repository),
+with coordinates rounded to two decimal places by `scripts/world-land.mjs`.
+Natural Earth data is in the public domain (naturalearthdata.com). No
+attribution is required; it is given here for provenance.
+
 Development-only tools (esbuild, ESLint, Vitest, jsdom) are not redistributed.
