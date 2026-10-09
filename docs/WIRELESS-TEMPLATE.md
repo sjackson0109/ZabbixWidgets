@@ -14,7 +14,8 @@ What a Zabbix template (and the hosts it is linked to) must provide for every pa
 | Channel width item, per radio | Item or item prototype | No (20 MHz assumed) | Overlap |
 | SNR item, per radio | Item or item prototype | No (grey without it) | Colour |
 | Transmit power item, per radio | Item or item prototype | No, but needed for estimated coverage unless you enter a default power | Ring size, gaps, overlap |
-| Rogue AP item(s) | Item or item prototypes | No | Rogue badge |
+| Client count item(s) | Item or item prototypes | No | Blue client badge |
+| Rogue AP item(s) | Item or item prototypes | No | Orange rogue badge |
 | Radio identity | Key parameter, item tag or item name | Yes | Grouping a radio's items together |
 | Floor plan | Administration > General > Images, type Background | Yes | The picture under the map |
 
@@ -113,7 +114,11 @@ Each widget field selects items by a name pattern with `*` wildcards, and a patt
 
 Avoid names where one role's name contains another's: with `Radio 1 channel width`, the pattern `Radio * channel` would select the width items as channel items too. Name the width item `Radio 1 width`, or use `Radio * channel` only if no other radio item name contains "channel".
 
-## 3. Rogue APs (optional)
+## 3. Client count (optional)
+
+One numeric item per AP host whose value is the number of clients associated with that AP, such as `Associated clients`. Several matching items on one host (for example one per radio or per SSID) are added together, so point the field at either the per-AP total or the per-radio counts, not both. It is drawn as a blue badge on the AP, to the left of the rogue badge, and shown in the tooltip.
+
+## 4. Rogue APs (optional)
 
 Two forms are supported, chosen in **Rogue APs**:
 
@@ -122,13 +127,13 @@ Two forms are supported, chosen in **Rogue APs**:
 
 Rogues reported only on a controller host, with no item on the detecting AP's own host, cannot be shown. Rogue APs are never drawn at a position of their own, because Zabbix does not know where they are.
 
-## 4. Floor plan
+## 5. Floor plan
 
 - Upload the plan in **Administration > General > Images** with the type **Background** (PNG, JPEG or GIF). Images are readable by all users.
 - For estimated coverage, enter the plan's real width in metres in the widget.
 - Make everything outside the building, and any open voids (atriums), **transparent** in a PNG. Those areas are then never shaded as coverage gaps or overlap.
 
-## 5. Example: one radio from discovery
+## 6. Example: one radio from discovery
 
 A discovery rule returning `{#RADIO}` = `1`, `2`, `3` with these item prototypes gives each AP three complete radios:
 
@@ -140,7 +145,7 @@ A discovery rule returning `{#RADIO}` = `1`, `2`, `3` with these item prototypes
 | `Radio {#RADIO} SNR` | `wlan.radio.snr[{#RADIO}]` | Numeric (float) | `dB` | |
 | `Radio {#RADIO} transmit power` | `wlan.radio.txpower[{#RADIO}]` | Numeric (float) | `dBm` | |
 
-Plus, on the host or template: `Rogue APs detected` (`wlan.rogue.count`, Numeric (unsigned)), the macros `{$WIFI.MAP.X}` and `{$WIFI.MAP.Y}` (empty on the template, set on each host), and a host tag such as `floor`.
+Plus, on the host or template: `Associated clients` (`wlan.clients.count`, Numeric (unsigned)), `Rogue APs detected` (`wlan.rogue.count`, Numeric (unsigned)), the macros `{$WIFI.MAP.X}` and `{$WIFI.MAP.Y}` (empty on the template, set on each host), and a host tag such as `floor`.
 
 When a device reports the band as a code (for example `1` = 2.4 GHz, `2` = 5 GHz, `3` = 6 GHz), keep the item numeric and add a value mapping `1 → 2.4 GHz`, `2 → 5 GHz`, `3 → 6 GHz`. The width works the same way (`3 → 80 MHz`).
 

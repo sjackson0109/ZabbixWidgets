@@ -297,7 +297,7 @@ From the same model the map can shade **coverage gaps** (dark: no radio reaches 
 
 The scale comes from the plan, not the widget: metres are converted with the floor plan width you enter, and the whole plan, with the rings on it, is fitted into the widget at its own aspect ratio. Resizing the widget, or zooming and panning inside it, scales everything together.
 
-The band must come from the band item: a value in GHz or MHz, or a value mapping whose text names the band (for example `5 GHz`). It is never worked out from the channel number. Rogue APs are counted from one item's value, or as the number of matching items when each rogue is its own discovered item; they are shown on the access point that reports them and are never placed on the plan.
+The band must come from the band item: a value in GHz or MHz, or a value mapping whose text names the band (for example `5 GHz`). It is never worked out from the channel number. A **client count** item (for example associated clients per access point; several items on one host are added together) is shown as a blue badge, next to an orange rogue AP badge. Rogue APs are counted from one item's value, or as the number of matching items when each rogue is its own discovered item; they are shown on the access point that reports them and are never placed on the plan.
 
 ## Documentation
 

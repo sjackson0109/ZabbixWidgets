@@ -73,6 +73,7 @@
 		"width_items": "Channel width items",
 		"snr_items": "SNR items",
 		"rogue_items": "Rogue AP items",
+		"client_items": "Client count items",
 		"txpower_items": "Transmit power items"
 	},
 	"control_conditions": {
@@ -846,6 +847,7 @@
 				"width": {"field": "width_items", "required": false, "numeric": false},
 				"snr": {"field": "snr_items", "required": false, "numeric": true},
 				"rogue": {"field": "rogue_items", "required": false, "numeric": true},
+				"clients": {"field": "client_items", "required": false, "numeric": true},
 				"txpower": {"field": "txpower_items", "required": false, "numeric": true, "applies": "when:ring_size=model"}
 			},
 			"data": ["latest", "hosts", "macros", "valuemaps", "floor_image", "positions"],
@@ -855,7 +857,7 @@
 			"min_series": 1,
 			"controls": [
 				"floor_image", "host_tags", "position_source", "position_macro_x", "position_macro_y", "node_positions",
-				"band_items", "channel_items", "width_items", "snr_items", "rogue_items", "radio_by", "radio_tag", "radio_regex",
+				"band_items", "channel_items", "width_items", "snr_items", "client_items", "rogue_items", "radio_by", "radio_tag", "radio_regex",
 				"ring_size", "plan_width", "txpower_items", "tx_power_default", "edge_level", "path_loss_n", "coverage_scale", "show_gaps", "show_interference",
 				"snr_thresholds", "rogue_count", "show_band_24", "show_band_5", "show_band_6", "show_node_labels"
 			],

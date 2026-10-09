@@ -19,10 +19,9 @@
  * - Colour is the radio's SNR against the SNR thresholds; a radio with no
  *   SNR value is grey. Rings have no border.
  * - Hovering a radio highlights every radio on the same band and channel.
- * - A rogue AP count, when configured, is a badge on the access point that
- *   reported it. Rogue APs themselves are never placed: their position is
- *   not known.
- *
+ * - A client count (blue) and a rogue AP count (orange), when configured,
+ *   are badges side by side on the access point that reported them. Rogue
+ *   APs themselves are never placed: their position is not known.
  * - Coverage gaps and channel overlap are shaded on a grid over the plan.
  *   Fully transparent parts of the floor plan image count as outside the
  *   building and are not shaded, so a plan cut out to the building's outline
@@ -42,6 +41,10 @@ import { escapeHtml } from '../utils/escape.js';
 const RING_SIZE = Object.freeze({ '2.4': 58, 5: 42, 6: 26 });
 const BAND_Z = Object.freeze({ '2.4': 2, 5: 3, 6: 4 });
 const ROGUE_COLOUR = '#D55E00';
+const CLIENT_COLOUR = '#0072B2';
+/** Badge layout in pixels: left edge of the first badge from the access point, and the gap between badges. */
+const BADGE_LEFT = 7;
+const BADGE_GAP = 2;
 
 /**
  * Screen offset of each band's rings from the access point, in pixels, so the
@@ -190,6 +193,9 @@ export function buildWifiFloorOption(payload, context) {
 	};
 	const apTooltip = (ap) => {
 		const lines = [`<b>${escapeHtml(ap.name)}</b>`, ...ap.radios.map(radioLine)];
+		if (ap.clients !== null) {
+			lines.push(`Clients: <b>${escapeHtml(formatValue(ap.clients, '', 0))}</b>`);
+		}
 		if (ap.rogues !== null) {
 			lines.push(`Rogue APs: <b>${escapeHtml(formatValue(ap.rogues.count, '', 0))}</b>`);
 			lines.push(...ap.rogues.names.slice(0, 10).map((name) => `<span style="opacity:0.7">${escapeHtml(name)}</span>`));
@@ -355,6 +361,39 @@ export function buildWifiFloorOption(payload, context) {
 	}
 
 	const withRogues = aps.filter((ap) => ap.rogues !== null);
+	const withClients = aps.filter((ap) => ap.clients !== null);
+	// Badges sit side by side above and to the right of the access point: clients, then rogue APs.
+	const badgeText = (count) => formatValue(count, '', 0);
+	const badgeWidth = (count) => Math.max(18, badgeText(count).length * 7 + 8);
+	const badgeOffset = (ap, slot) => {
+		const clientsWidth = ap.clients === null ? 0 : badgeWidth(ap.clients) + BADGE_GAP;
+		const left = BADGE_LEFT + (slot === 1 ? clientsWidth : 0);
+		const width = badgeWidth(slot === 0 ? ap.clients : ap.rogues.count);
+		return [left + width / 2, -16];
+	};
+	const badgeSeries = (id, list, count, colour, slot) => ({
+		type: 'scatter',
+		id,
+		coordinateSystem: 'geo',
+		z: 11,
+		symbol: 'roundRect',
+		label: {
+			show: true,
+			position: 'inside',
+			fontSize: 10,
+			fontWeight: 'bold',
+			color: '#ffffff',
+			formatter: (param) => badgeText(count(list[param.dataIndex]))
+		},
+		tooltip: { formatter: (param) => apTooltip(list[param.dataIndex]) },
+		data: list.map((ap) => ({
+			name: ap.name,
+			value: point(ap),
+			symbolSize: [badgeWidth(count(ap)), 14],
+			symbolOffset: badgeOffset(ap, slot),
+			itemStyle: { color: colour(ap) }
+		}))
+	});
 	const base = baseOption(context);
 
 	return {
@@ -410,29 +449,8 @@ export function buildWifiFloorOption(payload, context) {
 				tooltip: { formatter: (param) => apTooltip(aps[param.dataIndex]) },
 				data: aps.map((ap) => ({ name: ap.name, value: point(ap) }))
 			},
-			{
-				type: 'scatter',
-				id: 'rogues',
-				coordinateSystem: 'geo',
-				z: 11,
-				symbol: 'roundRect',
-				symbolSize: [18, 14],
-				symbolOffset: [16, -16],
-				label: {
-					show: true,
-					position: 'inside',
-					fontSize: 10,
-					fontWeight: 'bold',
-					color: '#ffffff',
-					formatter: (param) => formatValue(withRogues[param.dataIndex].rogues.count, '', 0)
-				},
-				tooltip: { formatter: (param) => apTooltip(withRogues[param.dataIndex]) },
-				data: withRogues.map((ap) => ({
-					name: ap.name,
-					value: point(ap),
-					itemStyle: { color: ap.rogues.count > 0 ? ROGUE_COLOUR : theme.mutedText }
-				}))
-			}
+			badgeSeries('clients', withClients, (ap) => ap.clients, () => CLIENT_COLOUR, 0),
+			badgeSeries('rogues', withRogues, (ap) => ap.rogues.count, (ap) => (ap.rogues.count > 0 ? ROGUE_COLOUR : theme.mutedText), 1)
 		]
 	};
 }

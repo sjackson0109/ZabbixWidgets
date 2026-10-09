@@ -504,11 +504,12 @@ Every chart also needs items for each required role, no more than `Max items` pe
 | width | `width_items` | no | no |  |
 | snr | `snr_items` | no | yes |  |
 | rogue | `rogue_items` | no | yes |  |
+| clients | `client_items` | no | yes |  |
 | txpower | `txpower_items` | no | yes |  |
 
 - **Data fetched:** latest, hosts, macros, valuemaps, floor_image, positions
 - **History:** `none`; **time period:** `false`; **min_series:** 1
-- **Controls:** `floor_image`, `host_tags`, `position_source`, `position_macro_x`, `position_macro_y`, `node_positions`, `band_items`, `channel_items`, `width_items`, `snr_items`, `rogue_items`, `radio_by`, `radio_tag`, `radio_regex`, `ring_size`, `plan_width`, `txpower_items`, `tx_power_default`, `edge_level`, `path_loss_n`, `coverage_scale`, `show_gaps`, `show_interference`, `snr_thresholds`, `rogue_count`, `show_band_24`, `show_band_5`, `show_band_6`, `show_node_labels`
+- **Controls:** `floor_image`, `host_tags`, `position_source`, `position_macro_x`, `position_macro_y`, `node_positions`, `band_items`, `channel_items`, `width_items`, `snr_items`, `client_items`, `rogue_items`, `radio_by`, `radio_tag`, `radio_regex`, `ring_size`, `plan_width`, `txpower_items`, `tx_power_default`, `edge_level`, `path_loss_n`, `coverage_scale`, `show_gaps`, `show_interference`, `snr_thresholds`, `rogue_count`, `show_band_24`, `show_band_5`, `show_band_6`, `show_node_labels`
 - **Rules:**
   - `wifi_floor`: A Zabbix background image is the floor plan; each access point needs a position from 0 to 100 (percent across and down) in its own host macros or the positions list, and hosts without one are listed, not drawn. Items are grouped into radios by key parameter, item tag or name expression; a radio needs a band of 2.4, 5 or 6 GHz from its band item (never from the channel number). Radios without SNR are drawn in grey and listed. With estimated coverage, the floor plan width (m), edge level (dBm) and distance loss coefficients must be valid; radios without a transmit power item or entered power get only a band ring and are listed; coverage gaps and channel overlap (from channel and channel width) are estimated on the same model. Rogue APs are a count on the reporting access point, never placed.
 

@@ -25,6 +25,7 @@ export const ROLE_LABELS = Object.freeze({
 	width: 'channel width',
 	snr: 'SNR',
 	rogue: 'rogue AP',
+	clients: 'client count',
 	txpower: 'transmit power'
 });
 

@@ -163,7 +163,8 @@ export function bandShown(config, band) {
 }
 
 /**
- * Builds the access points: placed hosts with their radios and rogue count.
+ * Builds the access points: placed hosts with their radios, client count and
+ * rogue count.
  *
  * Returns { aps, problems } where problems lists what was left out:
  *   unidentified: items without a radio identity
@@ -251,7 +252,11 @@ export function wirelessModel(payload) {
 			}
 		}
 
-		aps.push({ hostid: host.hostid, name: host.name, host, position: placed.get(host.hostid), radios, rogues });
+		// Clients: the sum of the host's client count items, or null without any value.
+		const clientValues = own.filter((entry) => entry.role === 'clients' && typeof entry.value === 'number').map((entry) => entry.value);
+		const clients = clientValues.length === 0 ? null : clientValues.reduce((sum, value) => sum + value, 0);
+
+		aps.push({ hostid: host.hostid, name: host.name, host, position: placed.get(host.hostid), radios, rogues, clients });
 	}
 
 	return { aps, problems, identity };

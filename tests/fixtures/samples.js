@@ -300,10 +300,10 @@ export const SAMPLES = {
 		},
 		floor: FLOOR_PLAN,
 		series: [
-			['1', 'ap-lobby', [['1', '2.4', '6', '20', '31', '9'], ['2', '5', '36', '80', '27', '15'], ['3', '6', '37', '160', '22', '15']], '0'],
-			['2', 'ap-east', [['1', '2.4', '11', '20', '12', '9'], ['2', '5', '36', '80', '18', '15']], '2'],
-			['3', 'ap-west', [['1', '2.4', '3', '20', '24', '9'], ['2', '5', '149', '40', null, '15'], ['3', '6', '69', '160', '29', '15']], '0']
-		].flatMap(([hostid, host, radios, rogues]) => [
+			['1', 'ap-lobby', [['1', '2.4', '6', '20', '31', '9'], ['2', '5', '36', '80', '27', '15'], ['3', '6', '37', '160', '22', '15']], '0', '38'],
+			['2', 'ap-east', [['1', '2.4', '11', '20', '12', '9'], ['2', '5', '36', '80', '18', '15']], '2', '14'],
+			['3', 'ap-west', [['1', '2.4', '3', '20', '24', '9'], ['2', '5', '149', '40', null, '15'], ['3', '6', '69', '160', '29', '15']], '0', '7']
+		].flatMap(([hostid, host, radios, rogues, clients]) => [
 			...radios.flatMap(([index, band, channel, width, snr, power]) => [
 				raw({ role: 'band', hostid, host, name: `Radio ${index} band`, key: `wlan.radio.band[${index}]`, units: 'GHz', value_type: 1, value: band }),
 				raw({ role: 'channel', hostid, host, name: `Radio ${index} channel`, key: `wlan.radio.channel[${index}]`, units: '', value_type: 3, value: channel }),
@@ -311,6 +311,7 @@ export const SAMPLES = {
 				raw({ role: 'snr', hostid, host, name: `Radio ${index} SNR`, key: `wlan.radio.snr[${index}]`, units: 'dB', value: snr }),
 				raw({ role: 'txpower', hostid, host, name: `Radio ${index} transmit power`, key: `wlan.radio.txpower[${index}]`, units: 'dBm', value: power })
 			]),
+			raw({ role: 'clients', hostid, host, name: 'Associated clients', key: 'wlan.clients.count', units: '', value_type: 3, value: clients }),
 			raw({ role: 'rogue', hostid, host, name: 'Rogue APs detected', key: 'wlan.rogue.count', units: '', value_type: 3, value: rogues })
 		]),
 		hosts: [

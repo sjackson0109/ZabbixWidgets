@@ -175,6 +175,20 @@ describe('C34 rogue APs', () => {
 	});
 });
 
+describe('C34 client counts', () => {
+	const clients = (value, name = 'Clients') => item({ role: 'clients', name, key: `clients[${name}]`, units: '', value_type: 3, value });
+	const model = (series) => wirelessModel(payload('wifi_floor', { config: CONFIG, hosts: [ap()], series: [...radio(1), ...series], floor: FLOOR }));
+
+	it('adds up the client count items on the access point', () => {
+		expect(model([clients('12', 'Clients 2.4 GHz'), clients('30', 'Clients 5 GHz')]).aps[0].clients).toBe(42);
+	});
+
+	it('shows no client badge without a value', () => {
+		expect(model([]).aps[0].clients).toBeNull();
+		expect(model([clients(null)]).aps[0].clients).toBeNull();
+	});
+});
+
 describe('C34 estimated coverage', () => {
 	const settings = coverageSettings(CONFIG);
 
