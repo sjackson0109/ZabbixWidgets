@@ -100,7 +100,7 @@ export function parseWidth(series) {
 export function radioIdentity(config) {
 	const source = config.radio_by ?? 'key';
 	if (source === 'regex') {
-		const { regex, error } = compileRowExpression(config.radio_regex);
+		const { regex, error } = compileRowExpression(config.radio_regex, { field: 'radio expression', example: 'Radio (\\d+):' });
 		return { source, tag: '', regex, error };
 	}
 	return { source, tag: String(config.radio_tag ?? '').trim(), regex: null, error: null };
@@ -108,7 +108,7 @@ export function radioIdentity(config) {
 
 /**
  * Positions of hosts in percent of the floor plan.
- * Returns { placed: Map(hostid -> [x, y]), missing: [name], invalid: [name], listErrors, unknown: [name] }.
+ * Returns { placed: Map(hostid -> [x, y]), missing: [name], invalid: [name], listErrors, duplicates: [name], unknown: [name] }.
  */
 export function apPositions(payload) {
 	const { config, hosts } = payload;
@@ -116,6 +116,7 @@ export function apPositions(payload) {
 	const missing = [];
 	const invalid = [];
 	let listErrors = [];
+	let duplicates = [];
 	let unknown = [];
 	const accept = (host, x, y) => {
 		if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 100 && y >= 0 && y <= 100) {
@@ -127,8 +128,10 @@ export function apPositions(payload) {
 	};
 
 	if (config.position_source === 'list') {
-		const { positions, errors } = parseNodePositions(config.node_positions);
+		const parsed = parseNodePositions(config.node_positions);
+		const { positions, errors } = parsed;
 		listErrors = errors;
+		duplicates = parsed.duplicates;
 		const names = new Set(hosts.map((host) => host.name));
 		unknown = [...positions.keys()].filter((name) => !names.has(name));
 		for (const host of hosts) {
@@ -153,7 +156,7 @@ export function apPositions(payload) {
 			}
 		}
 	}
-	return { placed, missing, invalid, listErrors, unknown };
+	return { placed, missing, invalid, listErrors, duplicates, unknown };
 }
 
 /** Whether a band is switched on in the settings. */
@@ -242,10 +245,12 @@ export function wirelessModel(payload) {
 		radios.sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
 
 		const rogueItems = own.filter((entry) => entry.role === 'rogue');
+		// A rogue item with no value in the history period no longer reports a rogue.
+		const reporting = rogueItems.filter((entry) => entry.value !== null && entry.value !== undefined);
 		let rogues = null;
 		if (rogueItems.length > 0) {
 			rogues = config.rogue_count === 'items'
-				? { count: rogueItems.length, names: rogueItems.map((entry) => entry.name) }
+				? { count: reporting.length, names: reporting.map((entry) => entry.name) }
 				: { count: rogueItems.reduce((sum, entry) => sum + (typeof entry.value === 'number' ? entry.value : 0), 0), names: [] };
 			if (config.rogue_count !== 'items' && rogueItems.every((entry) => typeof entry.value !== 'number')) {
 				rogues = null;

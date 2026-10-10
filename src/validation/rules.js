@@ -686,6 +686,9 @@ export const RULES = {
 
 		const positions = apPositions(payload);
 		problems.push(...positions.listErrors.map((line) => error('invalid_positions', `Line ${line.line} of the positions is not in the form "host name = across, down".`)));
+		if (positions.duplicates.length > 0) {
+			problems.push(error('invalid_positions', `These hosts have more than one position: ${listNames(positions.duplicates)}.`));
+		}
 		if (positions.unknown.length > 0) {
 			problems.push(warning('unknown_positions', `These positions name hosts that are not selected: ${listNames(positions.unknown)}.`));
 		}

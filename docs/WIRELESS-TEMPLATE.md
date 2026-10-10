@@ -123,7 +123,7 @@ One numeric item per AP host whose value is the number of clients associated wit
 Two forms are supported, chosen in **Rogue APs**:
 
 - **Item value is the count.** One numeric item per AP host, such as `Rogue APs detected`, whose value is the number of rogue APs that AP sees. Several matching items on one host are added together.
-- **Count matching items.** One discovered item per rogue on the AP host that detects it, such as `Rogue AP {#BSSID} signal`. The badge counts the matching items and the tooltip lists their names; their values are not used.
+- **Count matching items.** One discovered item per rogue on the AP host that detects it, such as `Rogue AP {#BSSID} signal`. The badge counts the matching items that have a value in the history period, and the tooltip lists their names. The values themselves are not used.
 
 Rogues reported only on a controller host, with no item on the detecting AP's own host, cannot be shown. Rogue APs are never drawn at a position of their own, because Zabbix does not know where they are.
 

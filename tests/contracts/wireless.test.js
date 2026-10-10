@@ -95,6 +95,12 @@ describe('C34 positions', () => {
 		expect(fixed.ok).toBe(true);
 		expect(warnings(fixed)).toContain('unknown_positions');
 	});
+
+	it('refuses a host listed twice in the positions list', () => {
+		const config = { position_source: 'list', node_positions: 'ap-1 = 10, 10\nap-1 = 80, 80' };
+		const result = check({ config, hosts: [ap({ x: '', y: '' })] });
+		expect(result.errors.find((problem) => problem.code === 'invalid_positions')?.message).toContain('ap-1');
+	});
 });
 
 describe('C34 radios', () => {
@@ -117,6 +123,9 @@ describe('C34 radios', () => {
 	it('needs a tag name and a valid expression', () => {
 		expect(errors(check({ config: { radio_by: 'tag', radio_tag: '' } }))).toContain('no_radio_tag');
 		expect(errors(check({ config: { radio_by: 'regex', radio_regex: 'Radio \\d+' } }))).toContain('invalid_radio_expression');
+		const message = check({ config: { radio_by: 'regex', radio_regex: 'Radio \\d+' } }).errors.find((problem) => problem.code === 'invalid_radio_expression').message;
+		expect(message).toContain('radio expression');
+		expect(message).not.toContain('row expression');
 	});
 
 	it('leaves out radios without a known band, and refuses when none is left', () => {
@@ -167,6 +176,11 @@ describe('C34 rogue APs', () => {
 	it('counts discovered rogue items when chosen', () => {
 		expect(model({ rogue_count: 'items' }, [rogue('1', 'Rogue aa:bb'), rogue('1', 'Rogue cc:dd')]).aps[0].rogues)
 			.toEqual({ count: 2, names: ['Rogue aa:bb', 'Rogue cc:dd'] });
+	});
+
+	it('counts only rogue items that still report a value', () => {
+		expect(model({ rogue_count: 'items' }, [rogue('1', 'Rogue aa:bb'), rogue(null, 'Rogue cc:dd')]).aps[0].rogues)
+			.toEqual({ count: 1, names: ['Rogue aa:bb'] });
 	});
 
 	it('shows no badge without rogue items or values', () => {

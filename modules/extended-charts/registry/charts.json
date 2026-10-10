@@ -102,7 +102,7 @@
 		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
 		"row_tag", "row_regex", "scale_min", "scale_max", "levels", "stages",
 		"node_positions", "node_category_tag", "parallel_axes", "geo_file", "waterfall_steps",
-		"radio_tag", "radio_regex", "floor_image", "position_macro_x", "position_macro_y", "plan_width", "edge_level", "path_loss_n", "coverage_scale"
+		"radio_tag", "radio_regex", "floor_image", "position_macro_x", "position_macro_y", "plan_width", "edge_level", "path_loss_n"
 	],
 	"retired": [
 		{

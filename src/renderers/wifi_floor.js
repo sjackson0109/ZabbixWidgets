@@ -79,13 +79,16 @@ export function registerFloor(floor) {
 }
 
 const masks = new Map();
+const MASK_RETRY = 60000;
 
 /**
  * Which coverage grid cells are inside the building, read from the floor
  * plan's transparency: a cell is outside when every pixel under it is fully
  * transparent. Returns a function (column, row) -> boolean, or null when the
  * plan has no transparent areas or is not loaded yet. The first call for a
- * plan starts loading it and calls `onReady` once the outline is known.
+ * plan starts loading it and calls `onReady` once the outline is known; the
+ * same callback passed again while it loads is called once. A plan that fails
+ * to load is tried again after MASK_RETRY milliseconds.
  */
 export function floorMask(floor, columns, rows, onReady) {
 	if (typeof document === 'undefined' || typeof Image === 'undefined') {
@@ -93,19 +96,21 @@ export function floorMask(floor, columns, rows, onReady) {
 	}
 	const key = `${floor.url}|${columns}x${rows}`;
 	const known = masks.get(key);
-	if (known !== undefined) {
+	if (known !== undefined && !(known.failed && Date.now() - known.finishedAt >= MASK_RETRY)) {
 		if (known.pending) {
 			known.waiting.add(onReady);
 			return null;
 		}
 		return known.inside;
 	}
-	const entry = { pending: true, inside: null, waiting: new Set([onReady]) };
+	const entry = { pending: true, inside: null, failed: false, finishedAt: 0, waiting: new Set([onReady]) };
 	masks.set(key, entry);
 	const image = new Image();
-	const finish = (inside) => {
+	const finish = (inside, failed = false) => {
 		entry.pending = false;
 		entry.inside = inside;
+		entry.failed = failed;
+		entry.finishedAt = Date.now();
 		const waiting = [...entry.waiting];
 		entry.waiting.clear();
 		if (inside !== null) {
@@ -137,10 +142,10 @@ export function floorMask(floor, columns, rows, onReady) {
 			finish(outside === 0 ? null : (column, row) => cells[row * columns + column] === 1);
 		}
 		catch {
-			finish(null);
+			finish(null, true);
 		}
 	};
-	image.onerror = () => finish(null);
+	image.onerror = () => finish(null, true);
 	image.src = floor.url;
 	return null;
 }
@@ -325,7 +330,7 @@ export function buildWifiFloorOption(payload, context) {
 			return { ap, radio, x: x * metres, y: y * metres };
 		}));
 		const shape = gridShape(coverage.width, floor.height * metres);
-		const inside = floorMask(floor, shape.columns, shape.rows, () => context.redraw?.());
+		const inside = floorMask(floor, shape.columns, shape.rows, context.redraw ?? (() => {}));
 		const grid = coverageGrid(sources, coverage, coverage.width, floor.height * metres, inside);
 		const cellPx = grid.size * scale;
 		const cell = (id, cells, colour, z, describe) => ({

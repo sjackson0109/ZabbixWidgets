@@ -43,6 +43,13 @@ export class ChartController {
 		this.state = { chart: null };
 		this.lastPayload = null;
 		this.currentPayload = null;
+		// Renderers that load something first (a floor plan's outline) ask to be drawn again once it is ready.
+		// One function per widget, so a renderer can tell repeated requests apart.
+		this.redraw = () => {
+			if (this.currentPayload !== null) {
+				this.render(this.currentPayload);
+			}
+		};
 		this.resize = debounce(() => {
 			this.instance?.resize();
 			// Charts laid out for the widget's shape (several gauges in a grid) are laid out again.
@@ -85,12 +92,7 @@ export class ChartController {
 			showLegend: payload.config.show_legend !== false,
 			decimals: Number.isInteger(payload.config.decimals) ? payload.config.decimals : 2,
 			timeZone: payload.config.time_zone || undefined,
-			// Renderers that load something first (a floor plan's outline) ask to be drawn again once it is ready.
-			redraw: () => {
-				if (this.currentPayload === rawPayload) {
-					this.render(rawPayload);
-				}
-			},
+			redraw: this.redraw,
 			aspect: this.canvas.clientWidth > 0 && this.canvas.clientHeight > 0 ? this.canvas.clientWidth / this.canvas.clientHeight : undefined,
 			state: this.state
 		};
