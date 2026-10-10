@@ -1,6 +1,6 @@
-# Wireless Floor Map: template requirements
+# Wireless Airspace Heat-Map: template requirements
 
-What a Zabbix template (and the hosts it is linked to) must provide for every part of the C34 Wireless Floor Map to work. Any template works, whether SNMP, HTTP agent or a script, as long as its items follow these rules. The widget never needs a particular key name: you point each widget field at your items with name patterns.
+What a Zabbix template (and the hosts it is linked to) must provide for every part of the C34 Wireless Airspace Heat-Map to work. Any template works, whether SNMP, HTTP agent or a script, as long as its items follow these rules. The widget never needs a particular key name: you point each widget field at your items with name patterns.
 
 ## At a glance
 

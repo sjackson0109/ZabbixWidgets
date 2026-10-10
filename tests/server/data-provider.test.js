@@ -135,7 +135,7 @@ describe('map files', () => {
 	});
 });
 
-describe('wireless floor map', () => {
+describe('wireless airspace heat-map', () => {
 	const config = { position_source: 'macros', position_macro_x: '{$WIFI.MAP.X}', position_macro_y: '{$WIFI.MAP.Y}' };
 
 	it('reads positions from the host itself, never from templates or other hosts', () => {

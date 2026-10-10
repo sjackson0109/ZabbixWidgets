@@ -92,7 +92,7 @@ const [{ groupid }] = await api('hostgroup.get', { filter: { name: ['ZW tests'] 
 
 const hostIds = [];
 // zw-host-2 names zw-host-1 as its uplink, giving the Network chart one real edge.
-// Both are on floor 2, for the Wireless Floor Map's host tag filter.
+// Both are on floor 2, for the Wireless Airspace Heat-Map's host tag filter.
 const hostTags = { 'zw-host-1': [{ tag: 'floor', value: '2' }], 'zw-host-2': [{ tag: 'uplink', value: 'zw-host-1' }, { tag: 'floor', value: '2' }] };
 // Inventory locations place the hosts on the Geographic Site Map.
 const hostLocations = { 'zw-host-1': ['51.5072', '-0.1276'], 'zw-host-2': ['48.8566', '2.3522'] };
@@ -154,7 +154,7 @@ for (const [hostIndex, hostid] of hostIds.entries()) {
 	}
 }
 
-// Access point radios as an Aruba template's discovery would give them: one set of items per radio index.
+// Access point radios as a vendor template's discovery would give them: one set of items per radio index.
 // Their names start with "ZWW" so the charts above, which match "ZW *", do not pick them up.
 step('Create wireless items');
 const radios = [
@@ -399,7 +399,7 @@ const chartWidgets = [
 	['Sankey', 31, [...hostFields, ...patterns('items', 'ZW Flow*'), str('source_tag', 'from'), str('target_tag', 'to')]],
 	['Geographic Site Map', 32, [...hostFields, ...patterns('items', 'ZW CPU*'), str('geo_links', 'zw-host-2 -> zw-host-1 | zw.cpu')]],
 	['Waterfall', 33, [...firstHost, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('waterfall_steps', '= Sessions = ZW Sessions\n- Load = ZW Load average\n= Remaining')]],
-	['Wireless Floor Map', 34, wirelessFields],
+	['Wireless Airspace Heat-Map', 34, wirelessFields],
 	['Gauge Dial', 16, [...hostFields, ...patterns('items', 'ZW Disk*'), str('scale_min', '0'), str('scale_max', '100'), str('thresholds', '40, 50'), int('gauge_style', 1)]],
 	['Force Network', 11, [...hostFields, ...patterns('items', 'ZW CPU*'), int('edge_source', 1), str('edge_tag', 'uplink'), int('network_layout', 1), int('node_category', 1)]]
 ];
@@ -612,7 +612,7 @@ try {
 		check(drew, `${name} draws from Zabbix data${text ? `: "${text.slice(0, 300)}"` : ''}`);
 	}
 
-	check(floorImageLoads.some((entry) => entry.user === 'admin' && entry.ok), `The Wireless Floor Map loads its floor plan from Zabbix (${JSON.stringify(floorImageLoads)})`);
+	check(floorImageLoads.some((entry) => entry.user === 'admin' && entry.ok), `The Wireless Airspace Heat-Map loads its floor plan from Zabbix (${JSON.stringify(floorImageLoads)})`);
 
 	step('Removed chart');
 	const removedText = (await widget('ZW removed chart').innerText().catch(() => '')).replace(/\s+/g, ' ');
@@ -678,7 +678,7 @@ try {
 	const wireless = viewerWidget('ZW viewer wireless');
 	const wirelessText = (await wireless.innerText().catch(() => '')).trim().replace(/\s+/g, ' ');
 	check(await wireless.locator('.zw-charts-canvas canvas').count() > 0 && await wireless.locator('.zw-charts-errors').count() === 0,
-		`Limited user sees the Wireless Floor Map with its floor plan${wirelessText ? `: "${wirelessText.slice(0, 200)}"` : ''}`);
+		`Limited user sees the Wireless Airspace Heat-Map with its floor plan${wirelessText ? `: "${wirelessText.slice(0, 200)}"` : ''}`);
 	check(floorImageLoads.some((entry) => entry.user === 'viewer' && entry.ok), `Limited user's browser loads the floor plan from Zabbix (${JSON.stringify(floorImageLoads)})`);
 	await context.close();
 }

@@ -839,7 +839,7 @@
 			"id": "wifi_floor",
 			"code": "C34",
 			"form_value": 34,
-			"name": "Wireless Floor Map",
+			"name": "Wireless Airspace Heat-Map",
 			"renderer": "wifi_floor",
 			"roles": {
 				"band": {"field": "band_items", "required": true, "numeric": false},

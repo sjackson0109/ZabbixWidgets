@@ -495,7 +495,7 @@ Every chart also needs items for each required role, no more than `Max items` pe
   - `numeric_only`: Mapped items must be numeric (float or unsigned).
   - `waterfall_steps`: undocumented rule
 
-## C34 Wireless Floor Map (`wifi_floor`)
+## C34 Wireless Airspace Heat-Map (`wifi_floor`)
 
 | Role | Form field | Required | Numeric | Max items |
 |---|---|---|---|---|

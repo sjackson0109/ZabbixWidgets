@@ -1,5 +1,5 @@
 /**
- * Access points and their radios for the Wireless Floor Map (C34).
+ * Access points and their radios for the Wireless Airspace Heat-Map (C34).
  *
  * - An access point is a Zabbix host. Its place on the floor plan is given by
  *   the user in percent of the image (0 to 100 across, 0 to 100 down), from

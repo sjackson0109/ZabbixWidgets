@@ -17,7 +17,7 @@ import { sample } from '../fixtures/samples.js';
 
 echarts.use([SVGRenderer]);
 
-// The Wireless Floor Map registers its floor plan as an SVG map, which ECharts parses with DOMParser.
+// The Wireless Airspace Heat-Map registers its floor plan as an SVG map, which ECharts parses with DOMParser.
 globalThis.DOMParser ??= new JSDOM('').window.DOMParser;
 
 function render(option) {

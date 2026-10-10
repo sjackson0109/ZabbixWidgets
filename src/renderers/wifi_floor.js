@@ -1,5 +1,5 @@
 /**
- * C34 Wireless Floor Map: access points drawn on a floor plan image, with
+ * C34 Wireless Airspace Heat-Map: access points drawn on a floor plan image, with
  * their radios around them.
  *
  * - The floor plan is a Zabbix background image, loaded from the Zabbix

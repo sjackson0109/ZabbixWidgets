@@ -1,4 +1,4 @@
-/** Contracts for C34 Wireless Floor Map: what it draws, what it leaves out, and why. */
+/** Contracts for C34 Wireless Airspace Heat-Map: what it draws, what it leaves out, and why. */
 import { describe, expect, it } from 'vitest';
 import { getChart } from '../../src/registry/index.js';
 import { validate } from '../../src/validation/index.js';

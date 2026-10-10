@@ -161,7 +161,7 @@ describe('edit form for the new presentations', () => {
 		expect(isShown(form, 'thresholds')).toBe(true);
 	});
 
-	it('shows the wireless floor map position and radio settings that apply', () => {
+	it('shows the wireless airspace heat-map position and radio settings that apply', () => {
 		const form = formFor('wifi_floor');
 		expect(['floor_image', 'host_tags', 'band_items', 'snr_items', 'position_macro_x', 'show_band_6'].every((field) => isShown(form, field))).toBe(true);
 		expect(isShown(form, 'node_positions')).toBe(false);

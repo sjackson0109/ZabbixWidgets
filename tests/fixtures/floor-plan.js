@@ -1,4 +1,4 @@
-/** A plain office floor plan (640 x 360 PNG) for the Wireless Floor Map sample. Drawn for this project. */
+/** A plain office floor plan (640 x 360 PNG) for the Wireless Airspace Heat-Map sample. Drawn for this project. */
 export const FLOOR_PLAN = {
 	name: 'Office floor 2',
 	width: 640,

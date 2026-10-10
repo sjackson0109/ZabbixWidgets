@@ -1,5 +1,5 @@
 /**
- * Estimated radio coverage for the Wireless Floor Map (C34).
+ * Estimated radio coverage for the Wireless Airspace Heat-Map (C34).
  *
  * This is a model, not a measurement, and is always labelled as one. It uses
  * the ITU-R P.1238 indoor path loss model on one floor:
