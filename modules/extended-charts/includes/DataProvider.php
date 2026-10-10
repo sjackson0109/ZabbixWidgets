@@ -37,6 +37,13 @@ class DataProvider {
 	/** Largest map file the Geographic Site Map reads from assets/geo, in bytes. */
 	public const MAX_GEO_FILE = 2 * 1024 * 1024;
 
+	/** Image type of Zabbix background images (Administration > General > Images). */
+	private const IMAGE_TYPE_BACKGROUND = 2;
+
+	/** Tag filter operators of host.get. */
+	private const TAG_OPERATOR_EQUAL = 1;
+	private const TAG_OPERATOR_EXISTS = 4;
+
 	/** Matches one user macro reference, with or without a context. */
 	public const MACRO_PATTERN = '/\{\$[A-Z0-9_.]+(?::(?:"(?:[^"\\\\]|\\\\.)*"|[^}]*))?\}/';
 
@@ -68,6 +75,14 @@ class DataProvider {
 
 		if ($this->chart['id'] === 'geomap' && ($this->config['geo_base'] ?? '') === 'custom') {
 			[$payload['geo'], $error] = self::loadGeoFile((string) ($this->config['geo_file'] ?? ''));
+
+			if ($error !== null) {
+				$this->errors[] = $error;
+			}
+		}
+
+		if (ChartRegistry::needs($this->chart, 'floor_image')) {
+			[$payload['floor'], $error] = self::loadFloorImage((string) ($this->config['floor_image'] ?? ''));
 
 			if ($error !== null) {
 				$this->errors[] = $error;
@@ -129,6 +144,22 @@ class DataProvider {
 			$this->errors[] = _('Select host groups or hosts.');
 
 			return [];
+		}
+
+		if (in_array('host_tags', ChartRegistry::visibleControls($this->chart, $this->config), true)) {
+			[$tags, $error] = self::parseHostTags((string) ($this->config['host_tags'] ?? ''));
+
+			if ($error !== null) {
+				$this->errors[] = $error;
+
+				return [];
+			}
+
+			if ($tags) {
+				// And/Or: different tags must all match, several values of one tag are alternatives.
+				$options['evaltype'] = 0;
+				$options['tags'] = $tags;
+			}
 		}
 
 		$hosts = API::Host()->get($options);
@@ -612,9 +643,133 @@ class DataProvider {
 		return [$geo, null];
 	}
 
+	/**
+	 * Finds a Zabbix background image by name (Administration > General >
+	 * Images) and returns its size and the address Zabbix serves it from, so
+	 * the browser loads it from this Zabbix server and caches it. Reading it
+	 * through the API applies the user's permissions.
+	 *
+	 * @return array  [['imageid', 'name', 'width', 'height', 'url'] or null, error message or null]
+	 */
+	public static function loadFloorImage(string $name): array {
+		$name = trim($name);
+
+		if ($name === '') {
+			return [null, _('Enter the name of a background image from Administration > General > Images.')];
+		}
+
+		$images = API::Image()->get([
+			'output' => ['imageid', 'name'],
+			'filter' => ['name' => $name, 'imagetype' => self::IMAGE_TYPE_BACKGROUND],
+			'select_image' => true
+		]);
+
+		if (!$images) {
+			return [null, _s('No background image is named "%1$s". Add it in Administration > General > Images, with the type Background.', $name)];
+		}
+
+		$image = reset($images);
+
+		return self::floorImageDetails($image);
+	}
+
+	/** Size and address of an image row from image.get with select_image. */
+	public static function floorImageDetails(array $image): array {
+		$bytes = base64_decode((string) ($image['image'] ?? ''), true);
+		$size = $bytes === false || $bytes === '' ? false : @getimagesizefromstring($bytes);
+
+		if ($size === false || $size[0] < 1 || $size[1] < 1) {
+			return [null, _s('The background image "%1$s" could not be read as a PNG, JPEG or GIF image.', $image['name'])];
+		}
+
+		return [[
+			'imageid' => (string) $image['imageid'],
+			'name' => $image['name'],
+			'width' => (int) $size[0],
+			'height' => (int) $size[1],
+			'url' => 'imgstore.php?iconid='.urlencode((string) $image['imageid'])
+		], null];
+	}
+
+	/**
+	 * Parses the host tag filter: "tag" (the tag exists) or "tag=value"
+	 * (exact value), separated by commas.
+	 *
+	 * @return array  [host.get tag filters, error message or null]
+	 */
+	public static function parseHostTags(string $text): array {
+		$tags = [];
+
+		foreach (explode(',', $text) as $part) {
+			$part = trim($part);
+
+			if ($part === '') {
+				continue;
+			}
+
+			$separator = strpos($part, '=');
+			$tag = trim($separator === false ? $part : substr($part, 0, $separator));
+
+			if ($tag === '') {
+				return [[], _s('The host tag filter "%1$s" has no tag name. Use "tag" or "tag=value", separated by commas.', $part)];
+			}
+
+			$tags[] = $separator === false
+				? ['tag' => $tag, 'operator' => self::TAG_OPERATOR_EXISTS]
+				: ['tag' => $tag, 'value' => trim(substr($part, $separator + 1)), 'operator' => self::TAG_OPERATOR_EQUAL];
+		}
+
+		return [$tags, null];
+	}
+
+	/**
+	 * Floor plan positions from the macros named in the settings, read from
+	 * the host itself only. A template or global value would put every host
+	 * that inherits it on the same spot, so those are not used.
+	 *
+	 * @return array  hostid => ['x' => text, 'y' => text] for hosts that set at least one
+	 */
+	private function positionMacros(array $hostids): array {
+		if (($this->config['position_source'] ?? '') !== 'macros') {
+			return [];
+		}
+
+		$names = [];
+
+		foreach (['x' => 'position_macro_x', 'y' => 'position_macro_y'] as $axis => $field) {
+			$name = trim((string) ($this->config[$field] ?? ''));
+
+			if (!preg_match(self::MACRO_PATTERN, $name, $match) || $match[0] !== $name) {
+				$this->errors[] = _s('"%1$s" is not a user macro such as {$WIFI.MAP.X}.', $name);
+
+				return [];
+			}
+
+			$names[$axis] = $name;
+		}
+
+		$positions = [];
+
+		foreach (API::UserMacro()->get([
+			'output' => ['hostid', 'macro', 'value'],
+			'hostids' => $hostids,
+			'filter' => ['macro' => array_values($names), 'type' => ZBX_MACRO_TYPE_TEXT]
+		]) as $row) {
+			foreach ($names as $axis => $name) {
+				if ($row['macro'] === $name) {
+					$positions[$row['hostid']] = $positions[$row['hostid']] ?? ['x' => '', 'y' => ''];
+					$positions[$row['hostid']][$axis] = (string) $row['value'];
+				}
+			}
+		}
+
+		return $positions;
+	}
+
 	private function needsHostDetails(): bool {
 		return ChartRegistry::needs($this->chart, 'hosts') || ChartRegistry::needs($this->chart, 'groups')
-			|| ChartRegistry::needs($this->chart, 'macros') || ChartRegistry::needs($this->chart, 'inventory');
+			|| ChartRegistry::needs($this->chart, 'macros') || ChartRegistry::needs($this->chart, 'inventory')
+			|| ChartRegistry::needs($this->chart, 'positions');
 	}
 
 	private function hostDetails(array $hosts): array {
@@ -635,6 +790,7 @@ class DataProvider {
 		$details = API::Host()->get($options);
 
 		$macros = $this->resolveMacros($details, $this->macroNames());
+		$positions = ChartRegistry::needs($this->chart, 'positions') ? $this->positionMacros(array_keys($details)) : null;
 		$result = [];
 
 		foreach ($details as $hostid => $host) {
@@ -653,6 +809,10 @@ class DataProvider {
 					'lat' => (string) ($inventory['location_lat'] ?? ''),
 					'lon' => (string) ($inventory['location_lon'] ?? '')
 				];
+			}
+
+			if ($positions !== null) {
+				$result[count($result) - 1]['position'] = $positions[$hostid] ?? ['x' => '', 'y' => ''];
 			}
 		}
 

@@ -58,22 +58,25 @@ export function keyParameters(key) {
 	return params;
 }
 
-/** Compiles the user's row expression; returns { regex, error }. */
-export function compileRowExpression(text) {
+/**
+ * Compiles the user's row expression; returns { regex, error }. The field's
+ * name and an example capture go into the messages.
+ */
+export function compileRowExpression(text, { field = 'row expression', example = 'Interface (.+):' } = {}) {
 	const source = String(text ?? '');
 	if (source.trim() === '') {
-		return { regex: null, error: 'Enter a regular expression with a capture group, for example "Interface (.+):".' };
+		return { regex: null, error: `Enter a regular expression with a capture group, for example "${example}".` };
 	}
 	let regex;
 	try {
 		regex = new RegExp(source);
 	}
 	catch (exception) {
-		return { regex: null, error: `The row expression is not a valid regular expression: ${exception.message}.` };
+		return { regex: null, error: `The ${field} is not a valid regular expression: ${exception.message}.` };
 	}
 	// Counts groups by matching an empty alternative: one undefined slot per capture group.
 	if (new RegExp(`${source}|`).exec('').length < 2) {
-		return { regex: null, error: 'The row expression needs a capture group, for example "Interface (.+):".' };
+		return { regex: null, error: `The ${field} needs a capture group, for example "${example}".` };
 	}
 	return { regex, error: null };
 }

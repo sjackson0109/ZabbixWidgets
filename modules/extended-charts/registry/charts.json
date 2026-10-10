@@ -44,7 +44,11 @@
 		"sankey_orient": ["horizontal", "vertical"],
 		"sankey_align": ["justify", "left", "right"],
 		"geo_base": ["world", "custom", "none"],
-		"site_colour": ["single", "thresholds"]
+		"site_colour": ["single", "thresholds"],
+		"radio_by": ["key", "tag", "regex"],
+		"position_source": ["macros", "list"],
+		"rogue_count": ["value", "items"],
+		"ring_size": ["model", "band"]
 	},
 	"item_fields": {
 		"items": "Items",
@@ -63,7 +67,14 @@
 		"colour_items": "Colour items",
 		"opposing_items": "Opposing items",
 		"bar_items": "Bar items",
-		"line_items": "Line items"
+		"line_items": "Line items",
+		"band_items": "Band items",
+		"channel_items": "Channel items",
+		"width_items": "Channel width items",
+		"snr_items": "SNR items",
+		"rogue_items": "Rogue AP items",
+		"client_items": "Client count items",
+		"txpower_items": "Transmit power items"
 	},
 	"control_conditions": {
 		"target_macro": "when:target_source=macro",
@@ -81,12 +92,17 @@
 		"colour_map": "when:colour_by=value_map",
 		"node_positions": "when:network_layout=fixed",
 		"node_category_tag": "when:node_category=tag",
-		"geo_file": "when:geo_base=custom"
+		"geo_file": "when:geo_base=custom",
+		"radio_tag": "when:radio_by=tag",
+		"radio_regex": "when:radio_by=regex",
+		"position_macro_x": "when:position_source=macros",
+		"position_macro_y": "when:position_source=macros"
 	},
 	"required_controls": [
 		"target_macro", "target_constant", "pair_tag", "tree_tags", "tree_delimiter", "edge_list", "edge_tag", "source_tag", "target_tag",
 		"row_tag", "row_regex", "scale_min", "scale_max", "levels", "stages",
-		"node_positions", "node_category_tag", "parallel_axes", "geo_file", "waterfall_steps"
+		"node_positions", "node_category_tag", "parallel_axes", "geo_file", "waterfall_steps",
+		"radio_tag", "radio_regex", "floor_image", "position_macro_x", "position_macro_y", "plan_width", "edge_level", "path_loss_n"
 	],
 	"retired": [
 		{
@@ -818,6 +834,45 @@
 			"controls": ["items", "waterfall_steps", "show_value"],
 			"control_conditions": {"show_legend": "none"},
 			"rules": ["numeric_only", "waterfall_steps"]
+		},
+		{
+			"id": "wifi_floor",
+			"code": "C34",
+			"form_value": 34,
+			"name": "Wireless Airspace Heat-Map",
+			"renderer": "wifi_floor",
+			"roles": {
+				"band": {"field": "band_items", "required": true, "numeric": false},
+				"channel": {"field": "channel_items", "required": true, "numeric": false},
+				"width": {"field": "width_items", "required": false, "numeric": false},
+				"snr": {"field": "snr_items", "required": false, "numeric": true},
+				"rogue": {"field": "rogue_items", "required": false, "numeric": true},
+				"clients": {"field": "client_items", "required": false, "numeric": true},
+				"txpower": {"field": "txpower_items", "required": false, "numeric": true, "applies": "when:ring_size=model"}
+			},
+			"data": ["latest", "hosts", "macros", "valuemaps", "floor_image", "positions"],
+			"macro_fields": ["snr_thresholds"],
+			"history": "none",
+			"time_period": false,
+			"min_series": 1,
+			"controls": [
+				"floor_image", "host_tags", "position_source", "position_macro_x", "position_macro_y", "node_positions",
+				"band_items", "channel_items", "width_items", "snr_items", "client_items", "rogue_items", "radio_by", "radio_tag", "radio_regex",
+				"ring_size", "plan_width", "txpower_items", "tx_power_default", "edge_level", "path_loss_n", "coverage_scale", "show_gaps", "show_interference",
+				"snr_thresholds", "rogue_count", "show_band_24", "show_band_5", "show_band_6", "show_node_labels"
+			],
+			"control_conditions": {
+				"show_legend": "none",
+				"node_positions": "when:position_source=list",
+				"plan_width": "when:ring_size=model",
+				"tx_power_default": "when:ring_size=model",
+				"edge_level": "when:ring_size=model",
+				"path_loss_n": "when:ring_size=model",
+				"coverage_scale": "when:ring_size=model",
+				"show_gaps": "when:ring_size=model",
+				"show_interference": "when:ring_size=model"
+			},
+			"rules": ["wifi_floor"]
 		}
 	]
 }

@@ -35,11 +35,12 @@ import parallel from './parallel.js';
 import sankey from './sankey.js';
 import geomap from './geomap.js';
 import waterfall from './waterfall.js';
+import wifiFloor from './wifi_floor.js';
 
 const RENDERERS = new Map([
 	column, stackedBar, doughnut, bullet, radar, heatmap, candlestick, bubble, gantt, tree, network, relationship, calendarHeatmap,
 	lldTable, pie, levelGauge, rankingBar, treemap, sunburst, funnel, line, area, statusMatrix, stateTimeline, sparklineGrid, thresholdBand,
-	mixed, distribution, parallel, sankey, geomap, waterfall
+	mixed, distribution, parallel, sankey, geomap, waterfall, wifiFloor
 ].map((renderer) => [renderer.id, renderer]));
 
 export function getRenderer(id) {

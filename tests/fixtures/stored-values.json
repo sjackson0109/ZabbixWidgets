@@ -33,7 +33,8 @@
 		"parallel": 30,
 		"sankey": 31,
 		"geomap": 32,
-		"waterfall": 33
+		"waterfall": 33,
+		"wifi_floor": 34
 	},
 	"enums": {
 		"group_by": [
@@ -342,6 +343,23 @@
 		"site_colour": [
 			"single",
 			"thresholds"
+		],
+		"radio_by": [
+			"key",
+			"tag",
+			"regex"
+		],
+		"position_source": [
+			"macros",
+			"list"
+		],
+		"rogue_count": [
+			"value",
+			"items"
+		],
+		"ring_size": [
+			"model",
+			"band"
 		]
 	}
 }

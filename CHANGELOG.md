@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **C34 Wireless Airspace Heat-Map**: access points drawn on a floor plan (a Zabbix background image). Each radio shows its estimated coverage as nine stacked translucent discs, one per 4 dB signal level down to a coverage edge, sized in metres by the ITU-R P.1238 indoor model from the radio's transmit power and channel frequency, and labelled as an estimate that leaves walls out. Colour shows SNR against thresholds; channel and channel width are in the tooltip. Coverage gaps (no radio reaches the edge) and channel overlap (two access points on overlapping spectrum, from channel and channel width) are shaded on a grid, except over fully transparent parts of the plan, which count as outside the building. Bands are offset a few pixels so their centres stay apart, and a "Band only" style draws plain band rings instead. Hovering a radio highlights the others on the same band and channel. An optional badge shows the rogue AP count each access point reports. Positions come from the access point's own host macros or a positions list, in percent of the image; bands come only from the band item.
+- docs/WIRELESS-TEMPLATE.md: the hosts, macros, tags and items a Zabbix template must provide for the Wireless Airspace Heat-Map.
+- Client count badge for the Wireless Airspace Heat-Map: a blue count of clients beside the orange rogue AP count, from new client count items.
+- Coverage scale (%) for the Wireless Airspace Heat-Map: multiplies every modelled range (rings, gaps and overlap), shown in the key and tooltips.
+- Host tag filter for the Wireless Airspace Heat-Map (`tag` or `tag=value`, separated by commas).
+
 ## 1.0.0 - 2026-10-08
 
 First release, under the MIT licence.

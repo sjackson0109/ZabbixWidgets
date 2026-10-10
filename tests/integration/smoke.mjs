@@ -92,7 +92,8 @@ const [{ groupid }] = await api('hostgroup.get', { filter: { name: ['ZW tests'] 
 
 const hostIds = [];
 // zw-host-2 names zw-host-1 as its uplink, giving the Network chart one real edge.
-const hostTags = { 'zw-host-1': [], 'zw-host-2': [{ tag: 'uplink', value: 'zw-host-1' }] };
+// Both are on floor 2, for the Wireless Airspace Heat-Map's host tag filter.
+const hostTags = { 'zw-host-1': [{ tag: 'floor', value: '2' }], 'zw-host-2': [{ tag: 'uplink', value: 'zw-host-1' }, { tag: 'floor', value: '2' }] };
 // Inventory locations place the hosts on the Geographic Site Map.
 const hostLocations = { 'zw-host-1': ['51.5072', '-0.1276'], 'zw-host-2': ['48.8566', '2.3522'] };
 for (const name of ['zw-host-1', 'zw-host-2']) {
@@ -151,6 +152,44 @@ for (const [hostIndex, hostid] of hostIds.entries()) {
 		}
 		values.push({ itemid, clock: now, value: String(latest(hostIndex)) });
 	}
+}
+
+// Access point radios as a vendor template's discovery would give them: one set of items per radio index.
+// Their names start with "ZWW" so the charts above, which match "ZW *", do not pick them up.
+step('Create wireless items');
+const radios = [
+	[['1', '2.4', '6', '20', '31'], ['2', '5', '36', '80', '18']],
+	[['1', '2.4', '11', '20', '12'], ['2', '5', '36', '80', '27'], ['3', '6', '37', '160', '22']]
+];
+for (const [hostIndex, hostid] of hostIds.entries()) {
+	// Positions are host macros on the access point itself, in percent across and down the floor plan.
+	await api('host.update', { hostid, macros: [{ macro: '{$WIFI.MAP.X}', value: ['25', '70'][hostIndex] }, { macro: '{$WIFI.MAP.Y}', value: ['40', '65'][hostIndex] }] });
+	const defs = [
+		...radios[hostIndex].flatMap(([index, band, channel, width, snr]) => [
+			{ name: `ZWW Radio ${index} band`, key_: `zww.band[${index}]`, value_type: 1, units: '', value: band },
+			{ name: `ZWW Radio ${index} channel`, key_: `zww.channel[${index}]`, value_type: 3, units: '', value: channel },
+			{ name: `ZWW Radio ${index} width`, key_: `zww.width[${index}]`, value_type: 3, units: 'MHz', value: width },
+			{ name: `ZWW Radio ${index} SNR`, key_: `zww.snr[${index}]`, value_type: 0, units: 'dB', value: snr },
+			{ name: `ZWW Radio ${index} transmit power`, key_: `zww.txpower[${index}]`, value_type: 0, units: 'dBm', value: band === '2.4' ? '9' : '15' }
+		]),
+		{ name: 'ZWW Rogue APs detected', key_: 'zww.rogue.count', value_type: 3, units: '', value: String(hostIndex * 2) }
+	];
+	for (const { value, ...def } of defs) {
+		const found = await api('item.get', { hostids: hostid, filter: { key_: def.key_ } });
+		const itemid = found.length
+			? (await api('item.update', { itemid: found[0].itemid, ...def })).itemids[0]
+			: (await api('item.create', { ...def, hostid, type: 2 })).itemids[0];
+		values.push({ itemid, clock: now, value });
+	}
+}
+
+// The floor plan is a Zabbix background image, as an administrator would upload it.
+step('Create floor plan image');
+const FLOOR_IMAGE = 'ZW floor plan';
+// A 64 x 32 PNG: an outline with one wall.
+const floorPng = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAAaklEQVR42u3YsQ3AIBBDURMxKmW6zEGXMhtGQhkhRSRgAK6w8m+A455M5XS3R86TJdXzMr3+2Msm88mzJuKBL97ly/uvsU8AAAAAAAAAAAAAAAAAAAAAAAAAwD8Bo5kLbUjjltsnkNzr9RezRhJRa7GG5QAAAABJRU5ErkJggg==';
+if ((await api('image.get', { filter: { name: FLOOR_IMAGE } })).length === 0) {
+	await api('image.create', { name: FLOOR_IMAGE, imagetype: 2, image: floorPng });
 }
 
 // Items shaped like low-level discovery output: one set per interface, with the interface in the key and a tag.
@@ -308,6 +347,12 @@ const switchTableFields = [
 	str('table_columns', 'Status = ZWS Interface *: Operational status')
 ];
 
+const wirelessFields = [
+	...hostFields, str('floor_image', FLOOR_IMAGE), str('host_tags', 'floor=2'), ...patterns('band_items', 'ZWW Radio * band'),
+	...patterns('channel_items', 'ZWW Radio * channel'), ...patterns('width_items', 'ZWW Radio * width'), ...patterns('snr_items', 'ZWW Radio * SNR'),
+	...patterns('rogue_items', 'ZWW Rogue*'), ...patterns('txpower_items', 'ZWW Radio * transmit power'), str('plan_width', '40')
+];
+
 const chartWidgets = [
 	['Column', 1, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*', 'ZW Disk*')]],
 	['Stacked Bar', 2, [...hostFields, ...patterns('items', 'ZW CPU*', 'ZW Memory*')]],
@@ -354,6 +399,7 @@ const chartWidgets = [
 	['Sankey', 31, [...hostFields, ...patterns('items', 'ZW Flow*'), str('source_tag', 'from'), str('target_tag', 'to')]],
 	['Geographic Site Map', 32, [...hostFields, ...patterns('items', 'ZW CPU*'), str('geo_links', 'zw-host-2 -> zw-host-1 | zw.cpu')]],
 	['Waterfall', 33, [...firstHost, ...patterns('items', 'ZW Sessions*', 'ZW Load*'), str('waterfall_steps', '= Sessions = ZW Sessions\n- Load = ZW Load average\n= Remaining')]],
+	['Wireless Airspace Heat-Map', 34, wirelessFields],
 	['Gauge Dial', 16, [...hostFields, ...patterns('items', 'ZW Disk*'), str('scale_min', '0'), str('scale_max', '100'), str('thresholds', '40, 50'), int('gauge_style', 1)]],
 	['Force Network', 11, [...hostFields, ...patterns('items', 'ZW CPU*'), int('edge_source', 1), str('edge_tag', 'uplink'), int('network_layout', 1), int('node_category', 1)]]
 ];
@@ -367,7 +413,9 @@ const { dashboardids: [permissionsDashboardid] } = await api('dashboard.create',
 				type: 'zabbixwidgets_charts', name: 'ZW viewer column', x: 0, y: 0, width: 36, height: 5,
 				fields: [int('chart_type', 1), ...hostFields, { type: 3, name: `hostids.${hostFields.length}`, value: switchHostid }, ...patterns('items', 'ZW CPU*')]
 			},
-			{ type: 'zabbixwidgets_charts', name: 'ZW viewer switch', x: 36, y: 0, width: 36, height: 5, fields: [int('chart_type', 14), ...switchTableFields] }
+			{ type: 'zabbixwidgets_charts', name: 'ZW viewer switch', x: 36, y: 0, width: 36, height: 5, fields: [int('chart_type', 14), ...switchTableFields] },
+			// A user without administrator rights reads the floor plan image too.
+			{ type: 'zabbixwidgets_charts', name: 'ZW viewer wireless', x: 0, y: 5, width: 36, height: 6, fields: [int('chart_type', 34), ...wirelessFields] }
 		]
 	}]
 });
@@ -444,13 +492,20 @@ const pageErrors = [];
 const consoleErrors = [];
 const failedActions = [];
 const actionRequests = [];
+/** Floor plan image loads seen by each browser: { user, status, ok }. */
+const floorImageLoads = [];
 
 /**
  * Every page is watched the same way: uncaught exceptions, unhandled promise
  * rejections, console errors, ECharts warnings, and widget actions that fail
  * or carry PHP errors all fail the run. Nothing is filtered out.
  */
-async function watch(target) {
+async function watch(target, user = 'admin') {
+	target.on('response', (response) => {
+		if (response.url().includes('imgstore.php')) {
+			floorImageLoads.push({ user, status: response.status(), ok: response.status() === 200 && /^image\//.test(response.headers()['content-type'] ?? '') });
+		}
+	});
 	await target.addInitScript(() => {
 		window.addEventListener('unhandledrejection', (event) => console.error(`Unhandled rejection: ${event.reason?.message ?? event.reason}`));
 	});
@@ -557,6 +612,8 @@ try {
 		check(drew, `${name} draws from Zabbix data${text ? `: "${text.slice(0, 300)}"` : ''}`);
 	}
 
+	check(floorImageLoads.some((entry) => entry.user === 'admin' && entry.ok), `The Wireless Airspace Heat-Map loads its floor plan from Zabbix (${JSON.stringify(floorImageLoads)})`);
+
 	step('Removed chart');
 	const removedText = (await widget('ZW removed chart').innerText().catch(() => '')).replace(/\s+/g, ' ');
 	check(/The Switch Port Panel chart has been removed\. Choose another chart type\./.test(removedText),
@@ -601,7 +658,7 @@ step('Limited user');
 try {
 	const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
 	const viewerPage = await context.newPage();
-	await watch(viewerPage);
+	await watch(viewerPage, 'viewer');
 	await viewerPage.goto(`${BASE}/index.php`);
 	await viewerPage.fill('#name', viewer.username);
 	await viewerPage.fill('#password', viewer.password);
@@ -618,6 +675,11 @@ try {
 		`Limited user sees no switch interfaces or names: "${hiddenText.replace(/\s+/g, ' ').slice(0, 200)}"`);
 	const columnText = await viewerWidget('ZW viewer column').innerText().catch(() => '');
 	check(!/zw-switch/.test(columnText), 'Limited user sees no restricted host in the Column chart');
+	const wireless = viewerWidget('ZW viewer wireless');
+	const wirelessText = (await wireless.innerText().catch(() => '')).trim().replace(/\s+/g, ' ');
+	check(await wireless.locator('.zw-charts-canvas canvas').count() > 0 && await wireless.locator('.zw-charts-errors').count() === 0,
+		`Limited user sees the Wireless Airspace Heat-Map with its floor plan${wirelessText ? `: "${wirelessText.slice(0, 200)}"` : ''}`);
+	check(floorImageLoads.some((entry) => entry.user === 'viewer' && entry.ok), `Limited user's browser loads the floor plan from Zabbix (${JSON.stringify(floorImageLoads)})`);
 	await context.close();
 }
 catch (error) {

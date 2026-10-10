@@ -19,7 +19,14 @@ export const ROLE_LABELS = Object.freeze({
 	colour: 'colour',
 	opposing: 'opposing',
 	bar: 'bar',
-	line: 'line'
+	line: 'line',
+	band: 'band',
+	channel: 'channel',
+	width: 'channel width',
+	snr: 'SNR',
+	rogue: 'rogue AP',
+	clients: 'client count',
+	txpower: 'transmit power'
 });
 
 /** Joins names into "a, b and 2 more" so messages stay short. */

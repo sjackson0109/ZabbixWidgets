@@ -9,7 +9,7 @@ const EXPECTED_IDS = [
 	'bubble', 'gantt', 'tree', 'network', 'relationship', 'calendar_heatmap',
 	'lld_table', 'pie', 'level_gauge', 'ranking_bar', 'treemap', 'sunburst', 'funnel',
 	'line', 'area', 'status_matrix', 'state_timeline', 'sparkline_grid', 'threshold_band',
-	'mixed', 'distribution', 'parallel', 'sankey', 'geomap', 'waterfall'
+	'mixed', 'distribution', 'parallel', 'sankey', 'geomap', 'waterfall', 'wifi_floor'
 ];
 
 const REQUIRED_KEYS = ['id', 'code', 'name', 'renderer', 'roles', 'data', 'history', 'time_period', 'min_series', 'controls', 'rules'];

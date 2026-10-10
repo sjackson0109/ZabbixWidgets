@@ -72,6 +72,9 @@ Each image is the module's own bundle drawing that chart's sample payload in Chr
 <td align="center"><img src="docs/screenshots/geomap.png" alt="Geographic Site Map"><br><b>C32 Geographic Site Map</b><br><sub>Hosts at their inventory coordinates over a bundled map.</sub></td>
 <td align="center"><img src="docs/screenshots/waterfall.png" alt="Waterfall chart"><br><b>C33 Waterfall</b><br><sub>Contributions from one level to the next, with totals.</sub></td>
 </tr>
+<tr>
+<td align="center"><img src="docs/screenshots/wifi_floor.png" alt="Wireless Airspace Heat-Map"><br><b>C34 Wireless Airspace Heat-Map</b><br><sub>Access points on a floor plan, with estimated coverage per radio coloured by SNR.</sub></td>
+</tr>
 </table>
 
 ### Presentation options
@@ -146,6 +149,7 @@ Screenshots of the edit form and of each chart on a live Zabbix dashboard are ta
 | C31 | Sankey | Latest values and tags |
 | C32 | Geographic Site Map | Latest values, host inventory location, user macros and an optional map file |
 | C33 | Waterfall | Latest values |
+| C34 | Wireless Airspace Heat-Map | Latest values, value maps, a Zabbix background image, host macros and host tags |
 
 [Chart contracts](docs/CHART-CONTRACTS.md) lists every role, setting and rule per chart. [Apache ECharts example coverage](docs/ECHARTS-COVERAGE.md) compares each example in the official ECharts gallery with what the module draws, and says why the rest are not offered.
 
@@ -207,6 +211,7 @@ Presentation options within existing charts:
 - Access to the frontend's `modules` directory on the web server.
 - A Zabbix Super admin account to enable the module.
 - For the Geographic Site Map: host inventory enabled on the hosts it shows, with **Location latitude** and **Location longitude** filled in. Optional custom maps are GeoJSON files placed in the module's `assets/geo` folder (see [its README](modules/extended-charts/assets/geo/README.md)).
+- For the Wireless Airspace Heat-Map: the floor plan uploaded in **Administration > General > Images** with the type **Background** (PNG, JPEG or GIF), and each access point's position set in its own host macros (see [Wireless Airspace Heat-Map](#wireless-airspace-heat-map)) or in the widget's positions list.
 
 ### 1. Download
 
@@ -276,9 +281,28 @@ Then copy `modules/extended-charts` into the modules directory as `zabbixwidgets
 
 If the widget shows a message instead of a chart, it names what is missing or incompatible, for example an item that is not numeric, mixed units or a required role with no item.
 
+### Wireless Airspace Heat-Map
+
+The Wireless Airspace Heat-Map draws access points that are Zabbix hosts on a floor plan, with one ring per radio. Coverage is an estimate from a path loss model, labelled as such; nothing is surveyed or interpolated. What the Zabbix template must provide is described in [Wireless Airspace Heat-Map: template requirements](docs/WIRELESS-TEMPLATE.md).
+
+1. Upload the floor plan in **Administration > General > Images** as a **Background** image, and enter its name in **Floor plan image**.
+2. Give each access point a position in percent of the image: 0 to 100 across from the left, and 0 to 100 down from the top. Set `{$WIFI.MAP.X}` and `{$WIFI.MAP.Y}` (or the macros you name in the form) on the host itself; a value inherited from a template or set globally is ignored, because it would put every access point on the same spot. Alternatively choose **Positions list** and write one `host name = across, down` per line.
+3. Narrow the hosts with host groups, hosts and **Host tags** (for example `floor=2`, or `floor=2, building=HQ`; different tags must all match).
+4. Map the band, channel, channel width, SNR, transmit power and rogue AP items. Item patterns match anywhere in the item name, so make each one distinct (for example `Radio * band` and `Radio * channel width` rather than `Radio * channel`, which would also match the width items).
+5. Choose how items are grouped into radios: by the first key parameter (for example `wlan.radio.snr[{#RADIO}]`), by an item tag, or by a regular expression on the item name with a capture group.
+
+**Estimated coverage** (the default ring style) draws nine translucent discs per radio, one for each signal level in 4 dB steps down to the coverage edge (−67 dBm by default). They stack up towards the access point, so the fade follows the signal. Each disc's radius comes from the ITU-R P.1238 indoor path loss model, `L = 20·log10(f MHz) + N·log10(d m) − 28`, using the radio's transmit power item (dBm EIRP) or a power you enter, its channel's centre frequency, and a distance loss coefficient N per band (28, 31 and 31 for 2.4, 5 and 6 GHz by default, the model's office values). Enter the floor plan's real width in metres so metres can be drawn to scale. This is an estimate: walls, floors and furniture are not included, so real coverage is usually smaller, and the chart's key says so. When the model's rings look too small or too large against what you know of the site (a tall open atrium carries further than an office), set **Coverage scale (%)**: 200 doubles every modelled range, including the gap and overlap shading, and the key and tooltips show the scale in use. Each band's discs are offset a few pixels (2.4 GHz left, 5 GHz up and right, 6 GHz down and right) so that their centres stay apart. Choose **Band only** for small rings that show the band and nothing else.
+
+From the same model the map can shade **coverage gaps** (dark: no radio reaches the coverage edge) and **channel overlap** (red: two access points on overlapping spectrum both reach it there). Overlap is worked out from each radio's band, channel and channel width: on 5 and 6 GHz a wide channel is its fixed block of 20 MHz channels (80 MHz on channel 44 is 36 to 48), and on 2.4 GHz a 40 MHz channel counts both sides of its primary channel because the item does not say which side is used. So 2.4 GHz channels 1 and 3 overlap at 20 MHz, while 1 and 6 do not. Both layers are estimates on a grid of 96 cells across the plan; switch either off in the widget. Fully transparent parts of the floor plan image count as outside the building and are never shaded, so save the plan as a PNG with the outside (and any atrium voids) transparent to see gaps only where people are.
+
+The scale comes from the plan, not the widget: metres are converted with the floor plan width you enter, and the whole plan, with the rings on it, is fitted into the widget at its own aspect ratio. Resizing the widget, or zooming and panning inside it, scales everything together.
+
+The band must come from the band item: a value in GHz or MHz, or a value mapping whose text names the band (for example `5 GHz`). It is never worked out from the channel number. A **client count** item (for example associated clients per access point; several items on one host are added together) is shown as a blue badge, next to an orange rogue AP badge. Rogue APs are counted from one item's value, or as the number of matching items when each rogue is its own discovered item; they are shown on the access point that reports them and are never placed on the plan.
+
 ## Documentation
 
 - [Chart contracts](docs/CHART-CONTRACTS.md)
+- [Wireless Airspace Heat-Map: template requirements](docs/WIRELESS-TEMPLATE.md)
 - [Apache ECharts example coverage](docs/ECHARTS-COVERAGE.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Testing](docs/TESTING.md)
